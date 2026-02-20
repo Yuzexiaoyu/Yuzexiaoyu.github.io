@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>雨泽小鱼的站点</title>
+        <link>https://Yuzexiaoyu.github.io/</link>
+        <description>Recent content on 雨泽小鱼的站点</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>zh-CN</language>
+        <lastBuildDate>Sat, 21 Feb 2026 01:38:02 +0800</lastBuildDate><atom:link href="https://Yuzexiaoyu.github.io/index.xml" rel="self" type="application/rss+xml" /><item>
+            <title>Hugo Tutorial</title>
+            <link>https://Yuzexiaoyu.github.io/posts/hugo-tutorial/</link>
+            <pubDate>Sat, 21 Feb 2026 01:38:02 +0800</pubDate>
+            <guid>https://Yuzexiaoyu.github.io/posts/hugo-tutorial/</guid>
+            <description>&lt;p&gt;这是一篇试验文章&lt;/p&gt;&#xA;&lt;h3 id=&#34;1换行文末两个空格&#34;&gt;1.换行，文末两个空格&#xD;&#xA;&lt;/h3&gt;&lt;p&gt;加粗 ：&lt;strong&gt;加粗&lt;/strong&gt;&lt;br&gt;&#xA;斜体：&lt;em&gt;斜体&lt;/em&gt;&lt;/p&gt;&#xA;</description>
+        </item></channel>
+</rss>

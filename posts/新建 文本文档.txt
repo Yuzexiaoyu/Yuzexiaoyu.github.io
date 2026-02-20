@@ -1,0 +1,14 @@
+---
+# 注意：这一行是注释，可删；以下所有行缩进为 0（无空格）
+title: "我的 YAML 格式文章"
+date: 2026-02-22T14:00:00+08:00
+draft: false
+slug: "yaml-test"  # 强制指定路径，避免 404
+tags: ["Hugo", "YAML 教程"]
+categories: ["技术"]
+---
+
+# 这是正文（Markdown 语法）
+终于搞定 YAML 格式了！
+- 列表项 1
+- 列表项 2
