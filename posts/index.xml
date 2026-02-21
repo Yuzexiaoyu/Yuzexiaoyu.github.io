@@ -1,15 +1,8 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-        <title>Posts on 雨泽小鱼的站点</title>
+        <title>Posts on 雨泽小鱼的博客</title>
         <link>http://localhost:1313/posts/</link>
-        <description>Recent content in Posts on 雨泽小鱼的站点</description>
+        <description>Recent content in Posts on 雨泽小鱼的博客</description>
         <generator>Hugo -- gohugo.io</generator>
-        <language>zh-CN</language>
-        <lastBuildDate>Sat, 21 Feb 2026 01:04:08 +0800</lastBuildDate><atom:link href="http://localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" /><item>
-            <title>Hugo Tutorial</title>
-            <link>http://localhost:1313/posts/hugo-tutorial/</link>
-            <pubDate>Sat, 21 Feb 2026 01:04:08 +0800</pubDate>
-            <guid>http://localhost:1313/posts/hugo-tutorial/</guid>
-            <description>&lt;p&gt;这是文章内容，能被识别&lt;/p&gt;&#xA;&lt;p&gt;我终于能看到自己的文章了！🎉&lt;/p&gt;&#xA;</description>
-        </item></channel>
+        <language>zh-cn</language><atom:link href="http://localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" /></channel>
 </rss>

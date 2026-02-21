@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-        <title>Categories on 雨泽小鱼的站点</title>
+        <title>Categories on 雨泽小鱼的个人博客</title>
         <link>https://yuzexiaoyu.space/categories/</link>
-        <description>Recent content in Categories on 雨泽小鱼的站点</description>
+        <description>Recent content in Categories on 雨泽小鱼的个人博客</description>
         <generator>Hugo -- gohugo.io</generator>
-        <language>zh-CN</language><atom:link href="https://yuzexiaoyu.space/categories/index.xml" rel="self" type="application/rss+xml" /></channel>
+        <language>zh-cn</language>
+        <lastBuildDate>Mon, 26 Jan 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://yuzexiaoyu.space/categories/index.xml" rel="self" type="application/rss+xml" /><item>
+            <title>Documentation</title>
+            <link>https://yuzexiaoyu.space/categories/documentation/</link>
+            <pubDate>Mon, 26 Jan 2026 00:00:00 +0000</pubDate>
+            <guid>https://yuzexiaoyu.space/categories/documentation/</guid>
+            <description></description>
+        </item><item>
+            <title>Syntax</title>
+            <link>https://yuzexiaoyu.space/categories/syntax/</link>
+            <pubDate>Tue, 23 Dec 2025 00:00:00 +0000</pubDate>
+            <guid>https://yuzexiaoyu.space/categories/syntax/</guid>
+            <description></description>
+        </item><item>
+            <title>Themes</title>
+            <link>https://yuzexiaoyu.space/categories/themes/</link>
+            <pubDate>Tue, 23 Dec 2025 00:00:00 +0000</pubDate>
+            <guid>https://yuzexiaoyu.space/categories/themes/</guid>
+            <description></description>
+        </item></channel>
 </rss>

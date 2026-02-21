@@ -2,17 +2,61 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://yuzexiaoyu.space/posts/</loc>
-    <lastmod>2026-02-21T01:38:02+08:00</lastmod>
-  </url><url>
-    <loc>https://yuzexiaoyu.space/posts/%E6%B5%8B%E8%AF%95%E7%AF%87%E7%AB%A0/</loc>
-    <lastmod>2026-02-21T01:38:02+08:00</lastmod>
-  </url><url>
     <loc>https://yuzexiaoyu.space/</loc>
     <lastmod>2026-02-21T01:38:02+08:00</lastmod>
   </url><url>
+    <loc>https://yuzexiaoyu.space/post/</loc>
+    <lastmod>2026-02-21T01:38:02+08:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/p/%E6%B5%8B%E8%AF%95%E7%AF%87%E7%AB%A0/</loc>
+    <lastmod>2026-02-21T01:38:02+08:00</lastmod>
+  </url><url>
     <loc>https://yuzexiaoyu.space/categories/</loc>
+    <lastmod>2026-01-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/categories/documentation/</loc>
+    <lastmod>2026-01-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://yuzexiaoyu.space/tags/</loc>
+    <lastmod>2026-01-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/p/%E7%9F%AD%E4%BB%A3%E7%A0%81/</loc>
+    <lastmod>2026-01-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/%E9%9A%90%E7%A7%81/</loc>
+    <lastmod>2026-01-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/css/</loc>
+    <lastmod>2026-01-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/html/</loc>
+    <lastmod>2026-01-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/markdown/</loc>
+    <lastmod>2026-01-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/p/markdown-%E8%AF%AD%E6%B3%95%E6%8C%87%E5%8D%97/</loc>
+    <lastmod>2026-01-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/themes/</loc>
+    <lastmod>2026-01-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/p/math-typesetting/</loc>
+    <lastmod>2026-01-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/diagrams/</loc>
+    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/tags/mermaid/</loc>
+    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/p/mermaid-diagrams/</loc>
+    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/categories/syntax/</loc>
+    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/categories/themes/</loc>
+    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
   </url>
 </urlset>
