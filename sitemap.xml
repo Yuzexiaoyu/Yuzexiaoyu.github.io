@@ -2,8 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://yuzexiaoyu.space/page/</loc>
+    <lastmod>2026-02-22T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://yuzexiaoyu.space/roadmap/</loc>
+    <lastmod>2026-02-22T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://yuzexiaoyu.space/</loc>
-    <lastmod>2026-02-21T01:38:02+08:00</lastmod>
+    <lastmod>2026-02-22T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://yuzexiaoyu.space/post/</loc>
     <lastmod>2026-02-21T01:38:02+08:00</lastmod>
@@ -43,20 +49,5 @@
   </url><url>
     <loc>https://yuzexiaoyu.space/p/math-typesetting/</loc>
     <lastmod>2026-01-24T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://yuzexiaoyu.space/tags/diagrams/</loc>
-    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://yuzexiaoyu.space/tags/mermaid/</loc>
-    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://yuzexiaoyu.space/p/mermaid-diagrams/</loc>
-    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://yuzexiaoyu.space/categories/syntax/</loc>
-    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://yuzexiaoyu.space/categories/themes/</loc>
-    <lastmod>2025-12-23T00:00:00+00:00</lastmod>
   </url>
 </urlset>

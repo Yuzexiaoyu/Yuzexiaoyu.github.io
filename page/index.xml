@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-        <title>Pages on 雨泽小鱼的博客</title>
-        <link>http://localhost:1313/page/</link>
-        <description>Recent content in Pages on 雨泽小鱼的博客</description>
+        <title>Pages on 雨泽小鱼的个人博客</title>
+        <link>https://yuzexiaoyu.space/page/</link>
+        <description>Recent content in Pages on 雨泽小鱼的个人博客</description>
         <generator>Hugo -- gohugo.io</generator>
-        <language>zh-cn</language><atom:link href="http://localhost:1313/page/index.xml" rel="self" type="application/rss+xml" /><item>
-            <title>搜索</title>
-            <link>http://localhost:1313/search/</link>
-            <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-            <guid>http://localhost:1313/search/</guid>
-            <description></description>
+        <language>zh-cn</language>
+        <lastBuildDate>Sun, 22 Feb 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://yuzexiaoyu.space/page/index.xml" rel="self" type="application/rss+xml" /><item>
+            <title>更新计划</title>
+            <link>https://yuzexiaoyu.space/roadmap/</link>
+            <pubDate>Sun, 22 Feb 2026 00:00:00 +0000</pubDate>
+            <guid>https://yuzexiaoyu.space/roadmap/</guid>
+            <description>&lt;h3 id=&#34;-2026年2月&#34;&gt;📅 2026年2月&#xD;&#xA;&lt;/h3&gt;&lt;ul&gt;&#xA;&lt;li&gt;&lt;input checked=&#34;&#34; disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 优化页脚样式，调整侧边栏emoji显示效果&lt;/li&gt;&#xA;&lt;li&gt;&lt;input checked=&#34;&#34; disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 接入自动化上传，优化博客更新速度&lt;/li&gt;&#xA;&lt;li&gt;&lt;input checked=&#34;&#34; disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 完善并上线暗色模式&lt;/li&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 完成博客基础搭建，上线首页、文章、关于页面&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h3 id=&#34;-2026年3月&#34;&gt;📌 2026年3月&#xD;&#xA;&lt;/h3&gt;&lt;ul&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 优化图片加载速度，接入CDN全站加速&lt;/li&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 接入评论系统，支持读者留言互动&lt;/li&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 增加文章全局搜索功能，优化内容检索体验&lt;/li&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 深度优化移动端适配，提升手机端访问体验&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h3 id=&#34;-2026年4月&#34;&gt;🎯 2026年4月&#xD;&#xA;&lt;/h3&gt;&lt;ul&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 优化界面美术，添加动画效果&lt;/li&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 实现动态背景&lt;/li&gt;&#xA;&lt;li&gt;&lt;input disabled=&#34;&#34; type=&#34;checkbox&#34;&gt; 添加网页音乐播放器&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;</description>
         </item></channel>
 </rss>
