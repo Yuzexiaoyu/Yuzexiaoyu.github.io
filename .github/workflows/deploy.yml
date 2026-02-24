@@ -18,6 +18,14 @@ jobs:
         with:
           submodules: false
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install beautifulsoup4
+
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
@@ -26,6 +34,45 @@ jobs:
 
       - name: Build
         run: hugo --minify --gc
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+          ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3 sync public/ s3://$BUCKET/ \
+            --endpoint-url $ENDPOINT \
+            --acl public-read \
+            --exclude "*" \
+            --include "*.jpg" --include "*.jpeg" --include "*.png" \
+            --include "*.gif" --include "*.webp" --include "*.svg" \
+            --include "*.bmp" --include "*.ico" \
+            --delete || echo "R2 upload failed (continuing...)"
+
+      - name: Replace image links
+        env:
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+        run: |
+          python -c "
+import sys, os
+from pathlib import Path
+from bs4 import BeautifulSoup
+public = Path(sys.argv[1])
+url = sys.argv[2].rstrip('/')
+for html in public.rglob('*.html'):
+  try:
+    soup = BeautifulSoup(html.read_text('utf-8'), 'html.parser')
+    for img in soup.find_all('img'):
+      src = img.get('src', '').strip()
+      if src.startswith('/p/') and not src.startswith(('http://','https://')):
+        img['src'] = url + src
+        print(f'✅ {src} → {url}{src}')
+    html.write_text(str(soup), 'utf-8')
+  except: pass
+" public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
