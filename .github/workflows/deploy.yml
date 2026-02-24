@@ -1,0 +1,79 @@
+name: Deploy Site & Upload Assets to R2
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # === 安装 Python 和依赖 ===
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install beautifulsoup4
+
+      # === 构建 Hugo 站点 ===
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: 'latest'
+          extended: true
+
+      - name: Build site
+        run: hugo --minify --gc
+
+      # === 上传图片到 R2 ===
+      - name: Configure AWS Credentials for R2
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          aws-region: auto
+
+      - name: Upload Images to R2
+        env:
+          BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+          ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3 sync public/ s3://$BUCKET/ \
+            --endpoint-url $ENDPOINT \
+            --acl public-read \
+            --exclude "*" \
+            --include "*.jpg" --include "*.jpeg" --include "*.png" \
+            --include "*.gif" --include "*.webp" --include "*.svg" \
+            --include "*.bmp" --include "*.ico" \
+            --delete
+
+      # === 替换 HTML 中的图片链接 ===
+      - name: Replace Image Links with R2 URLs
+        env:
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+        run: |
+          python scripts/replace-img-links.py public "$R2_PUBLIC_URL"
+
+      # === 部署到 GitHub Pages ===
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
