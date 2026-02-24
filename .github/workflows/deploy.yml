@@ -1,22 +1,39 @@
-- name: Upload Images to R2
-  env:
-    AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-    AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-    AWS_DEFAULT_REGION: auto
-    BUCKET: ${{ secrets.R2_BUCKET_NAME }}
-    ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-  run: |
-    aws s3 sync public/ s3://$BUCKET/ \
-      --endpoint-url $ENDPOINT \
-      --acl public-read \
-      --exclude "*" \
-      --include "*.jpg" --include "*.jpeg" --include "*.png" \
-      --include "*.gif" --include "*.webp" --include "*.svg" \
-      --include "*.bmp" --include "*.ico" \
-      --delete || echo "⚠️ R2 upload failed (continuing...)"
+name: Deploy Site
 
-- name: Replace Image Links with R2 URLs
-  env:
-    R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}  # https://cdn.yuzexiaoyu.space
-  run: |
-    python scripts/replace-img-links.py public "$R2_PUBLIC_URL"
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.156.0'
+          extended: true
+
+      - name: Build
+        run: hugo --minify --gc
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+      - name: Deploy
+        uses: actions/deploy-pages@v4
