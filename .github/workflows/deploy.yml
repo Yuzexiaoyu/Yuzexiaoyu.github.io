@@ -55,28 +55,7 @@ jobs:
       - name: Replace image links
         env:
           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
-        run: |
-          python -c "
-import sys
-from pathlib import Path
-from bs4 import BeautifulSoup
-public_dir = Path('public')
-base_url = sys.argv[1].rstrip('/')
-for html_file in public_dir.rglob('*.html'):
-    try:
-        content = html_file.read_text('utf-8')
-        soup = BeautifulSoup(content, 'html.parser')
-        changed = False
-        for img in soup.find_all('img'):
-            src = img.get('src', '').strip()
-            if src.startswith('/p/') and not src.startswith(('http://', 'https://')):
-                img['src'] = base_url + src
-                changed = True
-        if changed:
-            html_file.write_text(str(soup), 'utf-8')
-    except Exception as e:
-        pass
-" "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
+        run: python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
