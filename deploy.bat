@@ -3,70 +3,120 @@ chcp 65001 >nul
 cd /d F:\Yuzexiaoyu.space
 
 echo ========================================
-echo   Hugo 部署修复脚本（清理子模块问题）
+echo   Hugo R2 部署配置（桶名: yuzexiaoyu）
 echo ========================================
 echo.
-echo 检测主题目录...
-set THEME_DIR=
-if exist "themes\hugo-stack" (
-    set THEME_DIR=hugo-stack
-    echo ✓ 找到主题目录: themes\hugo-stack
-) else if exist "themes\stack" (
-    set THEME_DIR=stack
-    echo ✓ 找到主题目录: themes\stack
-) else (
-    echo ✗ 未找到主题目录！请确认 themes/ 下有 hugo-stack 或 stack
-    pause
-    exit /b 1
-)
 
+:: 创建 deploy.yml
+mkdir ".github\workflows" 2>nul
+
+(
+echo name: Deploy Site and Upload Assets to R2
 echo.
-echo ⚠️  此脚本将：
-echo    1. 清理错误的子模块配置
-echo    2. 修复 deploy.yml 分支配置（main → master）
-echo    3. 提交并推送修复
+echo on:
+echo   push:
+echo     branches: [ master ]
 echo.
-set /p CONFIRM="确定继续？(y/n): "
-if /i "%CONFIRM%" neq "y" exit /b
-
+echo permissions:
+echo   contents: read
+echo   pages: write
+echo   id-token: write
 echo.
-echo [1/4] 清理子模块痕迹...
-git rm --cached "themes\%THEME_DIR%" -r -f >nul 2>&1
-if exist "themes\%THEME_DIR%\.git" (
-    rmdir /s /q "themes\%THEME_DIR%\.git" 2>nul
-    echo   ✓ 已删除 themes\%THEME_DIR%\.git
-)
-git config --remove-section "submodule.themes/%THEME_DIR%" >nul 2>&1
-if exist ".gitmodules" del ".gitmodules" >nul 2>&1 & echo   ✓ 已删除 .gitmodules
+echo jobs:
+echo   deploy:
+echo     runs-on: ubuntu-latest
+echo     steps:
+echo       - name: Checkout code
+echo         uses: actions/checkout@v4
+echo         with:
+echo           submodules: false
+echo           fetch-depth: 0
+echo.
+echo       - name: Set up Python
+echo         uses: actions/setup-python@v5
+echo         with:
+echo           python-version: '3.11'
+echo.
+echo       - name: Install dependencies
+echo         run: ^|
+echo           python -m pip install --upgrade pip
+echo           pip install beautifulsoup4
+echo.
+echo       - name: Setup Hugo
+echo         uses: peaceiris/actions-hugo@v2
+echo         with:
+echo           hugo-version: '0.156.0'
+echo           extended: true
+echo.
+echo       - name: Build site
+echo         run: hugo --minify --gc
+echo.
+echo       - name: Configure AWS Credentials for R2
+echo         uses: aws-actions/configure-aws-credentials@v4
+echo         with:
+echo           aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+echo           aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+echo           aws-region: auto
+echo.
+echo       - name: Upload Images to R2
+echo         env:
+echo           BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+echo           ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+echo         run: ^|
+echo           aws s3 sync public/ s3://$BUCKET/ ^
+echo             --endpoint-url $ENDPOINT ^
+echo             --acl public-read ^
+echo             --exclude "*" ^
+echo             --include "*.jpg" --include "*.jpeg" --include "*.png" ^
+echo             --include "*.gif" --include "*.webp" --include "*.svg" ^
+echo             --include "*.bmp" --include "*.ico" ^
+echo             --delete
+echo.
+echo       - name: Replace Image Links with R2 URLs
+echo         env:
+echo           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+echo         run: ^|
+echo           python scripts/replace-img-links.py public "$R2_PUBLIC_URL"
+echo.
+echo       - name: Setup Pages
+echo         uses: actions/configure-pages@v5
+echo.
+echo       - name: Upload artifact
+echo         uses: actions/upload-pages-artifact@v3
+echo         with:
+echo           path: ./public
+echo.
+echo       - name: Deploy to GitHub Pages
+echo         uses: actions/deploy-pages@v4
+) > ".github\workflows\deploy.yml"
 
-echo [2/4] 重新添加主题文件...
-git add "themes\%THEME_DIR%" >nul 2>&1
+:: 配置 .gitignore
+findstr /C:"public/" .gitignore >nul || echo public/ >> .gitignore
+findstr /C:"hugo.exe" .gitignore >nul || echo hugo.exe >> .gitignore
 
-echo [3/4] 修复 deploy.yml 配置...
-:: 备份原文件
-copy ".github\workflows\deploy.yml" ".github\workflows\deploy.yml.bak" >nul 2>&1
-:: 替换分支为 master
-powershell -Command "(gc '.github\workflows\deploy.yml') -replace 'branches: \[ main \]', 'branches: [ master ]' -replace 'branches: \[\"main\"\]', 'branches: [\"master\"]' | sc '.github\workflows\deploy.yml' -Encoding UTF8" >nul 2>&1
-:: 确保关闭子模块
-powershell -Command "$c=gc '.github\workflows\deploy.yml'; if ($c -notmatch 'submodules: false') { $c = $c -replace 'uses: actions/checkout@v4', \"uses: actions/checkout@v4`n      with:`n        submodules: false\"; $c | sc '.github\workflows\deploy.yml' -Encoding UTF8 }" >nul 2>&1
-echo   ✓ 已修复 deploy.yml（分支: master, submodules: false）
-
-echo [4/4] 提交并推送...
+:: 提交更改
 git add .
-git commit -m "fix: 清理子模块，修复部署配置" --allow-empty >nul 2>&1
+git commit -m "chore: 配置 R2 部署（桶名: yuzexiaoyu）" --allow-empty >nul 2>&1
 git push
 
 echo.
 echo ========================================
-echo ✅ 修复成功！
+echo ✅ 配置完成！
 echo ========================================
 echo.
-echo 下一步操作（必须！）：
-echo 1. 打开仓库: https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io
-echo 2. Settings → Pages → Build and deployment
-echo 3. Source 选择 "GitHub Actions" → Save
+echo 🔑 请确认已配置以下 Secrets（否则 R2 会失败）：
+echo   • R2_ACCESS_KEY_ID
+echo   • R2_SECRET_ACCESS_KEY
+echo   • R2_BUCKET_NAME = yuzexiaoyu
+echo   • R2_ENDPOINT
+echo   • R2_PUBLIC_URL = https://yuzexiaoyu.8af8989ece65309e48121cc872681506.r2.cloudflarestorage.com
 echo.
-echo 等待 2-5 分钟后访问:
-echo   https://yuzexiaoyu.github.io
+echo ⚠️  最后一步（必须！）：
+echo   Settings → Pages → Source 选 "GitHub Actions" → Save
+echo.
+echo 🌐 部署完成后访问: https://yuzexiaoyu.github.io
+echo.
+echo 🔍 实时查看部署状态:
+echo   https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io/actions
 echo.
 pause
