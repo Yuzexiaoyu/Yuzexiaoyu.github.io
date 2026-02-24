@@ -1,4 +1,4 @@
-name: Deploy Site
+name: Deploy Site with R2 CDN
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           hugo-version: '0.156.0'
           extended: true
 
-      - name: Build
+      - name: Build site
         run: hugo --minify --gc
 
       - name: Upload to R2
@@ -52,10 +52,10 @@ jobs:
             --include "*.bmp" --include "*.ico" \
             --delete || echo "R2 upload failed (continuing...)"
 
-- name: Replace image links
-  env:
-    R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
-  run: python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
+      - name: Replace image links
+        env:
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+        run: python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -65,5 +65,5 @@ jobs:
         with:
           path: ./public
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
