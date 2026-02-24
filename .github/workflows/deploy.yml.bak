@@ -1,8 +1,8 @@
-﻿name: Deploy Site & Upload Assets to R2
+name: Deploy Site & Upload Assets to R2
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -15,10 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      with:
-        submodules: false
 
-      # === 瀹夎 Python 鍜屼緷璧?===
+      # === 安装 Python 和依赖 ===
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -29,7 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install beautifulsoup4
 
-      # === 鏋勫缓 Hugo 绔欑偣 ===
+      # === 构建 Hugo 站点 ===
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
@@ -39,7 +37,7 @@ jobs:
       - name: Build site
         run: hugo --minify --gc
 
-      # === 涓婁紶鍥剧墖鍒?R2 ===
+      # === 上传图片到 R2 ===
       - name: Configure AWS Credentials for R2
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -61,14 +59,14 @@ jobs:
             --include "*.bmp" --include "*.ico" \
             --delete
 
-      # === 鏇挎崲 HTML 涓殑鍥剧墖閾炬帴 ===
+      # === 替换 HTML 中的图片链接 ===
       - name: Replace Image Links with R2 URLs
         env:
           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
         run: |
           python scripts/replace-img-links.py public "$R2_PUBLIC_URL"
 
-      # === 閮ㄧ讲鍒?GitHub Pages ===
+      # === 部署到 GitHub Pages ===
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
