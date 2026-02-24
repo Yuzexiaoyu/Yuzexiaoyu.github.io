@@ -16,8 +16,6 @@ if errorlevel 1 (
 ) else (
     echo.
     echo 推送成功！
-    echo 网站将在 2 分钟内更新
-    echo https://yuzexiaoyu.space
 )
 
 pause
