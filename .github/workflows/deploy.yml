@@ -46,7 +46,14 @@ jobs:
           BUCKET: ${{ secrets.R2_BUCKET_NAME }}
           ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         run: |
-          aws s3 sync public/ s3://$BUCKET/ echo             --endpoint-url $ENDPOINT echo             --acl public-read echo             --exclude "*" echo             --include "*.jpg" --include "*.jpeg" --include "*.png" echo             --include "*.gif" --include "*.webp" --include "*.svg" echo             --include "*.bmp" --include "*.ico" echo             --delete
+          aws s3 sync public/ s3://$BUCKET/ \
+            --endpoint-url $ENDPOINT \
+            --acl public-read \
+            --exclude "*" \
+            --include "*.jpg" --include "*.jpeg" --include "*.png" \
+            --include "*.gif" --include "*.webp" --include "*.svg" \
+            --include "*.bmp" --include "*.ico" \
+            --delete
 
       - name: Replace Image Links with R2 URLs
         env:
