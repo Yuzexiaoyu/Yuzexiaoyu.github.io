@@ -4,6 +4,9 @@ theme = "stack"
 hasCJKLanguage = true
 defaultContentLanguage = "zh"
 
+canonifyURLs = true
+relativeURLs = false
+
 [pagination]
     pagerSize = 5
 

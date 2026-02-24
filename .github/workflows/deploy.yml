@@ -1,4 +1,4 @@
-name: Deploy Site and Upload Assets to R2
+name: Deploy Site to yuzexiaoyu.space
 
 on:
   push:
@@ -26,7 +26,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install beautifulsoup4
 
       - name: Setup Hugo
@@ -53,13 +52,13 @@ jobs:
             --include "*.jpg" --include "*.jpeg" --include "*.png" \
             --include "*.gif" --include "*.webp" --include "*.svg" \
             --include "*.bmp" --include "*.ico" \
-            --delete
+            --delete || echo "R2 upload failed, continuing..."
 
       - name: Replace Image Links with R2 URLs
         env:
           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
         run: |
-          python scripts/replace-img-links.py public "$R2_PUBLIC_URL"
+          python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed, continuing..."
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -1,4 +1,0 @@
-baseURL = 'https://yuzexiaoyu.space/'
-languageCode = 'en-us'
-title = 'My New Hugo Project'
-theme = "stack"
