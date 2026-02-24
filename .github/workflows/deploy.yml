@@ -17,6 +17,8 @@ jobs:
         uses: actions/checkout@v4
       with:
         submodules: false
+      with:
+        submodules: false
 
       # === 瀹夎 Python 鍜屼緷璧?===
       - name: Set up Python
