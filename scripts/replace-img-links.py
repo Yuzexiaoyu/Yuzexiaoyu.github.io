@@ -44,6 +44,7 @@ def replace_image_links(html_file, public_dir, base_url):
             
             if local_path.exists() and is_image_file(local_path):
                 new_src = base_url.rstrip('/') + normalized_src
+                new_src = new_src.strip()
                 img['src'] = new_src
                 changed = True
                 print(f"✅ {html_file.relative_to(Path.cwd())}: {normalized_src} → {new_src}")
