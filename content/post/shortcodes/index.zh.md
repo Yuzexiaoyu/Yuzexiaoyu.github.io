@@ -2,6 +2,7 @@
 title: 短代码
 date: 2026-01-22
 description: 展示 Stack 主题支持的各种短代码。
+image: boat.jpg
 ---
 
 Stack 主题还提供了一些自定义短代码来增强你的内容。
