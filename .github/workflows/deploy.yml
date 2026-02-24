@@ -1,73 +1,22 @@
-name: Deploy Site
+- name: Upload Images to R2
+  env:
+    AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+    AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    AWS_DEFAULT_REGION: auto
+    BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+    ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+  run: |
+    aws s3 sync public/ s3://$BUCKET/ \
+      --endpoint-url $ENDPOINT \
+      --acl public-read \
+      --exclude "*" \
+      --include "*.jpg" --include "*.jpeg" --include "*.png" \
+      --include "*.gif" --include "*.webp" --include "*.svg" \
+      --include "*.bmp" --include "*.ico" \
+      --delete || echo "⚠️ R2 upload failed (continuing...)"
 
-on:
-  push:
-    branches: [ master ]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install beautifulsoup4
-
-      - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v2
-        with:
-          hugo-version: '0.156.0'
-          extended: true
-
-      - name: Build site
-        run: hugo --minify --gc
-
-      # ===== R2 上传（失败不中断）=====
-      - name: Upload Images to R2
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          BUCKET: ${{ secrets.R2_BUCKET_NAME }}
-          ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-        run: |
-          aws s3 sync public/ s3://$BUCKET/ \
-            --endpoint-url $ENDPOINT \
-            --acl public-read \
-            --exclude "*" \
-            --include "*.jpg" --include "*.jpeg" --include "*.png" \
-            --include "*.gif" --include "*.webp" --include "*.svg" \
-            --include "*.bmp" --include "*.ico" \
-            --delete || echo "⚠️ R2 upload skipped (but site will deploy)"
-
-      # ===== 链接替换（失败不中断）=====
-      - name: Replace Image Links with R2 URLs
-        env:
-          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
-        run: |
-          python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "⚠️ Link replacement skipped (but site will deploy)"
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./public
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+- name: Replace Image Links with R2 URLs
+  env:
+    R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}  # https://cdn.yuzexiaoyu.space
+  run: |
+    python scripts/replace-img-links.py public "$R2_PUBLIC_URL"
