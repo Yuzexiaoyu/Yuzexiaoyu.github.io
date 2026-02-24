@@ -2,7 +2,7 @@
 chcp 65001 >nul
 cd /d F:\Yuzexiaoyu.space
 
-echo 正在生成 R2 专用 deploy.yml...
+echo 正在生成最终版 deploy.yml...
 mkdir ".github\workflows" 2>nul
 
 (
@@ -46,12 +46,6 @@ echo.
 echo       - name: Build site
 echo         run: hugo --minify --gc
 echo.
-echo       - name: Install AWS CLI
-echo         run: ^|
-echo           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-echo           unzip awscliv2.zip
-echo           sudo ./aws/install
-echo.
 echo       - name: Upload Images to R2
 echo         env:
 echo           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -87,20 +81,34 @@ echo       - name: Deploy to GitHub Pages
 echo         uses: actions/deploy-pages@v4
 ) > ".github\workflows\deploy.yml"
 
-echo.
-echo ✅ deploy.yml 已生成（R2 专用版，移除 configure-aws-credentials）
-echo.
+:: 清理 hugo.exe
+if exist hugo.exe git rm --cached hugo.exe -f >nul 2>&1
+
+:: 更新 .gitignore
+findstr /C:"public/" .gitignore >nul || echo public/ >> .gitignore
+findstr /C:"hugo.exe" .gitignore >nul || echo hugo.exe >> .gitignore
+
+:: 提交推送
 git add .
-git commit -m "fix: 移除 configure-aws-credentials，直接配置 AWS CLI 环境变量" --allow-empty >nul 2>&1
+git commit -m "fix: 移除手动安装 AWS CLI，使用预装版本" --allow-empty >nul 2>&1
 git push
 
 echo.
 echo ========================================
-echo ✅ 代码已推送！
+echo ✅ 修复完成！部署已触发
 echo ========================================
 echo.
 echo ⚠️  最后一步（必须！）：
-echo   Settings → Pages → Source 选 "GitHub Actions" → Save
+echo   1. 打开: https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io/settings/pages
+echo   2. Build and deployment → Source 选择 "GitHub Actions"
+echo   3. 点击 Save 按钮
+echo.
+echo 🔑 请确认 Secrets 已配置（5 个密钥）：
+echo   • R2_ACCESS_KEY_ID
+echo   • R2_SECRET_ACCESS_KEY
+echo   • R2_BUCKET_NAME = yuzexiaoyu
+echo   • R2_ENDPOINT
+echo   • R2_PUBLIC_URL
 echo.
 echo 🌐 2-5 分钟后访问: https://yuzexiaoyu.github.io
 echo.
