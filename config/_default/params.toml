@@ -1,0 +1,43 @@
+mainSections   = ["post"]
+rssFullContent = true
+favicon        = "image/avatar.png"
+
+[footer]
+    since = 2026
+
+[sidebar]
+    emoji    = "🖕🏻"
+    subtitle = "分享技术，记录生活"
+    avatar   = "image/avatar.png"
+
+[article]
+    [article.license]
+        enabled = true
+        default = "转载请注明出处"
+
+[widgets]
+    homepage = []
+    page     = []
+
+[comments]
+    # See complete configuration in config/_default/params.toml
+    enabled  = false
+    provider = "disqus"
+
+# GDPR Cookie Consent Configuration
+# When enabled, analytics and functional cookies require user consent
+[cookies]
+    enabled = false
+
+    [cookies.categories]
+        analytics  = true
+        functional = true
+
+[dateFormat]
+  published = "2006-01-02" 
+  updated = "2006-01-02"
+
+[colorScheme]
+  enable = true
+  toggle = true  # 开启暗色模式切换按钮
+  default = "dark" 

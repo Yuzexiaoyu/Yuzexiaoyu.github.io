@@ -1,0 +1,12 @@
+<footer class="site-footer">
+    <section class="copyright">
+        <!-- 只显示2026年，去掉多余的 "-2026" -->
+        &copy; 2026 {{ .Site.Title }}
+    </section>
+    <!-- 已删除：powered-by 和 theme-info 两行 -->
+    {{- if .Site.Params.footer.customText }}
+    <section class="custom-text">
+        {{ .Site.Params.footer.customText | safeHTML }}
+    </section>
+    {{- end }}
+</footer>

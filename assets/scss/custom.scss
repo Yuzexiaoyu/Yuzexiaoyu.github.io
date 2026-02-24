@@ -1,0 +1,87 @@
+// --------------------------
+// 自定义鼠标光标 - 单独改Link+Text热点版
+// --------------------------
+$cursor-path: "/cursor/";
+$link-hotspot: 3 0; // Link.cur的热点（和文件里的一致）
+$text-hotspot: 5 10; // 新增：Text.cur的独立热点（按需修改，比如和Link/Pointer对齐）
+
+// 全局默认箭头光标（保持原来的热点，不加额外设置）
+body {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto;
+  
+  &.loading {
+    cursor: url("#{$cursor-path}Busy.ani"), wait;
+  }
+}
+
+// 可点击元素（链接/按钮/暗色模式开关）→ Link热点
+a, 
+button, 
+[role="button"], 
+input[type="submit"], 
+input[type="button"],
+.nav-item, 
+.menu-item,
+.theme-toggle,
+#theme-toggle,
+.dark-mode-toggle,
+#dark-mode-toggle,
+[class*="theme-toggle"],
+[class*="dark-mode-toggle"],
+.theme-toggle *,
+#theme-toggle *
+{
+  cursor: url("#{$cursor-path}Link.cur") $link-hotspot, pointer !important;
+}
+
+// 文本选择/输入框光标 → 新增Text热点
+input, textarea, pre, code, [contenteditable="true"] {
+  // 核心修改：给Text.cur加上独立热点
+  cursor: url("#{$cursor-path}Text.cur") $text-hotspot, text;
+  
+  &:focus {
+    // 聚焦时也同步热点
+    cursor: url("#{$cursor-path}Text.cur") $text-hotspot, text;
+    outline: none; // 配合光标隐藏默认聚焦框
+  }
+}
+
+// 拖拽元素光标（保持原来的热点，如需加可参考上面的逻辑）
+[draggable="true"] {
+  cursor: url("#{$cursor-path}Grabbing.cur"), grab;
+  
+  &:active {
+    cursor: url("#{$cursor-path}Grabbing.cur"), grabbing;
+  }
+}
+
+
+
+
+.site-avatar .emoji {
+    // 边框尺寸（可自行调整，比如50px/30px）
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+
+    // 核心：让emoji填充满边框
+    font-size: 25px !important; // 比边框小4px，避免emoji溢出边框（关键！）
+    line-height: 40px !important; // 和边框高度一致，垂直居中
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important; // 彻底清除内边距，无空隙
+    margin: 0 auto !important;
+
+    // 保留圆形边框样式
+    border-radius: 50%;
+    background-color: var(--card-background);
+    box-shadow: var(--shadow-l1);
+}
+
+// 同步更新变量，避免冲突
+:root {
+    --emoji-size: 40px !important;
+    --sidebar-avatar-size: 40px !important;
+}

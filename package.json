@@ -1,0 +1,11 @@
+{
+  "name": "site-replace-script",
+  "version": "1.0.0",
+  "description": "Replace local image links with R2 URLs in built HTML",
+  "scripts": {
+    "replace-links": "node scripts/replace-img-links.js public $R2_PUBLIC_URL"
+  },
+  "dependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

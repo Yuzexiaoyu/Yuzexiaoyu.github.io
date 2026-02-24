@@ -1,0 +1,36 @@
+# 忽略Hugo缓存文件（不是最终静态文件）
+resources/
+.hugo_build.lock
+
+# 媒体文件规则（只忽略本地媒体，保留md文章）
+# 忽略post下文章子文件夹里的所有媒体文件，仅保留md文件
+content/post/*/*
+!content/post/*/*.md
+# 忽略page下页面子文件夹里的所有媒体文件，仅保留md文件
+content/page/*/*
+!content/page/*/*.md
+# 忽略static下的媒体文件夹（这些传到R2）
+static/img/
+static/audio/
+static/video/
+
+# 备份/临时文件
+*.bak
+*.tmp
+*.swp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# 编辑器/IDE文件
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Git相关（可选忽略）
+.gitattributes
+public/

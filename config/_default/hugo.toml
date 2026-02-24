@@ -1,0 +1,15 @@
+baseURL = "https://yuzexiaoyu.space/"
+languageCode = "zh-cn"
+theme = "stack"
+hasCJKLanguage = true
+defaultContentLanguage = "zh"
+
+[pagination]
+    pagerSize = 5
+
+[permalinks]
+    post = "/p/:slug/"
+    page = "/:slug/"
+
+[services.disqus]
+    shortname = "hugo-theme-stack"

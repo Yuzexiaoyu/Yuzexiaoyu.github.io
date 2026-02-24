@@ -1,0 +1,25 @@
+[[social]]
+    identifier = "github"
+    name       = "Github"
+    url        = "https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io"
+
+    [social.params]
+        icon = "brand-github"
+	newTab = true
+
+[[social]]
+    identifier = "bilibili"
+    name       = "bilibili"
+    url        = "https://space.bilibili.com/515360845?spm_id_from=333.1007.0.0"
+    target     = "_blank"
+
+    [social.params]
+        icon = "brand-bilibili"
+	newTab = true
+
+[[main]]
+name = "首页"
+url = "/"
+weight = -100
+[main.params]
+icon = "home"
