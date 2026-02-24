@@ -1,7 +1,7 @@
 [[social]]
     identifier = "github"
     name       = "Github"
-    url        = "https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io"
+    url        = "https://github.com/Yuzexiaoyu"
 
     [social.params]
         icon = "brand-github"
