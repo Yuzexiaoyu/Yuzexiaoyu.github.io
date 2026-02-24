@@ -4,6 +4,7 @@ date: 2026-02-22
 description: 在 Stack 主题中启用和使用 KaTeX 的指南
 math: true
 slug: math-typesetting
+image: star.jpg
 ---
 
 Stack 主题支持使用 [KaTeX](https://katex.org/) 渲染数学公式。
