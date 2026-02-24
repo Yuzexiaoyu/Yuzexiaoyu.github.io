@@ -2,12 +2,7 @@
 chcp 65001 >nul
 cd /d F:\Yuzexiaoyu.space
 
-echo ========================================
-echo   Hugo R2 部署配置（桶名: yuzexiaoyu）
-echo ========================================
-echo.
-
-:: 创建 deploy.yml
+echo 正在生成 R2 专用 deploy.yml...
 mkdir ".github\workflows" 2>nul
 
 (
@@ -51,15 +46,17 @@ echo.
 echo       - name: Build site
 echo         run: hugo --minify --gc
 echo.
-echo       - name: Configure AWS Credentials for R2
-echo         uses: aws-actions/configure-aws-credentials@v4
-echo         with:
-echo           aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
-echo           aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-echo           aws-region: auto
+echo       - name: Install AWS CLI
+echo         run: ^|
+echo           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+echo           unzip awscliv2.zip
+echo           sudo ./aws/install
 echo.
 echo       - name: Upload Images to R2
 echo         env:
+echo           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+echo           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+echo           AWS_DEFAULT_REGION: auto
 echo           BUCKET: ${{ secrets.R2_BUCKET_NAME }}
 echo           ENDPOINT: ${{ secrets.R2_ENDPOINT }}
 echo         run: ^|
@@ -90,33 +87,21 @@ echo       - name: Deploy to GitHub Pages
 echo         uses: actions/deploy-pages@v4
 ) > ".github\workflows\deploy.yml"
 
-:: 配置 .gitignore
-findstr /C:"public/" .gitignore >nul || echo public/ >> .gitignore
-findstr /C:"hugo.exe" .gitignore >nul || echo hugo.exe >> .gitignore
-
-:: 提交更改
+echo.
+echo ✅ deploy.yml 已生成（R2 专用版，移除 configure-aws-credentials）
+echo.
 git add .
-git commit -m "chore: 配置 R2 部署（桶名: yuzexiaoyu）" --allow-empty >nul 2>&1
+git commit -m "fix: 移除 configure-aws-credentials，直接配置 AWS CLI 环境变量" --allow-empty >nul 2>&1
 git push
 
 echo.
 echo ========================================
-echo ✅ 配置完成！
+echo ✅ 代码已推送！
 echo ========================================
-echo.
-echo 🔑 请确认已配置以下 Secrets（否则 R2 会失败）：
-echo   • R2_ACCESS_KEY_ID
-echo   • R2_SECRET_ACCESS_KEY
-echo   • R2_BUCKET_NAME = yuzexiaoyu
-echo   • R2_ENDPOINT
-echo   • R2_PUBLIC_URL = https://yuzexiaoyu.8af8989ece65309e48121cc872681506.r2.cloudflarestorage.com
 echo.
 echo ⚠️  最后一步（必须！）：
 echo   Settings → Pages → Source 选 "GitHub Actions" → Save
 echo.
-echo 🌐 部署完成后访问: https://yuzexiaoyu.github.io
-echo.
-echo 🔍 实时查看部署状态:
-echo   https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io/actions
+echo 🌐 2-5 分钟后访问: https://yuzexiaoyu.github.io
 echo.
 pause
