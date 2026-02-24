@@ -52,10 +52,10 @@ jobs:
             --include "*.bmp" --include "*.ico" \
             --delete || echo "R2 upload failed (continuing...)"
 
-      - name: Replace image links
-        env:
-          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
-        run: python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
+- name: Replace image links
+  env:
+    R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+  run: python scripts/replace-img-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
