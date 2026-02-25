@@ -4,18 +4,20 @@ cd /d F:\Yuzexiaoyu.space
 
 git add .
 
-set /p MSG="提交消息: "
+set /p MSG="推送备注: "
 if "%MSG%"=="" set MSG=Update site content
 
 git commit -m "%MSG%" >nul 2>&1
-git push
+
+git remote remove origin 2>nul
+git remote add origin https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io.git
+git fetch origin --prune --force >nul 2>&1
+git push origin master --force
 
 if errorlevel 1 (
-    echo.
-    echo 推送失败
+    echo Push failed
 ) else (
-    echo.
-    echo 推送成功！
+    echo Push successful
 )
 
 pause
