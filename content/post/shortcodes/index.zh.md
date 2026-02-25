@@ -22,8 +22,14 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 ```markdown
 {{</* quote author="作者名字" source="文章标题" url="https://example.com" */>}}
 这里是引用内容。
-{{</* /quote */>}}
+{{</* /quote */>} 
 ```
+
+
+<video controls width="50%">
+  <source src="./huijia-yuze-xiaoyu-1.mp4" type="video/mp4">
+</video>
+
 
 ## 视频 (Video)
 
