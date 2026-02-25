@@ -5,7 +5,7 @@ on:
     branches: [master]
 
 permissions:
-  contents: read
+  contents: write  # ← 改为 write（需要推送权限）
   pages: write
   id-token: write
 
@@ -70,3 +70,22 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+
+      # ✅ 新增：删除云端媒体文件
+      - name: Delete media files from GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 删除 content/post/ 下的所有媒体文件（但保留本地文件）
+          git rm -r --cached "content/post/**/*.jpg" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.jpeg" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.png" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.gif" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.mp4" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.mp3" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.pdf" 2>/dev/null || true
+          
+          # 提交并推送
+          git commit -m "chore: 删除云端媒体文件（保留本地）" || echo "No media files to delete"
+          git push origin master
