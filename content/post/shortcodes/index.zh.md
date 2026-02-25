@@ -24,14 +24,10 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 这里是引用内容。
 {{</* /quote */>} 
 ```
-
-
 <video controls width="50%">
   <source src="./huijia-yuze-xiaoyu-1.mp4" type="video/mp4">
 </video>
 
-
-## 视频 (Video)
 
 `video` 短代码允许你嵌入自托管或远程视频文件。
 
