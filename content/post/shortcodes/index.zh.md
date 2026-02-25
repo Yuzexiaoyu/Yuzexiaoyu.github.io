@@ -24,9 +24,21 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 这里是引用内容。
 {{</* /quote */>} 
 ```
-<video controls width="50%">
-  <source src="./huijia-yuze-xiaoyu-1.mp4" type="video/mp4">
-</video>
+<figure style="display: inline-block; width: 30%; margin: 0% 1%; vertical-align: top;">
+  <img src="./boat.jpg" style="width: 100%; height: auto;">
+</figure>
+
+<figure style="display: inline-block; width: 30%; margin: 0% 1%; vertical-align: top;">
+  <video controls style="width: 100%;">
+    <source src="./huijia-yuze-xiaoyu-1.mp4" type="video/mp4">
+  </video>
+</figure>
+
+<figure style="display: inline-block; width: 30%; margin: 0% 1%; vertical-align: top;">
+  <audio controls style="width: 100%;">
+    <source src="./suka.mp3" type="audio/mpeg">
+  </audio>
+</figure>
 
 
 `video` 短代码允许你嵌入自托管或远程视频文件。
