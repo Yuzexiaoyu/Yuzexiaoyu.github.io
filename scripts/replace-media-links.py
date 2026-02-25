@@ -10,29 +10,23 @@ def replace_links(html_file, new_domain):
         
         changed = False
         old_domain = "yuzexiaoyu.space"
-        new_domain = new_domain.rstrip('/')
+        new_host = new_domain.replace('https://', '').replace('http://', '').rstrip('/')
         
-        # 处理所有资源标签
+        # 处理所有带 src 属性的标签
         for tag in soup.find_all(['img', 'audio', 'video', 'source', 'track']):
-            for attr in ['src', 'poster']:
-                if attr in tag.attrs:
-                    url = tag[attr].strip()
-                    if not url or url.startswith(('http://', 'https://', '//', 'data:')):
-                        # 跳过外部链接和 data URL
-                        if 'cdn.yuzexiaoyu.space' in url:
-                            continue  # 已是 CDN 链接，跳过
-                        continue
-                    
-                    # ✅ 关键修复：匹配相对路径（/p/... 或 /image/...）
-                    if url.startswith('/p/') or url.startswith('/image/'):
-                        tag[attr] = new_domain + url
-                        changed = True
-                        print(f"✅ [{attr}] {url} → {new_domain}{url}")
-                    # 匹配主域名链接
-                    elif old_domain in url:
-                        tag[attr] = url.replace(old_domain, new_domain.replace('https://', '').replace('http://', ''))
-                        changed = True
-                        print(f"✅ [{attr}] {url} → {tag[attr]}")
+            src = tag.get('src', '').strip()
+            if old_domain in src:
+                tag['src'] = src.replace(old_domain, new_host)
+                changed = True
+                print(f"✅ {src[:60]}... → {tag['src'][:60]}...")
+        
+        # 处理 poster 属性（video 封面图）
+        for tag in soup.find_all('video'):
+            poster = tag.get('poster', '').strip()
+            if old_domain in poster:
+                tag['poster'] = poster.replace(old_domain, new_host)
+                changed = True
+                print(f"✅ poster: {poster[:60]}... → {tag['poster'][:60]}...")
         
         if changed:
             with open(html_file, 'w', encoding='utf-8') as f:
@@ -50,7 +44,7 @@ if __name__ == '__main__':
     public_dir = Path(sys.argv[1])
     new_domain = sys.argv[2].rstrip('/')
     
-    print(f"🔍 Replacing to: {new_domain}")
+    print(f"🔍 Replacing yuzexiaoyu.space → {new_domain}")
     count = 0
     for html_file in public_dir.rglob('*.html'):
         if replace_links(html_file, new_domain):
