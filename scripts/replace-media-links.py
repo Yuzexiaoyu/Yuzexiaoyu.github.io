@@ -2,8 +2,9 @@
 import sys
 from pathlib import Path
 from bs4 import BeautifulSoup
+from urllib.parse import quote
 
-def replace_links(html_file, new_domain):
+def replace_links(html_file, new_domain, public_dir):
     try:
         with open(html_file, 'r', encoding='utf-8') as f:
             soup = BeautifulSoup(f.read(), 'html.parser')
@@ -11,15 +12,17 @@ def replace_links(html_file, new_domain):
         changed = False
         new_domain = new_domain.rstrip('/')
         
-        # 获取HTML文件相对于public/的路径（用于处理相对路径）
-        # 例如: public/p/markdown-syntax/index.html → p/markdown-syntax
+        # ✅ 关键修复：精确提取相对于 public/ 的路径
+        # 例如: public/p/短代码/index.html → p/短代码
         try:
-            rel_path = html_file.relative_to(html_file.parents[1])  # 跳两级到public/
+            rel_path = html_file.relative_to(public_dir)
             page_dir = str(rel_path.parent).replace('\\', '/')
-            if page_dir == '.':
-                page_dir = ''
-        except:
+            # 确保路径以 / 开头（用于拼接）
+            if page_dir and not page_dir.startswith('/'):
+                page_dir = '/' + page_dir
+        except Exception as e:
             page_dir = ''
+            print(f"⚠️ 路径提取失败 {html_file.name}: {e}")
         
         # 处理所有带src属性的标签（img, audio, video, source, track）
         for tag in soup.find_all(['img', 'audio', 'video', 'source', 'track']):
@@ -27,16 +30,20 @@ def replace_links(html_file, new_domain):
             if not src:
                 continue
             
-            # ✅ 情况1: 相对路径 ./xxx → 转换为 CDN 绝对路径
+            # ✅ 情况1: 相对路径 ./xxx → 转换为 CDN 绝对路径（保留 /p/ 前缀）
             if src.startswith('./'):
                 filename = src[2:]  # 去掉"./"
                 if page_dir:
-                    abs_path = f"/{page_dir}/{filename}"
+                    # 关键：确保路径格式为 /p/文章目录/文件名
+                    abs_path = f"{page_dir}/{filename}"
+                    tag['src'] = f"{new_domain}{abs_path}"
+                    changed = True
+                    print(f"✅ 相对路径: {src} → {tag['src']}")
                 else:
-                    abs_path = f"/{filename}"
-                tag['src'] = f"{new_domain}{abs_path}"
-                changed = True
-                print(f"✅ 相对路径: {src} → {tag['src']}")
+                    # 根目录情况（极少）
+                    tag['src'] = f"{new_domain}/{filename}"
+                    changed = True
+                    print(f"✅ 根目录相对路径: {src} → {tag['src']}")
             
             # ✅ 情况2: 包含 yuzexiaoyu.space 的链接 → 替换域名
             elif 'yuzexiaoyu.space' in src:
@@ -55,12 +62,14 @@ def replace_links(html_file, new_domain):
             if poster.startswith('./'):
                 filename = poster[2:]
                 if page_dir:
-                    abs_path = f"/{page_dir}/{filename}"
+                    abs_path = f"{page_dir}/{filename}"
+                    video['poster'] = f"{new_domain}{abs_path}"
+                    changed = True
+                    print(f"✅ poster相对路径: {poster} → {video['poster']}")
                 else:
-                    abs_path = f"/{filename}"
-                video['poster'] = f"{new_domain}{abs_path}"
-                changed = True
-                print(f"✅ poster相对路径: {poster} → {video['poster']}")
+                    video['poster'] = f"{new_domain}/{filename}"
+                    changed = True
+                    print(f"✅ poster根目录: {poster} → {video['poster']}")
             
             # ✅ 情况2: 包含 yuzexiaoyu.space 的链接
             elif 'yuzexiaoyu.space' in poster:
@@ -86,9 +95,10 @@ if __name__ == '__main__':
     new_domain = sys.argv[2].rstrip('/')
     
     print(f"🔍 Replacing links to: {new_domain}")
+    print(f"   Public dir: {public_dir.absolute()}")
     count = 0
     for html_file in public_dir.rglob('*.html'):
-        if replace_links(html_file, new_domain):
+        if replace_links(html_file, new_domain, public_dir):
             count += 1
     
     print(f"\n✨ Done! Modified {count} files")
