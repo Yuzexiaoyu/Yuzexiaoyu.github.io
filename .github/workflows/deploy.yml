@@ -1,4 +1,4 @@
-name: Deploy Site
+name: Deploy Site with R2 CDN
 
 on:
   push:
@@ -18,6 +18,14 @@ jobs:
         with:
           submodules: false
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install beautifulsoup4
+
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
@@ -26,6 +34,31 @@ jobs:
 
       - name: Build site
         run: hugo --minify --gc
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+          ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3 sync public/ s3://$BUCKET/ \
+            --endpoint-url $ENDPOINT \
+            --acl public-read \
+            --exclude "*" \
+            --include "*.jpg" --include "*.jpeg" --include "*.png" \
+            --include "*.gif" --include "*.webp" --include "*.svg" \
+            --include "*.bmp" --include "*.ico" \
+            --include "*.mp3" --include "*.wav" --include "*.ogg" --include "*.m4a" \
+            --include "*.mp4" --include "*.webm" --include "*.mov" --include "*.avi" \
+            --include "*.pdf" --include "*.zip" \
+            --delete || echo "R2 upload failed (continuing...)"
+
+      - name: Replace media links
+        env:
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+        run: python scripts/replace-media-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
