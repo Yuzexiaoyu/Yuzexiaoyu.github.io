@@ -11,10 +11,11 @@ favicon        = "image/avatar.png"
     avatar   = "image/avatar.png"
 
 [article]
-    math = false
-    [article.license]
-        enabled = true
-        default = "转载请注明出处"
+  math = false
+
+[article.license]
+  enabled = true
+  default = "转载请注明出处"
 
 [widgets]
     homepage = []
