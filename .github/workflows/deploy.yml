@@ -85,6 +85,19 @@ jobs:
           git rm -r --cached "content/post/**/*.mp4" 2>/dev/null || true
           git rm -r --cached "content/post/**/*.mp3" 2>/dev/null || true
           git rm -r --cached "content/post/**/*.pdf" 2>/dev/null || true
+
+          # ✅ 删除 static/music/ 下的所有媒体文件（重点！）
+          git rm -r --cached "static/music/**/*" 2>/dev/null || true
+          git rm -r --cached "static/music/*.flac" 2>/dev/null || true
+          git rm -r --cached "static/music/*.mp3" 2>/dev/null || true
+          git rm -r --cached "static/music/*.wav" 2>/dev/null || true
+          git rm -r --cached "static/music/*.ogg" 2>/dev/null || true
+          git rm -r --cached "static/music/*.m4a" 2>/dev/null || true
+          git rm -r --cached "static/music/*.mp4" 2>/dev/null || true
+          git rm -r --cached "static/music/*.webm" 2>/dev/null || true
+          git rm -r --cached "static/music/*.png" 2>/dev/null || true
+          git rm -r --cached "static/music/*.jpg" 2>/dev/null || true
+          git rm -r --cached "static/music/*.jpeg" 2>/dev/null || true
           
           # 提交并推送
           git commit -m "chore: 删除云端媒体文件（保留本地）" || echo "No media files to delete"
