@@ -43,3 +43,5 @@ favicon        = "image/avatar.png"
   enable = true
   toggle = true  # 开启暗色模式切换按钮
   default = "dark" 
+
+

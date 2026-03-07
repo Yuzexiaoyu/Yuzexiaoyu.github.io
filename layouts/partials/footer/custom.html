@@ -1,0 +1,155 @@
+<!-- 加载 APlayer 脚本 -->
+<script src="/lib/aplayer/APlayer.min.js"></script>
+
+<!-- 统一滚动条样式 - 确保只有一个滚动条 -->
+<style>
+    .aplayer-list {
+        display: none !important;
+        max-height: 200px !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        overflow-y: overlay !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* WebKit 浏览器滚动条样式 */
+    .aplayer-list::-webkit-scrollbar {
+        width: 6px !important;
+        height: 6px !important;
+    }
+    
+    .aplayer-list::-webkit-scrollbar-track {
+        background: transparent !important;
+        border-radius: 3px !important;
+    }
+    
+    .aplayer-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3) !important;
+        border-radius: 3px !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .aplayer-list::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5) !important;
+    }
+    
+    .aplayer-list::-webkit-scrollbar-thumb:active {
+        background: #F57F17 !important;
+    }
+    
+    .aplayer-list::-webkit-scrollbar-corner {
+        background: transparent !important;
+    }
+    
+    /* Firefox 滚动条样式 */
+    .aplayer-list {
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent !important;
+    }
+    
+    /* 确保内部 ol 不创建独立滚动条 */
+    .aplayer-list ol {
+        overflow-y: visible !important;
+        max-height: none !important;
+        scrollbar-width: none !important;
+    }
+    
+    .aplayer-list ol::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ap = new APlayer({
+            container: document.getElementById('aplayer'),
+            mini: false,
+            autoplay: false,
+            loop: 'all',
+            order: 'list',
+            preload: 'auto',
+            volume: 0.7,
+            mutex: true,
+            lrcType: 0,
+            audio: [
+                {
+                    name: 'Poznan',
+                    artist: '',
+                    url: '/music/Poznan.flac',
+                    cover: '/music/Poznan.png',
+                    theme: '#F57F17'
+                },
+                {
+                    name: 'time machine',
+                    artist: '',
+                    url: '/music/time-machine.flac',
+                    cover: '/music/time-machine.png',
+                    theme: '#F57F17'
+                }
+            ],
+        });
+
+        // 刷新封面并确保列表保持隐藏
+        setTimeout(() => {
+            ap.list.audios.forEach((audio, index) => {
+                const pic = document.querySelectorAll('.aplayer-pic')[index];
+                if (pic && audio.cover) {
+                    pic.style.backgroundImage = `url('${audio.cover}')`;
+                }
+            });
+            
+            // 强制隐藏列表
+            const list = document.querySelector('.aplayer-list');
+            if (list) {
+                list.style.display = 'none';
+                list.classList.add('aplayer-list-hide');
+                list.style.overflowY = 'overlay';
+                list.style.overflowX = 'hidden';
+            }
+            
+            // 确保内部 ol 不创建独立滚动条
+            const listOl = document.querySelector('.aplayer-list ol');
+            if (listOl) {
+                listOl.style.overflowY = 'visible';
+                listOl.style.maxHeight = 'none';
+            }
+        }, 50);
+
+        // 拦截列表按钮点击事件
+        setTimeout(() => {
+            const listBtn = document.querySelector('.aplayer-icon-lrc');
+            const list = document.querySelector('.aplayer-list');
+            
+            if (listBtn && list) {
+                // 克隆按钮以移除 APlayer 默认事件
+                const newBtn = listBtn.cloneNode(true);
+                listBtn.parentNode.replaceChild(newBtn, listBtn);
+                
+                // 添加自定义点击事件
+                let isListVisible = false;
+                
+                newBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (isListVisible) {
+                        // 收起列表
+                        list.style.display = 'none';
+                        list.classList.add('aplayer-list-hide');
+                        isListVisible = false;
+                    } else {
+                        // 展开列表
+                        list.style.display = 'block';
+                        list.classList.remove('aplayer-list-hide');
+                        isListVisible = true;
+                    }
+                });
+            }
+        }, 100);
+    });
+</script>
+
+<!-- 播放器容器 -->
+<div id="aplayer"></div>

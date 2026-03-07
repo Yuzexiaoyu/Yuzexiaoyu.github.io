@@ -1,11 +1,9 @@
-// --------------------------
-// 自定义鼠标光标 - 单独改Link+Text热点版
+// 自定义鼠标光标 - 单独改 Link+Text 热点版
 // --------------------------
 $cursor-path: "/cursor/";
-$link-hotspot: 3 0; // Link.cur的热点（和文件里的一致）
-$text-hotspot: 5 10; // 新增：Text.cur的独立热点（按需修改，比如和Link/Pointer对齐）
+$link-hotspot: 3 0;
+$text-hotspot: 5 10;
 
-// 全局默认箭头光标（保持原来的热点，不加额外设置）
 body {
   cursor: url("#{$cursor-path}Pointer.cur"), auto;
   
@@ -14,7 +12,6 @@ body {
   }
 }
 
-// 可点击元素（链接/按钮/暗色模式开关）→ Link热点
 a, 
 button, 
 [role="button"], 
@@ -34,19 +31,15 @@ input[type="button"],
   cursor: url("#{$cursor-path}Link.cur") $link-hotspot, pointer !important;
 }
 
-// 文本选择/输入框光标 → 新增Text热点
 input, textarea, pre, code, [contenteditable="true"] {
-  // 核心修改：给Text.cur加上独立热点
   cursor: url("#{$cursor-path}Text.cur") $text-hotspot, text;
   
   &:focus {
-    // 聚焦时也同步热点
     cursor: url("#{$cursor-path}Text.cur") $text-hotspot, text;
-    outline: none; // 配合光标隐藏默认聚焦框
+    outline: none;
   }
 }
 
-// 拖拽元素光标（保持原来的热点，如需加可参考上面的逻辑）
 [draggable="true"] {
   cursor: url("#{$cursor-path}Grabbing.cur"), grab;
   
@@ -55,33 +48,301 @@ input, textarea, pre, code, [contenteditable="true"] {
   }
 }
 
-
-
-
 .site-avatar .emoji {
-    // 边框尺寸（可自行调整，比如50px/30px）
     width: 30px !important;
     height: 30px !important;
     min-width: 30px !important;
     min-height: 30px !important;
-
-    // 核心：让emoji填充满边框
-    font-size: 25px !important; // 比边框小4px，避免emoji溢出边框（关键！）
-    line-height: 40px !important; // 和边框高度一致，垂直居中
+    font-size: 25px !important;
+    line-height: 40px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0 !important; // 彻底清除内边距，无空隙
+    padding: 0 !important;
     margin: 0 auto !important;
-
-    // 保留圆形边框样式
     border-radius: 50%;
     background-color: var(--card-background);
     box-shadow: var(--shadow-l1);
 }
 
-// 同步更新变量，避免冲突
 :root {
     --emoji-size: 40px !important;
     --sidebar-avatar-size: 40px !important;
+}
+
+/* ================================
+   APlayer 播放器样式定制
+   ================================ */
+
+#aplayer {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 100;
+    width: 380px;
+    max-width: 90vw;
+    background: var(--card-background) !important;
+    box-shadow: var(--shadow-lg);
+    border-radius: 8px;
+    overflow: visible !important;
+    border: 1px solid var(--card-separator-color);
+}
+
+/* 封面区域 */
+.aplayer-pic {
+    width: 66px !important;
+    height: 66px !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    box-shadow: none !important;
+    border: none !important;
+    position: relative !important;
+    overflow: visible !important;
+    border-radius: 8px 0 0 8px !important;
+}
+
+.aplayer-pic .aplayer-button {
+    background: transparent !important;
+    opacity: 1 !important;
+}
+
+.aplayer-pic,
+.aplayer-pic * {
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+/* 播放按钮 */
+.aplayer-pic .aplayer-button {
+    position: absolute !important;
+    bottom: 4px !important;
+    right: 4px !important;
+    top: auto !important;
+    left: auto !important;
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: 10 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.aplayer-pic .aplayer-button svg {
+    width: 10px !important;
+    height: 10px !important;
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    position: static !important;
+    margin: 0 !important;
+    transition: all 0.3s ease !important;
+}
+
+.aplayer-pic .aplayer-button:hover {
+    background: #F57F17 !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 2px 8px rgba(245, 127, 23, 0.4) !important;
+}
+
+.aplayer-pic .aplayer-button:hover svg {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    transform: scale(1.05) !important;
+}
+
+.aplayer-pic .aplayer-button:active {
+    transform: scale(0.95) !important;
+}
+
+/* 信息区域 */
+.aplayer-body,
+.aplayer-info {
+    background: transparent !important;
+}
+
+.aplayer-info {
+    border: none !important;
+}
+
+.aplayer-title,
+.aplayer-author,
+.aplayer-list-title,
+.aplayer-list-author {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 隐藏歌手信息 */
+.aplayer-author {
+    display: none !important;
+}
+
+.aplayer-list-author {
+    display: none !important;
+}
+
+/* 播放列表 - 向上展开，默认收起，左侧向左扩展 1 像素 */
+.aplayer-list {
+    position: absolute !important;
+    bottom: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: calc(100% - 1px) !important;
+    max-height: 200px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--card-separator-color) !important;
+    border-bottom: none !important;
+    background: var(--card-background) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    margin-bottom: 5px !important;
+    margin-left: 0px !important;
+    margin-right: 1px !important;
+    padding: 2px 0 !important;
+    
+    /* 过渡动画 */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    
+    /* 默认收起状态 */
+    display: none !important;
+}
+
+/* 列表展开状态 */
+.aplayer-list:not(.aplayer-list-hide) {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    max-height: 200px !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    border: 1px solid var(--card-separator-color) !important;
+    border-bottom: none !important;
+    margin-bottom: 5px !important;
+}
+
+/* 列表隐藏状态 */
+.aplayer-list.aplayer-list-hide {
+    display: none !important;
+}
+
+/* 播放列表项 - 紧凑间距 */
+.aplayer-list li {
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 0px 10px !important;
+    transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 0px !important;
+    border-radius: 6px !important;
+}
+
+.aplayer-list li:last-child {
+    border-bottom: none !important;
+}
+
+.aplayer-list li:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.aplayer-list li.aplayer-list-light {
+    background: rgba(245, 127, 23, 0.2) !important;
+}
+
+/* 播放列表序号 - 白色 */
+.aplayer-list-index {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* 隐藏歌词 */
+.aplayer-lrc {
+    display: none !important;
+}
+
+/* 隐藏循环/顺序按钮 */
+.aplayer-icon-loop,
+.aplayer-icon-order {
+    display: none !important;
+}
+
+/* 进度条样式 */
+.aplayer-bar {
+    background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 隐藏预载入条 */
+.aplayer-loaded {
+    display: none !important;
+}
+
+.aplayer-played {
+    background: #F57F17 !important;
+}
+
+.aplayer-thumb {
+    background: #F57F17 !important;
+    border: none !important;
+}
+
+/* 时间显示 - 白色 */
+.aplayer-time {
+    color: #ffffff !important;
+}
+
+/* ================================
+   图标颜色 - 所有图标白色（包括 SVG 和 path）
+   ================================ */
+.aplayer-icon,
+.aplayer-icon svg,
+.aplayer-icon path {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+.aplayer-icon:hover,
+.aplayer-icon:hover svg,
+.aplayer-icon:hover path {
+    color: #F57F17 !important;
+    fill: #F57F17 !important;
+}
+
+/* 音量图标 - 强制白色 */
+.aplayer-icon-volume-down,
+.aplayer-icon-volume-down svg,
+.aplayer-icon-volume-down path,
+.aplayer-icon-volume-off,
+.aplayer-icon-volume-off svg,
+.aplayer-icon-volume-off path {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* 列表图标 - 强制白色 */
+.aplayer-icon-lrc,
+.aplayer-icon-lrc svg,
+.aplayer-icon-lrc path {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* 音量条 */
+.aplayer-volume-bar {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 暗黑模式按钮 - 往上移动 */
+.theme-toggle,
+#theme-toggle,
+.dark-mode-toggle,
+#dark-mode-toggle,
+[class*="theme-toggle"],
+[class*="dark-mode-toggle"] {
+    transform: translateY(-351px) !important; 
+    transition: transform 0.3s ease !important;
 }
