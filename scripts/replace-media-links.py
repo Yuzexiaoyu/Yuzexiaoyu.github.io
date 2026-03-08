@@ -33,17 +33,24 @@ def replace_links(html_file, new_domain, public_dir):
             # ✅ 情况1: 相对路径 ./xxx → 转换为 CDN 绝对路径（保留 /p/ 前缀）
             if src.startswith('./'):
                 filename = src[2:]  # 去掉"./"
-                if page_dir:
-                    # 关键：确保路径格式为 /p/文章目录/文件名
-                    abs_path = f"{page_dir}/{filename}"
+                # 新增：处理 static/music 路径，直接使用根路径
+                if filename.startswith('static/music/'):
+                    abs_path = f"/{filename}"
                     tag['src'] = f"{new_domain}{abs_path}"
                     changed = True
-                    print(f"✅ 相对路径: {src} → {tag['src']}")
+                    print(f"✅ static/music相对路径: {src} → {tag['src']}")
                 else:
-                    # 根目录情况（极少）
-                    tag['src'] = f"{new_domain}/{filename}"
-                    changed = True
-                    print(f"✅ 根目录相对路径: {src} → {tag['src']}")
+                    if page_dir:
+                        # 关键：确保路径格式为 /p/文章目录/文件名
+                        abs_path = f"{page_dir}/{filename}"
+                        tag['src'] = f"{new_domain}{abs_path}"
+                        changed = True
+                        print(f"✅ 相对路径: {src} → {tag['src']}")
+                    else:
+                        # 根目录情况（极少）
+                        tag['src'] = f"{new_domain}/{filename}"
+                        changed = True
+                        print(f"✅ 根目录相对路径: {src} → {tag['src']}")
             
             # ✅ 情况2: 包含 yuzexiaoyu.space 的链接 → 替换域名
             elif 'yuzexiaoyu.space' in src:
@@ -61,15 +68,22 @@ def replace_links(html_file, new_domain, public_dir):
             # ✅ 情况1: 相对路径 ./xxx
             if poster.startswith('./'):
                 filename = poster[2:]
-                if page_dir:
-                    abs_path = f"{page_dir}/{filename}"
+                # 新增：处理 static/music 路径，直接使用根路径
+                if filename.startswith('static/music/'):
+                    abs_path = f"/{filename}"
                     video['poster'] = f"{new_domain}{abs_path}"
                     changed = True
-                    print(f"✅ poster相对路径: {poster} → {video['poster']}")
+                    print(f"✅ poster static/music路径: {poster} → {video['poster']}")
                 else:
-                    video['poster'] = f"{new_domain}/{filename}"
-                    changed = True
-                    print(f"✅ poster根目录: {poster} → {video['poster']}")
+                    if page_dir:
+                        abs_path = f"{page_dir}/{filename}"
+                        video['poster'] = f"{new_domain}{abs_path}"
+                        changed = True
+                        print(f"✅ poster相对路径: {poster} → {video['poster']}")
+                    else:
+                        video['poster'] = f"{new_domain}/{filename}"
+                        changed = True
+                        print(f"✅ poster根目录: {poster} → {video['poster']}")
             
             # ✅ 情况2: 包含 yuzexiaoyu.space 的链接
             elif 'yuzexiaoyu.space' in poster:
