@@ -5,7 +5,7 @@ on:
     branches: [master]
 
 permissions:
-  contents: write
+  contents: write  # ← 改为 write（需要推送权限）
   pages: write
   id-token: write
 
@@ -13,29 +13,29 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: false
 
-      - name: Setup Python 3.11
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Python Dependencies
+      - name: Install dependencies
         run: pip install beautifulsoup4
 
-      - name: Setup Hugo Extended
+      - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
           hugo-version: '0.156.0'
           extended: true
 
-      - name: Build Hugo Site
+      - name: Build site
         run: hugo --minify --gc
 
-      - name: Upload Media Files to Cloudflare R2
+      - name: Upload to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -53,19 +53,17 @@ jobs:
             --include "*.mp3" --include "*.wav" --include "*.ogg" --include "*.m4a" \
             --include "*.mp4" --include "*.webm" --include "*.mov" --include "*.avi" \
             --include "*.pdf" --include "*.zip" \
-            --include "*.flac" \  # 关键：支持Flac音乐格式
-            --delete || echo "⚠️ R2 upload failed (continuing deployment...)"
+            --delete || echo "R2 upload failed (continuing...)"
 
-      - name: Replace Media Links with R2 CDN
+      - name: Replace media links
         env:
           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
-        run: |
-          python scripts/replace-media-links.py public "$R2_PUBLIC_URL" || echo "⚠️ Link replacement failed (continuing deployment...)"
+        run: python scripts/replace-media-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
-      - name: Setup GitHub Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload GitHub Pages Artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
@@ -73,26 +71,21 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
 
-      - name: Remove Media Files from GitHub Repository
+      # ✅ 新增：删除云端媒体文件
+      - name: Delete media files from GitHub
         run: |
-          # 配置Git用户信息
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 拉取最新代码避免冲突
-          git pull origin master --rebase || true
+          # 删除 content/post/ 下的所有媒体文件（但保留本地文件）
+          git rm -r --cached "content/post/**/*.jpg" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.jpeg" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.png" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.gif" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.mp4" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.mp3" 2>/dev/null || true
+          git rm -r --cached "content/post/**/*.pdf" 2>/dev/null || true
           
-          # 删除文章内媒体文件（缓存）
-          git rm -r --cached "content/post/**/*.jpg" "content/post/**/*.jpeg" "content/post/**/*.png" \
-            "content/post/**/*.gif" "content/post/**/*.mp4" "content/post/**/*.mp3" "content/post/**/*.pdf" 2>/dev/null || true
-          
-          # 删除music目录下所有文件（缓存）
-          git rm -r --cached "static/music/**/*" 2>/dev/null || true
-          
-          # 仅当有变更时提交
-          if [[ `git status --porcelain` ]]; then
-            git commit -m "chore: remove media files (keep local, use R2 CDN)"
-            git push origin master
-          else
-            echo "ℹ️ No media files to remove from repository"
-          fi
+          # 提交并推送
+          git commit -m "chore: 删除云端媒体文件（保留本地）" || echo "No media files to delete"
+          git push origin master
