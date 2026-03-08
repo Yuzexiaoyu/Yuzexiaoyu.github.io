@@ -5,100 +5,125 @@ from bs4 import BeautifulSoup
 from urllib.parse import quote
 
 def replace_links(html_file, new_domain, public_dir):
+    """
+    替换HTML文件中的媒体链接为R2 CDN地址
+    - 处理/music/开头的绝对路径（播放器核心）
+    - 处理./开头的相对路径（文章内媒体）
+    - 处理域名替换（旧域名→R2域名）
+    """
     try:
         with open(html_file, 'r', encoding='utf-8') as f:
             soup = BeautifulSoup(f.read(), 'html.parser')
         
         changed = False
-        new_domain = new_domain.rstrip('/')
+        new_domain = new_domain.rstrip('/')  # 移除末尾/避免重复
         
-        # ✅ 关键修复：精确提取相对于 public/ 的路径
-        # 例如: public/p/短代码/index.html → p/短代码
+        # 提取当前HTML文件相对于public的路径（用于拼接相对路径）
         try:
             rel_path = html_file.relative_to(public_dir)
             page_dir = str(rel_path.parent).replace('\\', '/')
-            # 确保路径以 / 开头（用于拼接）
             if page_dir and not page_dir.startswith('/'):
                 page_dir = '/' + page_dir
         except Exception as e:
             page_dir = ''
-            print(f"⚠️ 路径提取失败 {html_file.name}: {e}")
+            print(f"⚠️ 路径提取失败 {html_file.name}: {str(e)[:50]}")
         
-        # 处理所有带src属性的标签（img, audio, video, source, track）
+        # 处理所有带src属性的标签（img/audio/video/source/track）
         for tag in soup.find_all(['img', 'audio', 'video', 'source', 'track']):
             src = tag.get('src', '').strip()
             if not src:
                 continue
             
-            # ✅ 情况1: 相对路径 ./xxx → 转换为 CDN 绝对路径（保留 /p/ 前缀）
-            if src.startswith('./'):
-                filename = src[2:]  # 去掉"./"
-                if page_dir:
-                    # 关键：确保路径格式为 /p/文章目录/文件名
-                    abs_path = f"{page_dir}/{filename}"
-                    tag['src'] = f"{new_domain}{abs_path}"
-                    changed = True
-                    print(f"✅ 相对路径: {src} → {tag['src']}")
-                else:
-                    # 根目录情况（极少）
-                    tag['src'] = f"{new_domain}/{filename}"
-                    changed = True
-                    print(f"✅ 根目录相对路径: {src} → {tag['src']}")
+            # 1. 优先处理/music/开头的绝对路径（播放器音频/封面）
+            if src.startswith('/music/'):
+                new_src = f"{new_domain}{src}"
+                tag['src'] = new_src
+                changed = True
+                print(f"✅ [音乐] {src} → {new_src}")
             
-            # ✅ 情况2: 包含 yuzexiaoyu.space 的链接 → 替换域名
+            # 2. 处理./开头的相对路径（文章内媒体）
+            elif src.startswith('./'):
+                filename = src[2:]
+                if page_dir:
+                    abs_path = f"{page_dir}/{filename}"
+                    new_src = f"{new_domain}{abs_path}"
+                else:
+                    new_src = f"{new_domain}/{filename}"
+                tag['src'] = new_src
+                changed = True
+                print(f"✅ [相对路径] {src} → {new_src}")
+            
+            # 3. 处理旧域名替换（兼容已有链接）
             elif 'yuzexiaoyu.space' in src:
                 new_host = new_domain.replace('https://', '').replace('http://', '').rstrip('/')
-                tag['src'] = src.replace('yuzexiaoyu.space', new_host)
+                new_src = src.replace('yuzexiaoyu.space', new_host)
+                tag['src'] = new_src
                 changed = True
-                print(f"✅ 域名替换: {src[:50]}... → {tag['src'][:50]}...")
+                print(f"✅ [域名替换] {src[:50]}... → {new_src[:50]}...")
         
-        # 处理 poster 属性（video封面图）
+        # 处理video的poster属性（封面图）
         for video in soup.find_all('video'):
             poster = video.get('poster', '').strip()
             if not poster:
                 continue
             
-            # ✅ 情况1: 相对路径 ./xxx
-            if poster.startswith('./'):
+            # 处理/music/开头的poster路径
+            if poster.startswith('/music/'):
+                new_poster = f"{new_domain}{poster}"
+                video['poster'] = new_poster
+                changed = True
+                print(f"✅ [封面] {poster} → {new_poster}")
+            
+            # 处理./开头的poster相对路径
+            elif poster.startswith('./'):
                 filename = poster[2:]
                 if page_dir:
                     abs_path = f"{page_dir}/{filename}"
-                    video['poster'] = f"{new_domain}{abs_path}"
-                    changed = True
-                    print(f"✅ poster相对路径: {poster} → {video['poster']}")
+                    new_poster = f"{new_domain}{abs_path}"
                 else:
-                    video['poster'] = f"{new_domain}/{filename}"
-                    changed = True
-                    print(f"✅ poster根目录: {poster} → {video['poster']}")
+                    new_poster = f"{new_domain}/{filename}"
+                video['poster'] = new_poster
+                changed = True
+                print(f"✅ [封面相对路径] {poster} → {new_poster}")
             
-            # ✅ 情况2: 包含 yuzexiaoyu.space 的链接
+            # 处理旧域名的poster链接
             elif 'yuzexiaoyu.space' in poster:
                 new_host = new_domain.replace('https://', '').replace('http://', '').rstrip('/')
-                video['poster'] = poster.replace('yuzexiaoyu.space', new_host)
+                new_poster = poster.replace('yuzexiaoyu.space', new_host)
+                video['poster'] = new_poster
                 changed = True
-                print(f"✅ poster域名替换: {poster[:50]}... → {video['poster'][:50]}...")
+                print(f"✅ [封面域名替换] {poster[:50]}... → {new_poster[:50]}...")
         
+        # 保存修改后的文件
         if changed:
             with open(html_file, 'w', encoding='utf-8') as f:
                 f.write(str(soup))
         return changed
-    except Exception as e:
-        print(f"❌ Error in {html_file.name}: {e}")
-        return False
 
 if __name__ == '__main__':
+    # 检查参数
     if len(sys.argv) < 3:
-        print("Usage: python replace-media-links.py <public_dir> <new_domain>")
+        print("❌ 使用方式: python replace-media-links.py <public目录路径> <R2公网域名>")
+        print("   示例: python replace-media-links.py ./public https://cdn.yuzexiaoyu.space")
         sys.exit(1)
     
+    # 解析参数
     public_dir = Path(sys.argv[1])
     new_domain = sys.argv[2].rstrip('/')
     
-    print(f"🔍 Replacing links to: {new_domain}")
-    print(f"   Public dir: {public_dir.absolute()}")
-    count = 0
+    # 校验目录是否存在
+    if not public_dir.exists() or not public_dir.is_dir():
+        print(f"❌ 目录不存在: {public_dir.absolute()}")
+        sys.exit(1)
+    
+    # 批量处理所有HTML文件
+    print(f"🔍 开始替换链接 → 目标CDN: {new_domain}")
+    print(f"📂 处理目录: {public_dir.absolute()}")
+    modified_count = 0
+    
     for html_file in public_dir.rglob('*.html'):
         if replace_links(html_file, new_domain, public_dir):
-            count += 1
+            modified_count += 1
     
-    print(f"\n✨ Done! Modified {count} files")
+    # 输出结果
+    print(f"\n✨ 处理完成！共修改 {modified_count} 个文件")
