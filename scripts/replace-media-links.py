@@ -7,11 +7,31 @@ from urllib.parse import quote
 
 def replace_links(html_file, new_domain, public_dir):
     try:
+        # ========== 新增：处理HTML中的JS纯文本/music/路径（核心修复） ==========
+        # 先读取文件纯文本，替换JS里的 url: '/music/xxx' 和 cover: '/music/xxx'
         with open(html_file, 'r', encoding='utf-8') as f:
-            soup = BeautifulSoup(f.read(), 'html.parser')
+            raw_content = f.read()
         
         changed = False
         new_domain = new_domain.rstrip('/')
+        
+        # 匹配 JS 里的 '/music/xxx' 格式（覆盖 url/cover 配置）
+        # 正则匹配：'url: '/music/xxx'' 或 'cover: '/music/xxx'' 中的路径
+        music_pattern = re.compile(r'(url|cover):\s*["\'](/music/[^"\']+)["\']')
+        def replace_music_path(match):
+            nonlocal changed
+            changed = True
+            key = match.group(1)  # url/cover
+            old_path = match.group(2)  # /music/xxx.mp3
+            new_path = f"{new_domain}{old_path}"
+            print(f"✅ [APlayer配置] {key}: {old_path} → {new_path}")
+            return f"{key}: '{new_path}'"  # 保留单引号格式
+        
+        # 执行纯文本替换
+        raw_content = music_pattern.sub(replace_music_path, raw_content)
+        
+        # ========== 原有逻辑（不变，继续处理DOM标签） ==========
+        soup = BeautifulSoup(raw_content, 'html.parser')
         
         # 提取当前HTML文件相对于public/的路径（用于拼接相对路径）
         try:
@@ -81,7 +101,7 @@ def replace_links(html_file, new_domain, public_dir):
                     abs_path = f"{page_dir}/{filename}"
                     new_poster = f"{new_domain}{abs_path}"
                 else:
-                    new_poster = f"{new_domain}/{filename}"
+                    new_poster = f"{new_domain}{filename}"
                 video['poster'] = new_poster
                 changed = True
                 print(f"✅ [封面相对路径] {poster} → {new_poster}")
