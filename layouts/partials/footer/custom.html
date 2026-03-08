@@ -3,13 +3,15 @@
 
 <!-- 统一滚动条样式 - 确保只有一个滚动条 -->
 <style>
+    /* 🔥 核心修复：移除所有!important的display，仅保留基础隐藏（无优先级冲突） */
     .aplayer-list {
-        display: none !important;
+        display: none; /* 去掉!important，让JS能覆盖 */
         max-height: 200px !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
+        opacity: 0; /* 去掉!important，配合过渡防闪烁 */
+        visibility: hidden; /* 去掉!important */
         overflow-y: overlay !important;
         overflow-x: hidden !important;
+        transition: opacity 0.1s ease, visibility 0.1s ease; /* 新增过渡，无闪烁 */
     }
     
     /* WebKit 浏览器滚动条样式 */
@@ -59,6 +61,13 @@
         width: 0 !important;
         height: 0 !important;
     }
+
+    /* 🔥 新增：展开状态的样式（无!important，JS可覆盖） */
+    .aplayer-list.show {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+    }
 </style>
 
 <script>
@@ -91,63 +100,56 @@
             ],
         });
 
-        // 刷新封面并确保列表保持隐藏
-        setTimeout(() => {
-            ap.list.audios.forEach((audio, index) => {
-                const pic = document.querySelectorAll('.aplayer-pic')[index];
-                if (pic && audio.cover) {
-                    pic.style.backgroundImage = `url('${audio.cover}')`;
+        // 刷新封面并确保列表保持隐藏（立即执行，无延迟）
+        ap.list.audios.forEach((audio, index) => {
+            const pic = document.querySelectorAll('.aplayer-pic')[index];
+            if (pic && audio.cover) {
+                pic.style.backgroundImage = `url('${audio.cover}')`;
+            }
+        });
+        
+        // 强制隐藏列表（立即执行，无延迟）
+        const list = document.querySelector('.aplayer-list');
+        if (list) {
+            list.classList.remove('show'); // 确保初始隐藏
+            list.classList.add('aplayer-list-hide');
+            list.style.overflowY = 'overlay';
+            list.style.overflowX = 'hidden';
+        }
+        
+        // 确保内部 ol 不创建独立滚动条（立即执行）
+        const listOl = document.querySelector('.aplayer-list ol');
+        if (listOl) {
+            listOl.style.overflowY = 'visible';
+            listOl.style.maxHeight = 'none';
+        }
+
+        // 拦截列表按钮点击事件（立即执行，无延迟）
+        const listBtn = document.querySelector('.aplayer-icon-lrc');
+        if (listBtn && list) {
+            // 克隆按钮以移除 APlayer 默认事件
+            const newBtn = listBtn.cloneNode(true);
+            listBtn.parentNode.replaceChild(newBtn, listBtn);
+            
+            // 添加自定义点击事件（简化逻辑，直接操作类）
+            let isListVisible = false;
+            newBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (isListVisible) {
+                    // 收起列表
+                    list.classList.remove('show');
+                    list.classList.add('aplayer-list-hide');
+                    isListVisible = false;
+                } else {
+                    // 展开列表
+                    list.classList.add('show');
+                    list.classList.remove('aplayer-list-hide');
+                    isListVisible = true;
                 }
             });
-            
-            // 强制隐藏列表
-            const list = document.querySelector('.aplayer-list');
-            if (list) {
-                list.style.display = 'none';
-                list.classList.add('aplayer-list-hide');
-                list.style.overflowY = 'overlay';
-                list.style.overflowX = 'hidden';
-            }
-            
-            // 确保内部 ol 不创建独立滚动条
-            const listOl = document.querySelector('.aplayer-list ol');
-            if (listOl) {
-                listOl.style.overflowY = 'visible';
-                listOl.style.maxHeight = 'none';
-            }
-        }, 50);
-
-        // 拦截列表按钮点击事件
-        setTimeout(() => {
-            const listBtn = document.querySelector('.aplayer-icon-lrc');
-            const list = document.querySelector('.aplayer-list');
-            
-            if (listBtn && list) {
-                // 克隆按钮以移除 APlayer 默认事件
-                const newBtn = listBtn.cloneNode(true);
-                listBtn.parentNode.replaceChild(newBtn, listBtn);
-                
-                // 添加自定义点击事件
-                let isListVisible = false;
-                
-                newBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    if (isListVisible) {
-                        // 收起列表
-                        list.style.display = 'none';
-                        list.classList.add('aplayer-list-hide');
-                        isListVisible = false;
-                    } else {
-                        // 展开列表
-                        list.style.display = 'block';
-                        list.classList.remove('aplayer-list-hide');
-                        isListVisible = true;
-                    }
-                });
-            }
-        }, 100);
+        }
     });
 </script>
 
