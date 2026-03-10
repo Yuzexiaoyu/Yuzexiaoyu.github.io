@@ -335,14 +335,3 @@ input, textarea, pre, code, [contenteditable="true"] {
 .aplayer-volume-bar {
     background: rgba(255, 255, 255, 0.2) !important;
 }
-
-/* 暗黑模式按钮 - 往上移动 */
-.theme-toggle,
-#theme-toggle,
-.dark-mode-toggle,
-#dark-mode-toggle,
-[class*="theme-toggle"],
-[class*="dark-mode-toggle"] {
-    transform: translateY(-351px) !important; 
-    transition: transform 0.3s ease !important;
-}

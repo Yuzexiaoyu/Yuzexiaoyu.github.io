@@ -41,7 +41,7 @@ favicon        = "image/avatar.png"
 
 [colorScheme]
   enable = true
-  toggle = true  # 开启暗色模式切换按钮
+  toggle = false  # 关闭暗色模式切换按钮
   default = "dark" 
 
 
