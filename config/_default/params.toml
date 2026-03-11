@@ -22,9 +22,23 @@ favicon        = "image/avatar.png"
     page     = []
 
 [comments]
-    # See complete configuration in config/_default/params.toml
-    enabled  = false
-    provider = "disqus"
+enabled = true
+provider = "giscus"
+
+[comments.giscus]
+repo = "Yuzexiaoyu/Yuzexiaoyu.github.io"
+repoID = "R_kgDORU00mA"
+category = "Announcements"
+categoryID = "DIC_kwDORU00mM4C4In1"
+mapping = "pathname"
+strict = "0"
+reactionsEnabled = "0"
+emitMetadata = "0"
+inputPosition = "top"
+lightTheme = "noborder_dark"
+darkTheme = "noborder_dark"
+lang = "zh-CN"
+loading = "lazy"
 
 # GDPR Cookie Consent Configuration
 # When enabled, analytics and functional cookies require user consent
