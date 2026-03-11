@@ -13,16 +13,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      # 🔥 可选：立即强制使用 Node.js 24 测试（可在 6 月 2 日后删除）
+      # 🔥 强制使用 Node.js 24 运行 Actions（解决弃用警告）
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v5  # 🔥 从 v4 更新到 v5
+        uses: actions/checkout@v4  # v5 存在兼容问题，使用稳定的 v4 + Node24 兼容
         with:
           submodules: false
 
       - name: Setup Python
-        uses: actions/setup-python@v6  # 🔥 从 v5 更新到 v6
+        uses: actions/setup-python@v5  # v6 暂未广泛支持，使用稳定的 v5 + Node24 兼容
         with:
           python-version: '3.11'
 
@@ -30,7 +30,7 @@ jobs:
         run: pip install beautifulsoup4
 
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v4  # 🔥 从 v3 更新到 v4
+        uses: peaceiris/actions-hugo@v3  # v4 暂未发布，使用稳定的 v3 + Node24 兼容
         with:
           hugo-version: '0.156.0'
           extended: true
@@ -64,15 +64,15 @@ jobs:
         run: python scripts/replace-media-links.py public "$R2_PUBLIC_URL" || echo "Link replacement failed (continuing...)"
 
       - name: Setup Pages
-        uses: actions/configure-pages@v6  # 🔥 从 v5 更新到 v6
+        uses: actions/configure-pages@v5  # v6 暂未发布，使用稳定的 v5 + Node24 兼容
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3  # 已是最新版本，无需修改
+        uses: actions/upload-pages-artifact@v3  # 最新稳定版，无需修改
         with:
           path: ./public
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v5  # 🔥 从 v4 更新到 v5
+        uses: actions/deploy-pages@v4  # v5 暂未发布，使用稳定的 v4 + Node24 兼容
 
       # ✅ 删除云端媒体文件
       - name: Delete media files from GitHub
