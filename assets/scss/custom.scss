@@ -77,9 +77,9 @@ input, textarea, pre, code, [contenteditable="true"] {
 #aplayer {
     position: fixed;
     bottom: 20px;
-    left: 20px;
+    left: 14px;
     z-index: 100;
-    width: 380px;
+    width: 346px;
     max-width: 90vw;
     background: var(--card-background) !important;
     box-shadow: var(--shadow-lg);
@@ -334,4 +334,136 @@ input, textarea, pre, code, [contenteditable="true"] {
 /* 音量条 */
 .aplayer-volume-bar {
     background: rgba(255, 255, 255, 0.2) !important;
+}
+
+
+
+// ==========================================
+// 配置区
+// ==========================================
+
+// 三栏比例
+$global-left: 0.9fr;
+$global-center: 3.4fr;
+$global-right: 1fr;
+
+// 🔥 列间距（分开调整左右）
+$gap-left: 0rem;   // ← 左边栏与中间内容的间隔
+$gap-right: 1rem;  // ← 右边栏与中间内容的间隔
+
+// 🔥 容器两侧外边距（分开调整左右）
+$container-margin-left: 12rem;   // ← 页面左侧离浏览器边缘的距离
+$container-margin-right: 3rem;  // ← 页面右侧离浏览器边缘的距离
+
+// ==========================================
+// 🔧 布局实现区
+// ==========================================
+
+// 🔥 容器：控制页面整体边距（左右分开）
+.container.main-container,
+.container.main-container.flex,
+.container.main-container.flex.on-phone--column,
+.container.main-container.flex.on-phone--column.extended {
+  padding-left: $container-margin-left !important;
+  padding-right: $container-margin-right !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+// 🔥 基础布局：三栏结构
+body > .container,
+body > main-wrapper,
+*:has(> .left-sidebar),
+.container.main-container {
+  display: grid !important;
+  grid-template-columns: $global-left $global-center $global-right !important;
+  
+  // 🔥 关键：用 column-gap 分开控制左右列间距
+  column-gap: 0 !important;
+  
+  align-items: start !important;
+  justify-items: stretch !important;
+}
+
+// 🔥 左边栏：控制右侧间距
+.left-sidebar {
+  justify-self: start !important;
+  width: 100% !important;
+  max-width: 260px !important;
+  padding-top: var(--main-top-padding) !important;
+  padding-bottom: var(--main-top-padding) !important;
+  padding-right: $gap-left !important;  // ← 左边栏右侧间距
+  padding-left: 0 !important;
+}
+
+// 🔥 中间内容：控制左右间距
+.lg\:col-span-8,
+.content-area,
+div[class*="col-span"]:nth-child(2) {
+  padding-left: $gap-left !important;   // ← 中间内容左侧间距
+  padding-right: $gap-right !important; // ← 中间内容右侧间距
+  padding-top: var(--main-top-padding) !important;
+  padding-bottom: var(--main-top-padding) !important;
+}
+
+// 🔥 右边栏：控制左侧间距
+.right-sidebar {
+  justify-self: end !important;
+  margin-left: auto !important;
+  width: 100% !important;
+  max-width: 280px !important;
+  padding-top: var(--main-top-padding) !important;
+  padding-bottom: var(--main-top-padding) !important;
+  padding-left: $gap-right !important;  // ← 右边栏左侧间距
+  padding-right: 0 !important;
+}
+
+// 🔥 搜索框：填满边栏
+.right-sidebar {
+  .widget,
+  .search-box,
+  .search-widget,
+  .widget-search {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  input[type="search"],
+  input[type="text"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+// 🔥 所有分辨率同一配置
+@media (min-width: 768px),
+       (min-width: 1024px),
+       (min-width: 1200px),
+       (min-width: 1440px),
+       (min-width: 1920px) {
+  .container.main-container {
+    grid-template-columns: $global-left $global-center $global-right !important;
+    padding-left: $container-margin-left !important;
+    padding-right: $container-margin-right !important;
+  }
+  
+  .left-sidebar {
+    padding-right: $gap-left !important;
+  }
+  
+  .lg\:col-span-8,
+  .content-area,
+  div[class*="col-span"]:nth-child(2) {
+    padding-left: $gap-left !important;
+    padding-right: $gap-right !important;
+  }
+  
+  .right-sidebar {
+    padding-left: $gap-right !important;
+  }
 }
