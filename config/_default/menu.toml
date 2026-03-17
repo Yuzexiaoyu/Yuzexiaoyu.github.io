@@ -18,7 +18,7 @@
 	newTab = true
 
 [[main]]
-name = "首页"
+name = "首页 | Home"
 url = "/"
 weight = -100
 [main.params]

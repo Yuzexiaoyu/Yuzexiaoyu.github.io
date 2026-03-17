@@ -1,3 +1,6 @@
+@import "custom-animation.scss";
+
+
 // 自定义鼠标光标 - 单独改 Link+Text 热点版
 // --------------------------
 $cursor-path: "/cursor/";
@@ -343,15 +346,13 @@ input, textarea, pre, code, [contenteditable="true"] {
 // ==========================================
 
 // 三栏比例
-$global-left: 0.9fr;
-$global-center: 3.4fr;
-$global-right: 1fr;
+$global-left: 1.1fr;
+$global-center: 3.8fr;
+$global-right: 1.2fr;
 
-// 🔥 列间距（分开调整左右）
 $gap-left: 0rem;   // ← 左边栏与中间内容的间隔
-$gap-right: 1rem;  // ← 右边栏与中间内容的间隔
+$gap-right: 0rem;  // ← 右边栏与中间内容的间隔
 
-// 🔥 容器两侧外边距（分开调整左右）
 $container-margin-left: 12rem;   // ← 页面左侧离浏览器边缘的距离
 $container-margin-right: 3rem;  // ← 页面右侧离浏览器边缘的距离
 
@@ -466,4 +467,38 @@ div[class*="col-span"]:nth-child(2) {
   .right-sidebar {
     padding-left: $gap-right !important;
   }
+}
+
+// 右侧目录字体缩小
+.widget--toc {
+    li {
+        font-size: 1rem !important;
+        
+        a {
+            font-size: 1.3rem !important;
+        }
+    }
+}
+
+// 目录滚动条隐藏
+.widget--toc,
+#TableOfContents,
+.toc {
+    // Firefox
+    scrollbar-width: none !important;
+    
+    // Chrome/Edge/Safari
+    &::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    
+    &::-webkit-scrollbar-track {
+        display: none !important;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        display: none !important;
+    }
 }
