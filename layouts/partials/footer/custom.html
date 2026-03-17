@@ -1,77 +1,9 @@
 <!-- 加载 APlayer 脚本 -->
 <script src="/lib/aplayer/APlayer.min.js"></script>
 
-<!-- 统一滚动条样式 - 确保只有一个滚动条 -->
-<style>
-    /* 🔥 核心修复：移除所有!important的display，仅保留基础隐藏（无优先级冲突） */
-    .aplayer-list {
-        display: none; /* 去掉!important，让JS能覆盖 */
-        max-height: 200px !important;
-        opacity: 0; /* 去掉!important，配合过渡防闪烁 */
-        visibility: hidden; /* 去掉!important */
-        overflow-y: overlay !important;
-        overflow-x: hidden !important;
-        transition: opacity 0.1s ease, visibility 0.1s ease; /* 新增过渡，无闪烁 */
-    }
-    
-    /* WebKit 浏览器滚动条样式 */
-    .aplayer-list::-webkit-scrollbar {
-        width: 6px !important;
-        height: 6px !important;
-    }
-    
-    .aplayer-list::-webkit-scrollbar-track {
-        background: transparent !important;
-        border-radius: 3px !important;
-    }
-    
-    .aplayer-list::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.3) !important;
-        border-radius: 3px !important;
-        transition: all 0.3s ease !important;
-    }
-    
-    .aplayer-list::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.5) !important;
-    }
-    
-    .aplayer-list::-webkit-scrollbar-thumb:active {
-        background: #F57F17 !important;
-    }
-    
-    .aplayer-list::-webkit-scrollbar-corner {
-        background: transparent !important;
-    }
-    
-    /* Firefox 滚动条样式 */
-    .aplayer-list {
-        scrollbar-width: thin !important;
-        scrollbar-color: rgba(255, 255, 255, 0.3) transparent !important;
-    }
-    
-    /* 确保内部 ol 不创建独立滚动条 */
-    .aplayer-list ol {
-        overflow-y: visible !important;
-        max-height: none !important;
-        scrollbar-width: none !important;
-    }
-    
-    .aplayer-list ol::-webkit-scrollbar {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
-    }
-
-    /* 🔥 新增：展开状态的样式（无!important，JS可覆盖） */
-    .aplayer-list.show {
-        display: block;
-        opacity: 1;
-        visibility: visible;
-    }
-</style>
-
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // 你的原始初始化代码，完全保留
         const ap = new APlayer({
             container: document.getElementById('aplayer'),
             mini: false,
@@ -100,7 +32,7 @@
             ],
         });
 
-        // 刷新封面并确保列表保持隐藏（立即执行，无延迟）
+        // 你的原始逻辑，完全保留
         ap.list.audios.forEach((audio, index) => {
             const pic = document.querySelectorAll('.aplayer-pic')[index];
             if (pic && audio.cover) {
@@ -108,47 +40,47 @@
             }
         });
         
-        // 强制隐藏列表（立即执行，无延迟）
         const list = document.querySelector('.aplayer-list');
         if (list) {
-            list.classList.remove('show'); // 确保初始隐藏
+            list.classList.remove('show');
             list.classList.add('aplayer-list-hide');
             list.style.overflowY = 'overlay';
             list.style.overflowX = 'hidden';
         }
         
-        // 确保内部 ol 不创建独立滚动条（立即执行）
         const listOl = document.querySelector('.aplayer-list ol');
         if (listOl) {
             listOl.style.overflowY = 'visible';
             listOl.style.maxHeight = 'none';
         }
 
-        // 拦截列表按钮点击事件（立即执行，无延迟）
         const listBtn = document.querySelector('.aplayer-icon-lrc');
         if (listBtn && list) {
-            // 克隆按钮以移除 APlayer 默认事件
             const newBtn = listBtn.cloneNode(true);
             listBtn.parentNode.replaceChild(newBtn, listBtn);
             
-            // 添加自定义点击事件（简化逻辑，直接操作类）
             let isListVisible = false;
             newBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
                 if (isListVisible) {
-                    // 收起列表
                     list.classList.remove('show');
                     list.classList.add('aplayer-list-hide');
                     isListVisible = false;
                 } else {
-                    // 展开列表
                     list.classList.add('show');
                     list.classList.remove('aplayer-list-hide');
                     isListVisible = true;
                 }
             });
+        }
+
+        // 核心：把播放器移到 html 标签下
+        const player = document.getElementById('aplayer');
+        if (player) {
+            document.documentElement.appendChild(player);
+            console.log('✅ 播放器已移到绝对安全区！');
         }
     });
 </script>
