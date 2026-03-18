@@ -14,16 +14,38 @@
 <script src="/lib/Swup.umd.js"></script>
 
 <script>
+  // 🔥 新增1：全局标记 + 提前拦截链接点击
+  let swupReady = false;
+  document.addEventListener('click', function(e) {
+    if (swupReady) return;
+    const link = e.target.closest('a[href]:not([target="_blank"]):not([rel="external"])');
+    if (link && link.origin === window.location.origin) {
+      e.preventDefault();
+      const checkSwup = setInterval(() => {
+        if (swupReady) {
+          clearInterval(checkSwup);
+          swup.navigate(link.href);
+        }
+      }, 50);
+    }
+  }, true);
+
+  // 🔥 新增2：全局swup变量
+  let swup;
+
   window.addEventListener('load', function() {
     if (typeof Swup === 'undefined') return;
 
     console.log('🚀 [Swup] 启动...');
 
     // 完全还原你之前能生效的暴力配置
-    const swup = new Swup({
+    swup = new Swup({ // 🔥 修改：const 改 let
       containers: ['body'],
       animationDuration: 0
     });
+
+    // 🔥 新增3：标记swup已准备好
+    swupReady = true;
 
     swup.hooks.on('link:click', (visit) => {
       console.log('🔗 [Swup] 点击链接:', visit.to.url);
