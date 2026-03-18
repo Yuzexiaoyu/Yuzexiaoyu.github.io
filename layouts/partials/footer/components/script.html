@@ -27,12 +27,44 @@
 
     swup.hooks.on('link:click', (visit) => {
       console.log('🔗 [Swup] 点击链接:', visit.to.url);
+      // 🔥 去掉保存播放器状态的代码
     });
 
     swup.hooks.on('page:view', () => {
       console.log('✅ [Swup] 无刷新切换成功');
+      
+      // 🔥 关键：去掉手动触发 DOMContentLoaded 的代码！这是导致播放器重置的元凶！
       window.dispatchEvent(new Event('scroll'));
       window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event('load'));
+
+      // 🔥 保留：完全不滚动的目录高亮方案
+      setTimeout(() => {
+        const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
+        if (headings.length === 0) return;
+
+        const viewportTop = window.scrollY;
+        let currentHeading = null;
+        for (const heading of headings) {
+          const headingTop = heading.offsetTop;
+          if (headingTop >= viewportTop - 100 && headingTop <= viewportTop + window.innerHeight / 2) {
+            currentHeading = heading;
+            break;
+          }
+        }
+
+        if (!currentHeading) currentHeading = headings[0];
+
+        if (currentHeading) {
+          const tocLink = document.querySelector(`#TableOfContents.toc-nav a[href="#${currentHeading.id}"]`);
+          if (tocLink) {
+            document.querySelectorAll('#TableOfContents.toc-nav li').forEach(li => {
+              li.classList.remove('active', 'current', 'toc-active');
+            });
+            tocLink.parentElement.classList.add('active', 'current', 'toc-active');
+          }
+        }
+      }, 150);
     });
 
     console.log('✅ [Swup] 初始化完成');
