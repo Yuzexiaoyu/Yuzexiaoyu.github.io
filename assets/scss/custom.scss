@@ -1,20 +1,23 @@
 @import "custom-animation.scss";
 
 
-// 自定义鼠标光标 - 单独改 Link+Text 热点版
-// --------------------------
+// ==========================================
+// 自定义鼠标光标 - 保留原有样式 + 修复 APlayer 鼠标偏移
+// ==========================================
+
 $cursor-path: "/cursor/";
 $link-hotspot: 3 0;
 $text-hotspot: 5 10;
 
 body {
-  cursor: url("#{$cursor-path}Pointer.cur"), auto;
+  cursor: url("#{$cursor-path}Pointer.cur"), auto; // 去掉热点，用默认
   
   &.loading {
     cursor: url("#{$cursor-path}Busy.ani"), wait;
   }
 }
 
+// 🔥 原有链接样式 - 保持不变
 a, 
 button, 
 [role="button"], 
@@ -51,6 +54,43 @@ input, textarea, pre, code, [contenteditable="true"] {
   }
 }
 
+// 🔥 APlayer 专用光标 - 去掉Pointer.cur的热点，防止偏移
+#aplayer {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important; // 去掉热点
+}
+
+#aplayer .aplayer-button,
+#aplayer .aplayer-icon,
+#aplayer .aplayer-icon-lrc,
+#aplayer .aplayer-icon-volume,
+#aplayer .aplayer-list li,
+#aplayer .aplayer-list-index,
+#aplayer .aplayer-list-title,
+#aplayer .aplayer-volume-bar,
+#aplayer .aplayer-volume-wrap {
+  cursor: url("#{$cursor-path}Link.cur") $link-hotspot, pointer !important; // Link.cur保留热点
+}
+
+#aplayer .aplayer-bar,
+#aplayer .aplayer-played,
+#aplayer .aplayer-loaded,
+#aplayer .aplayer-thumb,
+#aplayer .aplayer-bar-wrap,
+#aplayer .aplayer-time,
+#aplayer .aplayer-body,
+#aplayer .aplayer-info,
+#aplayer .aplayer-music,
+#aplayer .aplayer-title,
+#aplayer .aplayer-pic,
+#aplayer .aplayer-list {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important; // 去掉热点
+}
+
+
+// ==========================================
+// 站点头像 Emoji 样式
+// ==========================================
+
 .site-avatar .emoji {
     width: 30px !important;
     height: 30px !important;
@@ -74,9 +114,9 @@ input, textarea, pre, code, [contenteditable="true"] {
 }
 
 
-/* ================================
-   APlayer 播放器样式定制
-   ================================ */
+// ==========================================
+// APlayer 播放器样式定制
+// ==========================================
 
 html #aplayer {
     position: fixed !important;
@@ -89,14 +129,12 @@ html #aplayer {
     box-shadow: var(--shadow-lg) !important;
     border-radius: 8px !important;
     overflow: visible !important;
-    /* 🔥 彻底清掉所有边框，包括底部那根线 */
     border: none !important;
     outline: none !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 
-/* 封面区域 */
 html #aplayer .aplayer-pic {
     width: 66px !important;
     height: 66px !important;
@@ -121,7 +159,6 @@ html #aplayer .aplayer-pic * {
     opacity: 1 !important;
 }
 
-/* 播放按钮 */
 html #aplayer .aplayer-pic .aplayer-button {
     position: absolute !important;
     bottom: 4px !important;
@@ -168,7 +205,6 @@ html #aplayer .aplayer-pic .aplayer-button:active {
     transform: scale(0.95) !important;
 }
 
-/* 信息区域 */
 html #aplayer .aplayer-body,
 html #aplayer .aplayer-info {
     background: transparent !important;
@@ -186,7 +222,6 @@ html #aplayer .aplayer-list-author {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* 隐藏歌手信息 */
 html #aplayer .aplayer-author {
     display: none !important;
 }
@@ -195,7 +230,6 @@ html #aplayer .aplayer-list-author {
     display: none !important;
 }
 
-/* 播放列表 - 向上展开，默认收起，左侧向左扩展 1 像素 */
 html #aplayer .aplayer-list {
     position: absolute !important;
     bottom: 100% !important;
@@ -214,15 +248,10 @@ html #aplayer .aplayer-list {
     margin-left: 0px !important;
     margin-right: 1px !important;
     padding: 2px 0 !important;
-    
-    /* 过渡动画 */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    
-    /* 默认收起状态 */
     display: none !important;
 }
 
-/* 列表展开状态 */
 html #aplayer .aplayer-list:not(.aplayer-list-hide) {
     display: block !important;
     opacity: 1 !important;
@@ -235,12 +264,10 @@ html #aplayer .aplayer-list:not(.aplayer-list-hide) {
     margin-bottom: 5px !important;
 }
 
-/* 列表隐藏状态 */
 html #aplayer .aplayer-list.aplayer-list-hide {
     display: none !important;
 }
 
-/* 播放列表项 - 紧凑间距 */
 html #aplayer .aplayer-list li {
     border: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -262,29 +289,24 @@ html #aplayer .aplayer-list li.aplayer-list-light {
     background: rgba(245, 127, 23, 0.2) !important;
 }
 
-/* 播放列表序号 - 白色 */
 html #aplayer .aplayer-list-index {
     color: #ffffff !important;
     opacity: 1 !important;
 }
 
-/* 隐藏歌词 */
 html #aplayer .aplayer-lrc {
     display: none !important;
 }
 
-/* 隐藏循环/顺序按钮 */
 html #aplayer .aplayer-icon-loop,
 html #aplayer .aplayer-icon-order {
     display: none !important;
 }
 
-/* 进度条样式 */
 html #aplayer .aplayer-bar {
     background: rgba(255, 255, 255, 0.5) !important;
 }
 
-/* 隐藏预载入条 */
 html #aplayer .aplayer-loaded {
     display: none !important;
 }
@@ -298,14 +320,10 @@ html #aplayer .aplayer-thumb {
     border: none !important;
 }
 
-/* 时间显示 - 白色 */
 html #aplayer .aplayer-time {
     color: #ffffff !important;
 }
 
-/* ================================
-   图标颜色 - 所有图标白色（包括 SVG 和 path）
-   ================================ */
 html #aplayer .aplayer-icon,
 html #aplayer .aplayer-icon svg,
 html #aplayer .aplayer-icon path {
@@ -320,7 +338,6 @@ html #aplayer .aplayer-icon:hover path {
     fill: #F57F17 !important;
 }
 
-/* 音量图标 - 强制白色 */
 html #aplayer .aplayer-icon-volume-down,
 html #aplayer .aplayer-icon-volume-down svg,
 html #aplayer .aplayer-icon-volume-down path,
@@ -331,7 +348,6 @@ html #aplayer .aplayer-icon-volume-off path {
     fill: #ffffff !important;
 }
 
-/* 列表图标 - 强制白色 */
 html #aplayer .aplayer-icon-lrc,
 html #aplayer .aplayer-icon-lrc svg,
 html #aplayer .aplayer-icon-lrc path {
@@ -339,34 +355,30 @@ html #aplayer .aplayer-icon-lrc path {
     fill: #ffffff !important;
 }
 
-/* 音量条 */
 html #aplayer .aplayer-volume-bar {
     background: rgba(255, 255, 255, 0.2) !important;
 }
 
 
-
-
 // ==========================================
-// 配置区
+// 三栏布局配置
 // ==========================================
 
-// 三栏比例
 $global-left: 1.1fr;
 $global-center: 3.8fr;
 $global-right: 1.2fr;
 
-$gap-left: 0rem;   // ← 左边栏与中间内容的间隔
-$gap-right: 0rem;  // ← 右边栏与中间内容的间隔
+$gap-left: 0rem;
+$gap-right: 0rem;
 
-$container-margin-left: 12rem;   // ← 页面左侧离浏览器边缘的距离
-$container-margin-right: 3rem;  // ← 页面右侧离浏览器边缘的距离
+$container-margin-left: 12rem;
+$container-margin-right: 3rem;
+
 
 // ==========================================
-// 🔧 布局实现区
+// 三栏布局实现
 // ==========================================
 
-// 🔥 容器：控制页面整体边距（左右分开）
 .container.main-container,
 .container.main-container.flex,
 .container.main-container.flex.on-phone--column,
@@ -379,43 +391,36 @@ $container-margin-right: 3rem;  // ← 页面右侧离浏览器边缘的距离
   width: 100% !important;
 }
 
-// 🔥 基础布局：三栏结构
 body > .container,
 body > main-wrapper,
 *:has(> .left-sidebar),
 .container.main-container {
   display: grid !important;
   grid-template-columns: $global-left $global-center $global-right !important;
-  
-  // 🔥 关键：用 column-gap 分开控制左右列间距
   column-gap: 0 !important;
-  
   align-items: start !important;
   justify-items: stretch !important;
 }
 
-// 🔥 左边栏：控制右侧间距
 .left-sidebar {
   justify-self: start !important;
   width: 100% !important;
   max-width: 260px !important;
   padding-top: var(--main-top-padding) !important;
   padding-bottom: var(--main-top-padding) !important;
-  padding-right: $gap-left !important;  // ← 左边栏右侧间距
+  padding-right: $gap-left !important;
   padding-left: 0 !important;
 }
 
-// 🔥 中间内容：控制左右间距
 .lg\:col-span-8,
 .content-area,
 div[class*="col-span"]:nth-child(2) {
-  padding-left: $gap-left !important;   // ← 中间内容左侧间距
-  padding-right: $gap-right !important; // ← 中间内容右侧间距
+  padding-left: $gap-left !important;
+  padding-right: $gap-right !important;
   padding-top: var(--main-top-padding) !important;
   padding-bottom: var(--main-top-padding) !important;
 }
 
-// 🔥 右边栏：控制左侧间距
 .right-sidebar {
   justify-self: end !important;
   margin-left: auto !important;
@@ -423,11 +428,10 @@ div[class*="col-span"]:nth-child(2) {
   max-width: 280px !important;
   padding-top: var(--main-top-padding) !important;
   padding-bottom: var(--main-top-padding) !important;
-  padding-left: $gap-right !important;  // ← 右边栏左侧间距
+  padding-left: $gap-right !important;
   padding-right: 0 !important;
 }
 
-// 🔥 搜索框：填满边栏
 .right-sidebar {
   .widget,
   .search-box,
@@ -447,7 +451,6 @@ div[class*="col-span"]:nth-child(2) {
   }
 }
 
-// 🔥 所有分辨率同一配置
 @media (min-width: 768px),
        (min-width: 1024px),
        (min-width: 1200px),
@@ -475,7 +478,11 @@ div[class*="col-span"]:nth-child(2) {
   }
 }
 
-// 右侧目录字体缩小
+
+// ==========================================
+// 右侧目录样式
+// ==========================================
+
 .widget--toc {
     li {
         font-size: 1rem !important;
@@ -486,14 +493,11 @@ div[class*="col-span"]:nth-child(2) {
     }
 }
 
-// 目录滚动条隐藏
 .widget--toc,
 #TableOfContents,
 .toc {
-    // Firefox
     scrollbar-width: none !important;
     
-    // Chrome/Edge/Safari
     &::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
@@ -511,16 +515,13 @@ div[class*="col-span"]:nth-child(2) {
 
 
 // ==========================================
-// 📋 Archives 归档页面
+// Archives 归档页面
 // ==========================================
-
-/* 只在 archives 页面生效 - 通过 body 类名限定 */
 
 body.template-archives,
 body.page-archives,
 body[class*="archives"] {
     
-    // 年份区块 - 去掉边框
     .archives-year,
     section,
     div[class*="year"],
@@ -532,7 +533,6 @@ body[class*="archives"] {
         margin: 0 !important;
     }
     
-    // 文章列表容器 - 改成 3 列网格
     .article-list--compact {
         display: grid !important;
         grid-template-columns: repeat(3, 1fr) !important;
@@ -544,14 +544,13 @@ body[class*="archives"] {
         background: transparent !important;
     }
 
-    // 单个文章卡片 - 动画加速
     .article-list--compact article {
         background: rgba(255, 255, 255, 0.08) !important;
         backdrop-filter: blur(10px) !important;
         border-radius: 12px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         overflow: hidden !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;  // ← 0.3s → 0.2s
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         margin: 0 !important;
         padding: 0 !important;
         
@@ -563,18 +562,16 @@ body[class*="archives"] {
             
             .article-title {
                 color: var(--accent-color) !important;
-                transition: color 0.2s ease !important;  // ← 0.3s → 0.2s
+                transition: color 0.2s ease !important;
             }
             
-            // 图片悬停放大 - 动画加速
             .article-image img {
                 transform: scale(1.1) !important;
-                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;  // ← 0.3s → 0.2s
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             }
         }
     }
 
-    // 文章链接 - 横向布局
     .article-list--compact article a {
         display: flex !important;
         flex-direction: row !important;
@@ -584,7 +581,6 @@ body[class*="archives"] {
         min-height: 120px !important;
     }
 
-    // 左侧内容区 - 居中对齐
     .article-list--compact .article-details {
         flex: 1 !important;
         padding: 1rem 1.25rem !important;
@@ -608,11 +604,10 @@ body[class*="archives"] {
         -webkit-box-orient: vertical !important;
         overflow: hidden !important;
         word-break: break-word !important;
-        transition: color 0.2s ease !important;  // ← 0.3s → 0.2s
+        transition: color 0.2s ease !important;
         width: 100% !important;                 
     }
 
-    // 文章日期 - 居中
     .article-list--compact .article-time {
         font-size: 0.75rem !important;
         opacity: 0.6 !important;
@@ -626,7 +621,6 @@ body[class*="archives"] {
         justify-content: center !important;
     }
 
-    // 右侧图片区
     .article-list--compact .article-image {
         width: 120px !important;
         min-width: 120px !important;
@@ -638,13 +632,12 @@ body[class*="archives"] {
         overflow: hidden !important;
     }
 
-    // 图片 - 带过渡动画 - 加速
     .article-list--compact .article-image img {
         width: 100% !important;
         height: 100% !important;
         object-fit: cover !important;
         min-width: 120px !important;
         min-height: 120px !important;
-        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;  // ← 0.3s → 0.2s
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 }
