@@ -20,23 +20,18 @@ svg.icon.icon-tabler-brand-github:hover {
 
 // 跳转社交媒体图标
 
-// ==========================================
-// 最终版：仅改可点击区鼠标样式 + 保留所有原有逻辑
-// ==========================================
-// ✅ 【新增：你的自定义鼠标变量（从你原有代码提取）】
+//左侧边栏动画效果
 $cursor-path: "/cursor/";
 $link-hotspot: 3 0;
-
-// ✅ 【你的核心控制变量】（仅修改cursor-style为你的自定义链接样式）
-$bg-box-height: 49px;    // 背景框垂直大小
-$bg-box-width: 200px;    // 背景框水平大小
-$bg-box-y-offset: 0px;   // 垂直偏移
-$bg-box-x-offset: -10px; // 水平偏移
-$bg-box-radius: 8px;     // 背景框圆角
-// ✅ 仅改这行：替换为你的自定义可点击区鼠标样式
+$bg-box-height: 45px;
+$bg-box-width: 220px;
+$bg-box-y-offset: 0px;
+$bg-box-x-offset: -20px;
+$bg-box-radius: 11px;
 $cursor-style: url("#{$cursor-path}Link.cur") $link-hotspot, pointer;
+$transition-duration: 0.3s;
+$transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
 
-// 最外层容器（不变）
 ol#main-menu.menu {
   border-radius: 8px;
   overflow: visible;
@@ -46,7 +41,6 @@ ol#main-menu.menu {
   z-index: 1;
 }
 
-// 菜单li：穿透鼠标事件 + 统一继承鼠标样式（不变）
 ol#main-menu.menu > li {
   position: relative;
   border-radius: 8px;
@@ -58,12 +52,17 @@ ol#main-menu.menu > li {
   width: 100%;
   text-align: left;
   z-index: 2;
-  margin: 0;
-  pointer-events: none; // li不接收鼠标事件
-  cursor: $cursor-style !important; // 统一继承鼠标样式
+  margin: 2px 0;
+  pointer-events: none;
+  cursor: $cursor-style !important;
+  
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
 }
 
-// 伪元素：背景框 + 接收hover + 统一鼠标样式（不变，仅用新的cursor-style）
 ol#main-menu.menu > li::before {
   content: "";
   position: absolute;
@@ -77,16 +76,35 @@ ol#main-menu.menu > li::before {
   z-index: -1;
   display: block;
   box-sizing: border-box;
-  pointer-events: auto; // 背景框接收鼠标事件
-  cursor: $cursor-style !important; // ✅ 可点击区：背景框用自定义样式
+  pointer-events: auto;
+  cursor: $cursor-style !important;
+  border: 1px solid transparent;
+  transition: background $transition-duration $transition-timing, border-color $transition-duration $transition-timing, opacity $transition-duration $transition-timing;
+  opacity: 0;
 }
 
-// 点击区域 + a标签：可点击 + 统一鼠标样式（不变，仅用新的cursor-style）
+ol#main-menu.menu > li::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: $bg-box-x-offset + 6px;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0);
+  border-radius: 2px;
+  z-index: 0;
+  pointer-events: none;
+  transition: background $transition-duration $transition-timing, height $transition-duration $transition-timing, opacity $transition-duration $transition-timing;
+  opacity: 0;
+}
+
 ol#main-menu.menu > li > a {
   position: relative;
   z-index: 3;
-  pointer-events: auto; // a标签可点击
-  cursor: $cursor-style !important; // ✅ 可点击区：链接用自定义样式
+  pointer-events: auto;
+  cursor: $cursor-style !important;
+  transition: color $transition-duration $transition-timing;
   
   &::after {
     content: "";
@@ -98,36 +116,85 @@ ol#main-menu.menu > li > a {
     width: $bg-box-width;
     border-radius: $bg-box-radius;
     z-index: -1;
-    cursor: $cursor-style !important; // ✅ 可点击区：点击区域用自定义样式
+    cursor: $cursor-style !important;
     pointer-events: auto;
     display: block;
     box-sizing: border-box;
+    border: 1px solid transparent;
+    transition: background $transition-duration $transition-timing, border-color $transition-duration $transition-timing, opacity $transition-duration $transition-timing;
+    opacity: 0;
   }
 }
 
-// 仅背景框hover激活效果 + 统一鼠标样式（不变）
-ol#main-menu.menu > li::before:hover {
+ol#main-menu.menu > li:hover::before {
   background: rgba(255, 255, 255, 0.06);
-  cursor: $cursor-style !important; // hover时仍用自定义样式
-  @media (hover: hover) {
-    ol#main-menu.menu > li {
-      transform: translateY(-2px);
-      cursor: $cursor-style !important; // li上浮时也用自定义样式
-    }
+  border-color: rgba(255, 255, 255, 0.06);
+  opacity: 1;
+  cursor: $cursor-style !important;
+}
+
+ol#main-menu.menu > li:hover::after {
+  background: rgba(255, 255, 255, 0.25);
+  height: 16px;
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  ol#main-menu.menu > li:hover {
+    transform: translateY(-2px);
+    cursor: $cursor-style !important;
   }
 }
 
-// 激活态：不变 + 统一鼠标样式（不变）
-ol#main-menu.menu > li.current::before {
-  background: rgba(255, 255, 255, 0.1);
-  cursor: $cursor-style !important;
+ol#main-menu.menu > li.current::after,
+ol#main-menu.menu > li.active::after {
+  background: rgba(255, 255, 255, 0.4) !important;
+  height: 20px !important;
+  opacity: 1 !important;
 }
-ol#main-menu.menu > li.current::before:hover {
-  background: rgba(255, 255, 255, 0.12);
+
+ol#main-menu.menu > li.current::before,
+ol#main-menu.menu > li.active::before {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  opacity: 1 !important;
   cursor: $cursor-style !important;
 }
 
-// 隐藏li.menu-bottom-section（不变 + 统一鼠标样式）
+ol#main-menu.menu > li.current:hover::after,
+ol#main-menu.menu > li.active:hover::after {
+  background: rgba(255, 255, 255, 0.55) !important;
+  height: 24px !important;
+}
+
+ol#main-menu.menu > li.current:hover::before,
+ol#main-menu.menu > li.active:hover::before {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  cursor: $cursor-style !important;
+}
+
+ol#main-menu.menu > li.current > a,
+ol#main-menu.menu > li.active > a {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 500;
+}
+
+ol#main-menu.menu > li[class*="current"]::after,
+ol#main-menu.menu > li[class*="active"]::after {
+  background: rgba(255, 255, 255, 0.4) !important;
+  height: 20px !important;
+  opacity: 1 !important;
+}
+
+ol#main-menu.menu > li[class*="current"]::before,
+ol#main-menu.menu > li[class*="active"]::before {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  opacity: 1 !important;
+  cursor: $cursor-style !important;
+}
+
 ol#main-menu.menu > li.menu-bottom-section {
   background: transparent !important;
   height: auto !important;
@@ -136,36 +203,33 @@ ol#main-menu.menu > li.menu-bottom-section {
   margin: 0 !important;
   border: none !important;
   outline: none !important;
-  cursor: default !important; // 非可点击区：恢复默认
+  cursor: default !important;
   
-  &::before {
+  &::before,
+  &::after {
     display: none !important;
     content: none !important;
-    height: 0 !important;
-    width: 0 !important;
-    background: none !important;
   }
 
   > a::after {
     display: none !important;
     content: none !important;
-    height: 0 !important;
-    width: 0 !important;
-    background: none !important;
   }
 
   &:hover {
     transform: translateY(0) !important;
     background: transparent !important;
-    cursor: default !important; // 非可点击区：恢复默认
+    cursor: default !important;
   }
 
   > * {
     background: transparent !important;
-    cursor: default !important; // 非可点击区：恢复默认
+    cursor: default !important;
     &:hover {
       background: transparent !important;
-      cursor: default !important; // 非可点击区：恢复默认
+      cursor: default !important;
     }
   }
 }
+//左侧边栏动画效果
+
