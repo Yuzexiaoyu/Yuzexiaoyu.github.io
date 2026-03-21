@@ -113,11 +113,7 @@ input, textarea, pre, code, [contenteditable="true"] {
     --sidebar-avatar-size: 40px !important;
 }
 
-
-// ==========================================
-// APlayer 播放器样式定制
-// ==========================================
-
+// aplayer播放器
 html #aplayer {
     position: fixed !important;
     bottom: 20px !important;
@@ -190,9 +186,9 @@ html #aplayer .aplayer-pic .aplayer-button svg {
 }
 
 html #aplayer .aplayer-pic .aplayer-button:hover {
-    background: #F57F17 !important;
+    background: #4FC3F7 !important;
     transform: scale(1.1) !important;
-    box-shadow: 0 2px 8px rgba(245, 127, 23, 0.4) !important;
+    box-shadow: 0 0 4px rgba(79, 195, 247, 0.4) !important;
 }
 
 html #aplayer .aplayer-pic .aplayer-button:hover svg {
@@ -286,7 +282,7 @@ html #aplayer .aplayer-list li:hover {
 }
 
 html #aplayer .aplayer-list li.aplayer-list-light {
-    background: rgba(245, 127, 23, 0.2) !important;
+    background: rgba(79, 195, 247, 0.2) !important;
 }
 
 html #aplayer .aplayer-list-index {
@@ -312,11 +308,11 @@ html #aplayer .aplayer-loaded {
 }
 
 html #aplayer .aplayer-played {
-    background: #F57F17 !important;
+    background: #4FC3F7 !important;
 }
 
 html #aplayer .aplayer-thumb {
-    background: #F57F17 !important;
+    background: #4FC3F7 !important;
     border: none !important;
 }
 
@@ -334,8 +330,8 @@ html #aplayer .aplayer-icon path {
 html #aplayer .aplayer-icon:hover,
 html #aplayer .aplayer-icon:hover svg,
 html #aplayer .aplayer-icon:hover path {
-    color: #F57F17 !important;
-    fill: #F57F17 !important;
+    color: #4FC3F7 !important;
+    fill: #4FC3F7 !important;
 }
 
 html #aplayer .aplayer-icon-volume-down,
