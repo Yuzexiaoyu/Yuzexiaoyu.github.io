@@ -1,0 +1,16 @@
+html {
+  background: #000 !important;
+}
+.aplayer,
+.aplayer-body,
+.aplayer-info,
+.aplayer-lrc,
+.aplayer-list {
+  background: inherit !important;
+}
+body, .main-container, #swup, #main-content {
+  background: transparent !important;
+}
+.card, .widget-card, .post-card, .article-card {
+  background: var(--card-background, rgba(255, 255, 255, 0.05)) !important;
+}

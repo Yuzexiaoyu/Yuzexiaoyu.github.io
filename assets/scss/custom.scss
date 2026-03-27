@@ -1,23 +1,21 @@
 @import "custom-animation.scss";
+@import "test.scss";
 
 
-// ==========================================
-// 自定义鼠标光标 - 保留原有样式 + 修复 APlayer 鼠标偏移
-// ==========================================
+// 自定义鼠标光标
 
 $cursor-path: "/cursor/";
 $link-hotspot: 3 0;
 $text-hotspot: 5 10;
 
 body {
-  cursor: url("#{$cursor-path}Pointer.cur"), auto; // 去掉热点，用默认
+  cursor: url("#{$cursor-path}Pointer.cur"), auto; 
   
   &.loading {
     cursor: url("#{$cursor-path}Busy.ani"), wait;
   }
 }
 
-// 🔥 原有链接样式 - 保持不变
 a, 
 button, 
 [role="button"], 
@@ -54,7 +52,6 @@ input, textarea, pre, code, [contenteditable="true"] {
   }
 }
 
-// 🔥 APlayer 专用光标 - 去掉Pointer.cur的热点，防止偏移
 #aplayer {
   cursor: url("#{$cursor-path}Pointer.cur"), auto !important; // 去掉热点
 }
@@ -86,10 +83,9 @@ input, textarea, pre, code, [contenteditable="true"] {
   cursor: url("#{$cursor-path}Pointer.cur"), auto !important; // 去掉热点
 }
 
+// 自定义鼠标光标
 
-// ==========================================
 // 站点头像 Emoji 样式
-// ==========================================
 
 .site-avatar .emoji {
     width: 30px !important;
@@ -113,7 +109,10 @@ input, textarea, pre, code, [contenteditable="true"] {
     --sidebar-avatar-size: 40px !important;
 }
 
+// 站点头像 Emoji 样式
+
 // aplayer播放器
+
 html #aplayer {
     position: fixed !important;
     bottom: 20px !important;
@@ -355,10 +354,9 @@ html #aplayer .aplayer-volume-bar {
     background: rgba(255, 255, 255, 0.2) !important;
 }
 
+// aplayer播放器
 
-// ==========================================
 // 三栏布局配置
-// ==========================================
 
 $global-left: 1.1fr;
 $global-center: 3.8fr;
@@ -369,11 +367,6 @@ $gap-right: 0rem;
 
 $container-margin-left: 12rem;
 $container-margin-right: 3rem;
-
-
-// ==========================================
-// 三栏布局实现
-// ==========================================
 
 .container.main-container,
 .container.main-container.flex,
@@ -474,10 +467,9 @@ div[class*="col-span"]:nth-child(2) {
   }
 }
 
+// 三栏布局配置
 
-// ==========================================
 // 右侧目录样式
-// ==========================================
 
 .widget--toc {
     li {
@@ -509,10 +501,9 @@ div[class*="col-span"]:nth-child(2) {
     }
 }
 
+// 右侧目录样式
 
-// ==========================================
-// Archives 归档页面
-// ==========================================
+// 归档页面
 
 body.template-archives,
 body.page-archives,
@@ -546,24 +537,23 @@ body[class*="archives"] {
         border-radius: 12px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         overflow: hidden !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
         margin: 0 !important;
         padding: 0 !important;
         
         &:hover {
-            transform: translateY(-4px) !important;
+            transform: translateY(-3px) !important;
             background: rgba(255, 255, 255, 0.12) !important;
             border-color: rgba(255, 255, 255, 0.2) !important;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
             
             .article-title {
                 color: var(--accent-color) !important;
-                transition: color 0.2s ease !important;
+                transition: color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
             }
             
             .article-image img {
-                transform: scale(1.1) !important;
-                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                transform: scale(1.05) !important;
+                transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
             }
         }
     }
@@ -600,7 +590,7 @@ body[class*="archives"] {
         -webkit-box-orient: vertical !important;
         overflow: hidden !important;
         word-break: break-word !important;
-        transition: color 0.2s ease !important;
+        transition: color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
         width: 100% !important;                 
     }
 
@@ -634,6 +624,8 @@ body[class*="archives"] {
         object-fit: cover !important;
         min-width: 120px !important;
         min-height: 120px !important;
-        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
     }
 }
+
+// 归档页面

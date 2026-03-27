@@ -9,12 +9,11 @@
 {{- end -}}
 
 <!-- ==========================================
-     🚀 swup.js 完全还原你之前能生效的版本
+     🚀 swup.js 配置
      ========================================== -->
 <script src="/lib/Swup.umd.js"></script>
 
 <script>
-  // 🔥 新增1：全局标记 + 提前拦截链接点击
   let swupReady = false;
   document.addEventListener('click', function(e) {
     if (swupReady) return;
@@ -30,7 +29,6 @@
     }
   }, true);
 
-  // 🔥 新增2：全局swup变量
   let swup;
 
   window.addEventListener('load', function() {
@@ -38,57 +36,125 @@
 
     console.log('🚀 [Swup] 启动...');
 
-    // 完全还原你之前能生效的暴力配置
-    swup = new Swup({ // 🔥 修改：const 改 let
+    swup = new Swup({
       containers: ['body'],
       animationDuration: 0
     });
 
-    // 🔥 新增3：标记swup已准备好
     swupReady = true;
 
     swup.hooks.on('link:click', (visit) => {
       console.log('🔗 [Swup] 点击链接:', visit.to.url);
-      // 🔥 去掉保存播放器状态的代码
     });
 
     swup.hooks.on('page:view', () => {
       console.log('✅ [Swup] 无刷新切换成功');
       
-      // 🔥 关键：去掉手动触发 DOMContentLoaded 的代码！这是导致播放器重置的元凶！
       window.dispatchEvent(new Event('scroll'));
       window.dispatchEvent(new Event('resize'));
       window.dispatchEvent(new Event('load'));
-
-      // 🔥 保留：完全不滚动的目录高亮方案
-      setTimeout(() => {
-        const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
-        if (headings.length === 0) return;
-
-        const viewportTop = window.scrollY;
-        let currentHeading = null;
-        for (const heading of headings) {
-          const headingTop = heading.offsetTop;
-          if (headingTop >= viewportTop - 100 && headingTop <= viewportTop + window.innerHeight / 2) {
-            currentHeading = heading;
-            break;
-          }
-        }
-
-        if (!currentHeading) currentHeading = headings[0];
-
-        if (currentHeading) {
-          const tocLink = document.querySelector(`#TableOfContents.toc-nav a[href="#${currentHeading.id}"]`);
-          if (tocLink) {
-            document.querySelectorAll('#TableOfContents.toc-nav li').forEach(li => {
-              li.classList.remove('active', 'current', 'toc-active');
-            });
-            tocLink.parentElement.classList.add('active', 'current', 'toc-active');
-          }
-        }
-      }, 150);
     });
 
     console.log('✅ [Swup] 初始化完成');
   });
+
+
+
+
+
+// 原生JS版曲速引擎，完全仿照原版效果，不用任何外部文件
+(function() {
+  if (window.__warpBg) return;
+
+  // 创建canvas
+  const canvas = document.createElement('canvas');
+  canvas.id = 'warp-canvas';
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;';
+  document.documentElement.insertBefore(canvas, document.body);
+  
+  const ctx = canvas.getContext('2d');
+  let width, height;
+  let particles = [];
+  const particleCount = 512; // 和原版一样的粒子数
+
+  class Particle {
+    constructor() {
+      // 初始位置，中心附近
+      this.x = Math.random() * width - width/2;
+      this.y = Math.random() * height - height/2;
+      this.z = Math.random() * width;
+      this.pz = this.z;
+    }
+    update(speed) {
+      this.z -= speed;
+      // 碰到前面就重置
+      if(this.z < 1) {
+        this.z = width;
+        this.x = Math.random() * width - width/2;
+        this.y = Math.random() * height - height/2;
+        this.pz = this.z;
+      }
+    }
+    draw() {
+      // 计算投影，和原版一模一样
+      const sx = this.x / this.z * width + width/2;
+      const sy = this.y / this.z * height + height/2;
+      const px = this.x / this.pz * width + width/2;
+      const py = this.y / this.pz * height + height/2;
+      
+      // 画线，和原版的线一模一样
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(sx, sy);
+      // 透明度，越远越暗
+      ctx.strokeStyle = `rgba(100, 150, 255, ${1 - this.z/width})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      this.pz = this.z;
+    }
+  }
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+
+  function animate() {
+    // 半透明清空，做拖影，和原版一模一样
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(0,0,width,height);
+    
+    for(let i=0;i<particles.length;i++) {
+      particles[i].update(0.5); // 速度和原版一样
+      particles[i].draw();
+    }
+    
+    requestAnimationFrame(animate);
+  }
+
+  function init() {
+    resize();
+    particles = [];
+    for(let i=0;i<particleCount;i++) {
+      particles.push(new Particle());
+    }
+    animate();
+    window.__warpBg = true;
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+})();
+
+
+
+
+
+
+
+
+
+
+
 </script>
