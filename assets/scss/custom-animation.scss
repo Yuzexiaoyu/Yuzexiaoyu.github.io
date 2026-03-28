@@ -20,8 +20,9 @@ svg.icon.icon-tabler-brand-github:hover {
 
 // 跳转社交媒体图标
 
-//左侧边栏动画效果
 
+
+//左侧边栏动画效果
 $cursor-path: "/cursor/";
 $link-hotspot: 3 0;
 $bg-box-height: 45px;
@@ -30,8 +31,8 @@ $bg-box-y-offset: 0px;
 $bg-box-x-offset: -20px;
 $bg-box-radius: 11px;
 $cursor-style: url("#{$cursor-path}Link.cur") $link-hotspot, pointer;
-$transition-duration: 0.3s;
-$transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+$transition-duration: 0.15s;
+$transition-timing: cubic-bezier(0.2, 0, 0.2, 1);
 
 ol#main-menu.menu {
   border-radius: 8px;
@@ -45,8 +46,11 @@ ol#main-menu.menu {
 ol#main-menu.menu > li {
   position: relative;
   border-radius: 8px;
-  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  transform: translateY(0);
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  
   background: transparent;
   padding: 2px;
   box-sizing: border-box;
@@ -56,12 +60,6 @@ ol#main-menu.menu > li {
   margin: 2px 0;
   pointer-events: none;
   cursor: $cursor-style !important;
-  
-  @media (hover: hover) {
-    &:hover {
-      transform: translateY(-2px);
-    }
-  }
 }
 
 ol#main-menu.menu > li::before {
@@ -106,6 +104,7 @@ ol#main-menu.menu > li > a {
   pointer-events: auto;
   cursor: $cursor-style !important;
   transition: color $transition-duration $transition-timing;
+  font-weight: 600;
   
   &::after {
     content: "";
@@ -128,8 +127,8 @@ ol#main-menu.menu > li > a {
 }
 
 ol#main-menu.menu > li:hover::before {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.06);
+  background: transparent !important;
+  border-color: transparent !important;
   opacity: 1;
   cursor: $cursor-style !important;
 }
@@ -140,13 +139,6 @@ ol#main-menu.menu > li:hover::after {
   opacity: 1;
 }
 
-@media (hover: hover) {
-  ol#main-menu.menu > li:hover {
-    transform: translateY(-2px);
-    cursor: $cursor-style !important;
-  }
-}
-
 ol#main-menu.menu > li.current::after,
 ol#main-menu.menu > li.active::after {
   background: rgba(255, 255, 255, 0.4) !important;
@@ -155,9 +147,11 @@ ol#main-menu.menu > li.active::after {
 }
 
 ol#main-menu.menu > li.current::before,
-ol#main-menu.menu > li.active::before {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+ol#main-menu.menu > li.active::before,
+ol#main-menu.menu > li[class*="current"]::before,
+ol#main-menu.menu > li[class*="active"]::before {
+  background: transparent !important;
+  border-color: transparent !important;
   opacity: 1 !important;
   cursor: $cursor-style !important;
 }
@@ -170,15 +164,15 @@ ol#main-menu.menu > li.active:hover::after {
 
 ol#main-menu.menu > li.current:hover::before,
 ol#main-menu.menu > li.active:hover::before {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: transparent !important;
+  border-color: transparent !important;
   cursor: $cursor-style !important;
 }
 
 ol#main-menu.menu > li.current > a,
 ol#main-menu.menu > li.active > a {
   color: rgba(255, 255, 255, 0.95) !important;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 ol#main-menu.menu > li[class*="current"]::after,
@@ -186,14 +180,6 @@ ol#main-menu.menu > li[class*="active"]::after {
   background: rgba(255, 255, 255, 0.4) !important;
   height: 20px !important;
   opacity: 1 !important;
-}
-
-ol#main-menu.menu > li[class*="current"]::before,
-ol#main-menu.menu > li[class*="active"]::before {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  opacity: 1 !important;
-  cursor: $cursor-style !important;
 }
 
 ol#main-menu.menu > li.menu-bottom-section {
@@ -217,12 +203,6 @@ ol#main-menu.menu > li.menu-bottom-section {
     content: none !important;
   }
 
-  &:hover {
-    transform: translateY(0) !important;
-    background: transparent !important;
-    cursor: default !important;
-  }
-
   > * {
     background: transparent !important;
     cursor: default !important;
@@ -230,6 +210,29 @@ ol#main-menu.menu > li.menu-bottom-section {
       background: transparent !important;
       cursor: default !important;
     }
+  }
+}
+
+ol#main-menu.menu > li {
+  opacity: 0;
+  transform: translateX(-15px) translateZ(0);
+  animation: menuSlideIn 0.25s $transition-timing forwards;
+  
+  @for $i from 1 through 10 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.03}s;
+    }
+  }
+}
+
+@keyframes menuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-15px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateZ(0);
   }
 }
 //左侧边栏动画效果

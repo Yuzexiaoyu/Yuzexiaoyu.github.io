@@ -537,7 +537,7 @@ body[class*="archives"] {
         border-radius: 12px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         overflow: hidden !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
         margin: 0 !important;
         padding: 0 !important;
         
@@ -548,12 +548,12 @@ body[class*="archives"] {
             
             .article-title {
                 color: var(--accent-color) !important;
-                transition: color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+                transition: color 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
             }
             
             .article-image img {
                 transform: scale(1.05) !important;
-                transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+                transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
             }
         }
     }
@@ -590,7 +590,7 @@ body[class*="archives"] {
         -webkit-box-orient: vertical !important;
         overflow: hidden !important;
         word-break: break-word !important;
-        transition: color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        transition: color 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
         width: 100% !important;                 
     }
 
@@ -624,8 +624,24 @@ body[class*="archives"] {
         object-fit: cover !important;
         min-width: 120px !important;
         min-height: 120px !important;
-        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
     }
 }
 
 // 归档页面
+
+
+
+
+
+
+//副标题字体
+
+h2.site-description {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  margin-top: 0.1rem !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+//副标题字体
