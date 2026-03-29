@@ -71,6 +71,9 @@ function cleanupGiscus() {
 }
 
 function loadGiscus() {
+  var noComments = document.body.classList.contains('no-comments');
+  if (noComments) return;
+
   var existingScript = document.querySelector('script[src*="giscus.app"]');
   if (existingScript) return;
   var isHomePage = window.location.pathname === '/' || window.location.pathname === '/index.html' || document.body.classList.contains('home-page');
