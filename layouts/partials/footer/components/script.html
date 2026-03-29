@@ -9,6 +9,7 @@
 {{- end -}}
 
 <script src="/lib/Swup.umd.js"></script>
+<script src="/lib/index.umd.js"></script>
 
 <script type="text/javascript">
 var swupReady = false;
@@ -33,7 +34,10 @@ window.addEventListener('load', function() {
 
   swup = new Swup({
     containers: ['body'],
-    animationDuration: 0
+    animationDuration: 0,
+    plugins: [
+      new SwupPreloadPlugin()
+    ]
   });
 
   swupReady = true;
@@ -101,7 +105,7 @@ function loadGiscus() {
   script.setAttribute('data-input-position', "top");
   script.setAttribute('data-theme', "noborder_dark");
   script.setAttribute('data-lang', "zh-CN");
-  script.setAttribute('crossorigin', 'anonymous');
+  script.setAttribute('crossorigin', "anonymous");
   script.async = true;
   commentsContainer.appendChild(script);
 }
