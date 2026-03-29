@@ -8,9 +8,6 @@
     <script type="text/javascript" src="{{ $customScript.RelPermalink }}" defer></script>
 {{- end -}}
 
-<!-- ==========================================
-     🚀 swup.js 配置
-     ========================================== -->
 <script src="/lib/Swup.umd.js"></script>
 
 <script>
@@ -34,8 +31,6 @@
   window.addEventListener('load', function() {
     if (typeof Swup === 'undefined') return;
 
-    console.log('🚀 [Swup] 启动...');
-
     swup = new Swup({
       containers: ['body'],
       animationDuration: 0
@@ -43,106 +38,188 @@
 
     swupReady = true;
 
-    swup.hooks.on('link:click', (visit) => {
-      console.log('🔗 [Swup] 点击链接:', visit.to.url);
+    // 🔥 加载开始时添加 loading 类（显示 Busy.ani）
+    swup.hooks.on('visit:start', () => {
+      document.body.classList.add('loading');
+    });
+    
+    // 🔥 加载结束时移除 loading 类（恢复 Pointer.cur）
+    swup.hooks.on('visit:end', () => {
+      document.body.classList.remove('loading');
     });
 
     swup.hooks.on('page:view', () => {
-      console.log('✅ [Swup] 无刷新切换成功');
+      cleanupGiscus();
       
       window.dispatchEvent(new Event('scroll'));
       window.dispatchEvent(new Event('resize'));
       window.dispatchEvent(new Event('load'));
+      
+      setTimeout(() => {
+        loadGiscus();
+      }, 300);
     });
-
-    console.log('✅ [Swup] 初始化完成');
+    
+    setTimeout(() => {
+      loadGiscus();
+    }, 300);
   });
 
-
-
-
-// 动态背景
-(function() {
-  if (window.__warpBg) return;
-
-  const canvas = document.createElement('canvas');
-  canvas.id = 'warp-canvas';
-  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;';
-  document.documentElement.insertBefore(canvas, document.body);
-  
-  const ctx = canvas.getContext('2d');
-  let width, height;
-  let particles = [];
-  const particleCount = 600;
-
-  class Particle {
-    constructor() {
-      this.x = Math.random() * width - width/2;
-      this.y = Math.random() * height - height/2;
-      this.z = Math.random() * width * 1.5;
-      this.pz = this.z;
+  function cleanupGiscus() {
+    const existingScript = document.querySelector('script[src*="giscus.app"]');
+    if (existingScript) {
+      existingScript.remove();
     }
-    update(speed) {
-      this.z -= speed;
-      if(this.z < 1) {
-        this.z = width * 1.5;
+    
+    const existingIframe = document.querySelector('iframe.giscus-frame');
+    if (existingIframe) {
+      existingIframe.remove();
+    }
+    
+    const existingContainer = document.querySelector('.comments');
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+  }
+
+  function loadGiscus() {
+    const existingScript = document.querySelector('script[src*="giscus.app"]');
+    if (existingScript) {
+      return;
+    }
+    
+    const isHomePage = 
+      window.location.pathname === '/' ||
+      window.location.pathname === '/index.html' ||
+      document.body.classList.contains('home-page');
+    
+    if (isHomePage) {
+      return;
+    }
+    
+    const isArticlePage = 
+      document.body.classList.contains('article-page') ||
+      document.body.classList.contains('post-page') ||
+      document.querySelector('article.single') ||
+      document.querySelector('.article-content');
+    
+    if (!isArticlePage) {
+      return;
+    }
+    
+    const article = 
+      document.querySelector('article.single') ||
+      document.querySelector('article') ||
+      document.querySelector('.article') ||
+      document.querySelector('.main-article') ||
+      document.querySelector('.article-content');
+    
+    if (!article) {
+      return;
+    }
+    
+    const commentsContainer = document.createElement('div');
+    commentsContainer.className = 'comments';
+    commentsContainer.style.marginTop = '0';
+    commentsContainer.style.paddingTop = '0';
+    commentsContainer.style.borderTop = 'none';
+    
+    article.parentNode.insertBefore(commentsContainer, article.nextSibling);
+    
+    const script = document.createElement('script');
+    script.src = "https://giscus.app/client.js";
+    script.setAttribute('data-repo', "Yuzexiaoyu/Yuzexiaoyu.github.io");
+    script.setAttribute('data-repo-id', "R_kgDORU00mA");
+    script.setAttribute('data-category', "Announcements");
+    script.setAttribute('data-category-id', "DIC_kwDORU00mM4C4In1");
+    script.setAttribute('data-mapping', "pathname");
+    script.setAttribute('data-strict', "0");
+    script.setAttribute('data-reactions-enabled', "0");
+    script.setAttribute('data-emit-metadata', "0");
+    script.setAttribute('data-input-position', "top");
+    script.setAttribute('data-theme', "noborder_dark");
+    script.setAttribute('data-lang', "zh-CN");
+    script.setAttribute('crossorigin', 'anonymous');
+    script.async = true;
+    
+    commentsContainer.appendChild(script);
+  }
+
+  // 动态背景
+  (function() {
+    if (window.__warpBg) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.id = 'warp-canvas';
+    canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;';
+    document.documentElement.insertBefore(canvas, document.body);
+    
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let particles = [];
+    const particleCount = 600;  
+
+    class Particle {
+      constructor() {
         this.x = Math.random() * width - width/2;
         this.y = Math.random() * height - height/2;
+        this.z = Math.random() * width * 1.5;
+        this.pz = this.z;
+      }
+      update(speed) {
+        this.z -= speed;
+        if(this.z < 1) {
+          this.z = width * 1.5;
+          this.x = Math.random() * width - width/2;
+          this.y = Math.random() * height - height/2;
+          this.pz = this.z;
+        }
+      }
+      draw() {
+        const sx = this.x / this.z * width + width/2;
+        const sy = this.y / this.z * height + height/2;
+        const px = this.x / this.pz * width + width/2;
+        const py = this.y / this.pz * height + height/2;
+        
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(sx, sy);
+        ctx.strokeStyle = `rgba(100, 150, 255, ${1 - this.z/(width*1.5)})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        
         this.pz = this.z;
       }
     }
-    draw() {
-      const sx = this.x / this.z * width + width/2;
-      const sy = this.y / this.z * height + height/2;
-      const px = this.x / this.pz * width + width/2;
-      const py = this.y / this.pz * height + height/2;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    function animate() {
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillRect(0,0,width,height);
       
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(sx, sy);
-      ctx.strokeStyle = `rgba(100, 150, 255, ${1 - this.z/(width*1.5)})`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      for(let i=0;i<particles.length;i++) {
+        particles[i].update(0.8);
+        particles[i].draw();
+      }
       
-      this.pz = this.z;
+      requestAnimationFrame(animate);
     }
-  }
 
-  function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  }
-
-  function animate() {
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(0,0,width,height);
-    
-    for(let i=0;i<particles.length;i++) {
-      particles[i].update(0.8);
-      particles[i].draw();
+    function init() {
+      resize();
+      particles = [];
+      for(let i=0;i<particleCount;i++) {
+        particles.push(new Particle());
+      }
+      animate();
+      window.__warpBg = true;
     }
-    
-    requestAnimationFrame(animate);
-  }
 
-  function init() {
-    resize();
-    particles = [];
-    for(let i=0;i<particleCount;i++) {
-      particles.push(new Particle());
-    }
-    animate();
-    window.__warpBg = true;
-  }
-
-  window.addEventListener('resize', resize);
-  init();
-})();
-
-
-
-
-
-
-
+    window.addEventListener('resize', resize);
+    init();
+  })();
 </script>

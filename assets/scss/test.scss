@@ -1,16 +1,338 @@
-html {
-  background: #000 !important;
+// ==========================================
+// 🎨 主页文章列表（外框和图片缩小 - 文字不变）
+// ==========================================
+
+// 文章列表容器
+section.article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;  // 🔥 从 3rem 减小到 2rem
+  padding: 2rem 0;  // 🔥 从 2.5rem 减小到 2rem
 }
-.aplayer,
-.aplayer-body,
-.aplayer-info,
-.aplayer-lrc,
-.aplayer-list {
-  background: inherit !important;
+
+// 文章卡片
+section.article-list > article {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: articleReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 50%, #1a1a1a 100%);
+  border-radius: 20px;  // 🔥 从 24px 减小到 20px
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+  
+  @for $i from 1 through 10 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.08}s;
+    }
+  }
+  
+  // 卡片边缘光效果 - 全白边框
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;  // 🔥 从 24px 减小到 20px
+    padding: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 1;
+    transition: background 0.3s ease;
+  }
+  
+  // 内光晕效果
+  &::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.03) 0%,
+      transparent 60%
+    );
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  
+  &:hover {
+    transform: translateY(-4px) scale(1.005);
+    
+    // 卡片边框悬停变纯白
+    &::before {
+      background: rgba(255, 255, 255, 0.8);
+    }
+    
+    &::after {
+      opacity: 1;
+      transform: scale(1);
+    }
+    
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.25);
+  }
 }
-body, .main-container, #swup, #main-content {
-  background: transparent !important;
+
+@keyframes articleReveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
-.card, .widget-card, .post-card, .article-card {
-  background: var(--card-background, rgba(255, 255, 255, 0.05)) !important;
+
+// 文章内部布局
+section.article-list > article .article-header {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 2rem;
+  padding: 0;
+  height: 260px;  // 🔥 从 320px 减小到 260px
+  position: relative;
+}
+
+// 图片区域
+section.article-list > article .article-image {
+  flex-shrink: 0;
+  width: 340px;  // 🔥 从 420px 减小到 340px
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px 0 0 20px;  // 🔥 从 24px 减小到 20px
+  cursor: pointer;
+  
+  // 图片白色边框
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px 0 0 20px;  // 🔥 从 24px 减小到 20px
+    padding: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 20;
+    transition: background 0.3s ease;
+  }
+  
+  a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 10;
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                filter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    filter: brightness(0.85) contrast(1.05);
+  }
+  
+  // 图片遮罩渐变
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.3) 50%,
+      transparent 100%
+    );
+    z-index: 5;
+    pointer-events: none;
+  }
+}
+
+section.article-list > article:hover .article-image img {
+  transform: scale(1.1);
+  filter: brightness(1) contrast(1.1);
+}
+
+// 当 article 悬停时图片边框变白
+section.article-list > article:hover .article-image::before {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+// 文章详情区域
+section.article-list > article .article-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem 2.5rem;  // 🔥 从 3rem 3.5rem 减小到 2rem 2.5rem
+  gap: 1.25rem;  // 🔥 从 1.5rem 减小到 1.25rem
+  position: relative;
+  background: transparent;
+}
+
+// 文章序号
+section.article-list > article .article-index {
+  position: absolute;
+  top: 1.5rem;  // 🔥 从 2rem 减小到 1.5rem
+  right: 2rem;  // 🔥 从 2.5rem 减小到 2rem
+  font-size: 0.75rem;  // ✅ 保持不变
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 1px;
+}
+
+// 文章标签
+section.article-list > article .article-tags {
+  display: flex;
+  gap: 0.6rem;  // ✅ 保持不变
+  flex-wrap: wrap;
+  
+  span {
+    font-size: 0.7rem;  // ✅ 保持不变
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 5px 12px;  // ✅ 保持不变
+    border-radius: 6px;  // ✅ 保持不变
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+// 标题包装器
+section.article-list > article .article-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;  // ✅ 保持不变
+}
+
+// 文章标题
+section.article-list > article .article-title {
+  font-size: 3rem;  // ✅ 保持不变
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: -1px;
+  
+  a {
+    color: #ffffff;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    display: inline;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.65) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    
+    &:hover {
+      -webkit-text-fill-color: #ffffff;
+    }
+  }
+}
+
+// 文章副标题
+section.article-list > article .article-subtitle {
+  font-size: 1.45rem;  // ✅ 保持不变
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.7;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 95%;
+  font-weight: 500;
+}
+
+// 文章底部信息区
+section.article-list > article .article-footer {
+  display: flex;
+  align-items: center;
+  gap: 2rem;  // ✅ 保持不变
+  margin-top: 1.5rem;  // ✅ 保持不变
+  padding-top: 2rem;  // ✅ 保持不变
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+// 文章时间
+section.article-list > article .article-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;  // ✅ 保持不变
+  font-size: 0.95rem;  // ✅ 保持不变
+  color: rgba(255, 255, 255, 1);
+  
+  svg {
+    width: 20px;  // ✅ 保持不变
+    height: 20px;
+    opacity: 0.4;
+  }
+}
+
+// 阅读更多指示器
+section.article-list > article .article-read-more {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;  // ✅ 保持不变
+  font-size: 0.85rem;  // ✅ 保持不变
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  padding: 8px 16px;  // ✅ 保持不变
+  border-radius: 8px;  // ✅ 保持不变
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  
+  svg {
+    width: 18px;  // ✅ 保持不变
+    height: 18px;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  &:hover {
+    color: rgba(255, 255, 255, 1);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    
+    svg {
+      transform: translateX(6px);
+    }
+  }
 }

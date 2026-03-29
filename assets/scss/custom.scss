@@ -503,7 +503,8 @@ div[class*="col-span"]:nth-child(2) {
 
 // 右侧目录样式
 
-// 归档页面
+
+//  归档页面
 
 body.template-archives,
 body.page-archives,
@@ -532,12 +533,22 @@ body[class*="archives"] {
     }
 
     .article-list--compact article {
+        opacity: 0;  // ❌ 移除 !important
+        transform: translateY(30px);  // ❌ 移除 !important
+        animation: articleReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;  // ❌ 移除 !important
+        
+        @for $i from 1 through 20 {
+            &:nth-child(#{$i}) {
+                animation-delay: #{$i * 0.06}s !important;
+            }
+        }
+        
         background: rgba(255, 255, 255, 0.08) !important;
         backdrop-filter: blur(10px) !important;
         border-radius: 12px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         overflow: hidden !important;
-        transition: all 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
         margin: 0 !important;
         padding: 0 !important;
         
@@ -548,12 +559,12 @@ body[class*="archives"] {
             
             .article-title {
                 color: var(--accent-color) !important;
-                transition: color 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+                transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
             
             .article-image img {
                 transform: scale(1.05) !important;
-                transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
         }
     }
@@ -590,7 +601,7 @@ body[class*="archives"] {
         -webkit-box-orient: vertical !important;
         overflow: hidden !important;
         word-break: break-word !important;
-        transition: color 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
         width: 100% !important;                 
     }
 
@@ -624,13 +635,22 @@ body[class*="archives"] {
         object-fit: cover !important;
         min-width: 120px !important;
         min-height: 120px !important;
-        transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 }
 
-// 归档页面
+@keyframes articleReveal {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-
+//归档界面
 
 
 
@@ -645,3 +665,4 @@ h2.site-description {
 }
 
 //副标题字体
+
