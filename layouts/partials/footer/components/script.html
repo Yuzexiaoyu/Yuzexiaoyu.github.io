@@ -30,6 +30,8 @@ document.addEventListener('click', function(e) {
 var swup;
 
 window.addEventListener('load', function() {
+  document.body.classList.add('loaded');
+  
   if (typeof Swup === 'undefined') return;
 
   swup = new Swup({
@@ -43,12 +45,16 @@ window.addEventListener('load', function() {
   swupReady = true;
 
   swup.hooks.on('visit:start', function() {
+    document.body.classList.remove('loaded');
+    
     if (typeof window.setWarpSpeed === 'function') {
       window.setWarpSpeed(40);
     }
   });
   
   swup.hooks.on('visit:end', function() {
+    document.body.classList.add('loaded');
+    
     if (typeof window.setWarpSpeedSlow === 'function') {
       window.setWarpSpeedSlow();
     }
@@ -187,23 +193,13 @@ function loadGiscus() {
     warpTimer = setTimeout(function() {
       var slowInterval = setInterval(function() {
         if (currentSpeed > normalSpeed) {
-          /* 🔥 分段减速：高速段快，低速段慢 */
-          if (currentSpeed > 15) {
-            /* 高速段：每次减 5，快速降下来 */
-            currentSpeed -= 5;
-          } else if (currentSpeed > 8) {
-            /* 中速段：每次减 2 */
-            currentSpeed -= 2;
-          } else {
-            /* 低速段：每次减 1，慢慢接近正常速度 */
-            currentSpeed -= 1;
-          }
+          currentSpeed -= 1;
           if (currentSpeed <= normalSpeed) {
             currentSpeed = normalSpeed;
             clearInterval(slowInterval);
           }
         }
-      }, 80);
+      }, 30);
     }, 100);
   };
 

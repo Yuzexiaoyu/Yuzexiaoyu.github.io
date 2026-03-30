@@ -8,7 +8,7 @@
 </div>
 
 <style>
-/* 加载动画容器 */
+/* ========== 加载动画 ========== */
 .loading {
   position: fixed;
   display: flex;
@@ -28,7 +28,6 @@
   visibility: hidden;
 }
 
-/* 加载动画居中 */
 .loader {
   position: relative;
   display: flex;
@@ -36,7 +35,6 @@
   align-items: center;
 }
 
-/* From Uiverse.io by andrew-demchenk0 */ 
 .glitch {
   position: relative;
   font-size: 45px;
@@ -72,63 +70,168 @@
 }
 
 @keyframes glitch {
-  0% {
-    transform: translate(0);
-  }
-
-  20% {
-    transform: translate(-3px, 3px);
-  }
-
-  40% {
-    transform: translate(-3px, -3px);
-  }
-
-  60% {
-    transform: translate(3px, 3px);
-  }
-
-  80% {
-    transform: translate(3px, -3px);
-  }
-
-  to {
-    transform: translate(0);
-  }
+  0% { transform: translate(0); }
+  20% { transform: translate(-3px, 3px); }
+  40% { transform: translate(-3px, -3px); }
+  60% { transform: translate(3px, 3px); }
+  80% { transform: translate(3px, -3px); }
+  to { transform: translate(0); }
 }
 
 @keyframes shift {
-  0%, 40%, 44%, 58%, 61%, 65%, 69%, 73%, 100% {
-    transform: skewX(0deg);
-  }
+  0%, 40%, 44%, 58%, 61%, 65%, 69%, 73%, 100% { transform: skewX(0deg); }
+  41% { transform: skewX(10deg); }
+  42% { transform: skewX(-10deg); }
+  59% { transform: skewX(40deg) skewY(10deg); }
+  60% { transform: skewX(-40deg) skewY(-10deg); }
+  63% { transform: skewX(10deg) skewY(-5deg); }
+  70% { transform: skewX(-50deg) skewY(-20deg); }
+  71% { transform: skewX(10deg) skewY(-10deg); }
+}
 
-  41% {
-    transform: skewX(10deg);
-  }
+/* ========== 文章渐入动画（标题和图片不参与） ========== */
 
-  42% {
-    transform: skewX(-10deg);
-  }
+:root {
+  --fade-duration: 0.25s;
+}
 
-  59% {
-    transform: skewX(40deg) skewY(10deg);
-  }
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
 
-  60% {
-    transform: skewX(-40deg) skewY(-10deg);
-  }
+/* 🔥 标题 - 不参与动画，立即显示 */
+body.article-page article.main-article h1,
+body.article-page article.main-article h2,
+body.article-page article.main-article h3,
+body.post-page article.main-article h1,
+body.post-page article.main-article h2,
+body.post-page article.main-article h3 {
+  opacity: 1;
+}
 
-  63% {
-    transform: skewX(10deg) skewY(-5deg);
-  }
+/* 🔥 图片 - 不参与动画，立即显示 */
+body.article-page article.main-article img,
+body.post-page article.main-article img {
+  opacity: 1;
+}
 
-  70% {
-    transform: skewX(-50deg) skewY(-20deg);
-  }
+/* 🔥 元信息 - 0ms */
+body.article-page article.main-article .post-meta,
+body.article-page article.main-article .date,
+body.article-page article.main-article .tags,
+body.post-page article.main-article .post-meta,
+body.post-page article.main-article .date,
+body.post-page article.main-article .tags {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0s forwards;
+  animation-play-state: paused;
+}
 
-  71% {
-    transform: skewX(10deg) skewY(-10deg);
-  }
+body.loaded.article-page article.main-article .post-meta,
+body.loaded.article-page article.main-article .date,
+body.loaded.article-page article.main-article .tags,
+body.loaded.post-page article.main-article .post-meta,
+body.loaded.post-page article.main-article .date,
+body.loaded.post-page article.main-article .tags {
+  animation-play-state: running;
+}
+
+/* 🔥 段落 - 20ms */
+body.article-page article.main-article p,
+body.post-page article.main-article p {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0.02s forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article p,
+body.loaded.post-page article.main-article p {
+  animation-play-state: running;
+}
+
+/* 🔥 列表 - 40ms */
+body.article-page article.main-article ul,
+body.article-page article.main-article ol,
+body.article-page article.main-article li,
+body.post-page article.main-article ul,
+body.post-page article.main-article ol,
+body.post-page article.main-article li {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0.04s forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article ul,
+body.loaded.article-page article.main-article ol,
+body.loaded.article-page article.main-article li,
+body.loaded.post-page article.main-article ul,
+body.loaded.post-page article.main-article ol,
+body.loaded.post-page article.main-article li {
+  animation-play-state: running;
+}
+
+/* 🔥 代码块 - 60ms */
+body.article-page article.main-article pre,
+body.article-page article.main-article code,
+body.post-page article.main-article pre,
+body.post-page article.main-article code {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0.06s forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article pre,
+body.loaded.article-page article.main-article code,
+body.loaded.post-page article.main-article pre,
+body.loaded.post-page article.main-article code {
+  animation-play-state: running;
+}
+
+/* 🔥 引用块 - 80ms */
+body.article-page article.main-article blockquote,
+body.post-page article.main-article blockquote {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0.08s forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article blockquote,
+body.loaded.post-page article.main-article blockquote {
+  animation-play-state: running;
+}
+
+/* 🔥 分割线 - 100ms */
+body.article-page article.main-article hr,
+body.post-page article.main-article hr {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0.1s forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article hr,
+body.loaded.post-page article.main-article hr {
+  animation-play-state: running;
+}
+
+/* 🔥 表格 - 120ms */
+body.article-page article.main-article table,
+body.post-page article.main-article table {
+  opacity: 0;
+  animation: fadeIn var(--fade-duration) ease-out 0.12s forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article table,
+body.loaded.post-page article.main-article table {
+  animation-play-state: running;
+}
+
+/* 🔥 文章容器 - 立即显示 */
+body.article-page article.main-article,
+body.post-page article.main-article,
+body.single-page article.main-article {
+  opacity: 1;
 }
 </style>
 
