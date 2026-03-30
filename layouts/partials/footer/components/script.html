@@ -11,7 +11,7 @@
 <script src="/lib/Swup.umd.js"></script>
 <script src="/lib/index.umd.js"></script>
 
-<script type="text/javascript">
+{{- $js := `
 var swupReady = false;
 document.addEventListener('click', function(e) {
   if (swupReady) return;
@@ -55,6 +55,12 @@ window.addEventListener('load', function() {
   });
 
   swup.hooks.on('page:view', function() {
+    var pageLoader = document.getElementById('page-loader');
+    if (pageLoader) {
+      pageLoader.style.display = 'none';
+      pageLoader.classList.add('hidden');
+    }
+    
     cleanupGiscus();
     window.dispatchEvent(new Event('scroll'));
     window.dispatchEvent(new Event('resize'));
@@ -181,13 +187,23 @@ function loadGiscus() {
     warpTimer = setTimeout(function() {
       var slowInterval = setInterval(function() {
         if (currentSpeed > normalSpeed) {
-          currentSpeed -= 2;
+          /* 🔥 分段减速：高速段快，低速段慢 */
+          if (currentSpeed > 15) {
+            /* 高速段：每次减 5，快速降下来 */
+            currentSpeed -= 5;
+          } else if (currentSpeed > 8) {
+            /* 中速段：每次减 2 */
+            currentSpeed -= 2;
+          } else {
+            /* 低速段：每次减 1，慢慢接近正常速度 */
+            currentSpeed -= 1;
+          }
           if (currentSpeed <= normalSpeed) {
             currentSpeed = normalSpeed;
             clearInterval(slowInterval);
           }
         }
-      }, 45);
+      }, 80);
     }, 100);
   };
 
@@ -204,4 +220,8 @@ function loadGiscus() {
   window.addEventListener('resize', resize);
   init();
 })();
+` -}}
+
+<script type="text/javascript">
+{{ $js | safeJS }}
 </script>
