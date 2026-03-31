@@ -39,6 +39,12 @@
                 <time class="article-time--published" datetime='{{ $Page.Date.Format "2006-01-02T15:04:05Z07:00" }}'>
                     {{- $Page.Date | time.Format $Page.Site.Params.dateFormat.published -}}
                 </time>
+                {{- if ne $Page.Lastmod $Page.Date -}}
+                <span class="article-lastmod-inline">
+                    {{ partial "helper/icon" "edit" }}
+                    {{- $Page.Lastmod | time.Format $Page.Site.Params.dateFormat.lastUpdated -}}
+                </span>
+                {{- end -}}
             </div>
         {{ end }}
 

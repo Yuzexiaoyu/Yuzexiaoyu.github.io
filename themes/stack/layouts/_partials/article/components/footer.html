@@ -8,12 +8,4 @@
     </section>
     {{ end }}
 
-    {{- if ne .Lastmod .Date -}}
-    <section class="article-lastmod">
-        {{ partial "helper/icon" "clock" }}
-        <span>
-            {{ T "article.lastUpdatedOn" }} {{ .Lastmod | time.Format .Site.Params.dateFormat.lastUpdated }}
-        </span>
-    </section>
-    {{- end -}}
 </footer>

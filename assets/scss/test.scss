@@ -6,8 +6,8 @@
 section.article-list {
   display: flex;
   flex-direction: column;
-  gap: 2rem;  // 🔥 从 3rem 减小到 2rem
-  padding: 2rem 0;  // 🔥 从 2.5rem 减小到 2rem
+  gap: 2rem;
+  padding: 2rem 0;
 }
 
 // 文章卡片
@@ -17,7 +17,7 @@ section.article-list > article {
   animation: articleReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   position: relative;
   background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 50%, #1a1a1a 100%);
-  border-radius: 20px;  // 🔥 从 24px 减小到 20px
+  border-radius: 20px;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
@@ -28,12 +28,11 @@ section.article-list > article {
     }
   }
   
-  // 卡片边缘光效果 - 全白边框
   &::before {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 20px;  // 🔥 从 24px 减小到 20px
+    border-radius: 20px;
     padding: 1px;
     background: rgba(255, 255, 255, 0.15);
     -webkit-mask: 
@@ -46,7 +45,6 @@ section.article-list > article {
     transition: background 0.3s ease;
   }
   
-  // 内光晕效果
   &::after {
     content: "";
     position: absolute;
@@ -68,7 +66,6 @@ section.article-list > article {
   &:hover {
     transform: translateY(-4px) scale(1.005);
     
-    // 卡片边框悬停变纯白
     &::before {
       background: rgba(255, 255, 255, 0.8);
     }
@@ -101,26 +98,25 @@ section.article-list > article .article-header {
   align-items: stretch;
   gap: 2rem;
   padding: 0;
-  height: 260px;  // 🔥 从 320px 减小到 260px
+  height: 260px;
   position: relative;
 }
 
 // 图片区域
 section.article-list > article .article-image {
   flex-shrink: 0;
-  width: 340px;  // 🔥 从 420px 减小到 340px
+  width: 340px;
   height: 100%;
   position: relative;
   overflow: hidden;
-  border-radius: 20px 0 0 20px;  // 🔥 从 24px 减小到 20px
+  border-radius: 20px 0 0 20px;
   cursor: pointer;
   
-  // 图片白色边框
   &::before {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 20px 0 0 20px;  // 🔥 从 24px 减小到 20px
+    border-radius: 20px 0 0 20px;
     padding: 1px;
     background: rgba(255, 255, 255, 0.15);
     -webkit-mask: 
@@ -150,7 +146,6 @@ section.article-list > article .article-image {
     filter: brightness(0.85) contrast(1.05);
   }
   
-  // 图片遮罩渐变
   &::after {
     content: "";
     position: absolute;
@@ -171,7 +166,6 @@ section.article-list > article:hover .article-image img {
   filter: brightness(1) contrast(1.1);
 }
 
-// 当 article 悬停时图片边框变白
 section.article-list > article:hover .article-image::before {
   background: rgba(255, 255, 255, 0.8);
 }
@@ -183,8 +177,8 @@ section.article-list > article .article-details {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 2rem 2.5rem;  // 🔥 从 3rem 3.5rem 减小到 2rem 2.5rem
-  gap: 1.25rem;  // 🔥 从 1.5rem 减小到 1.25rem
+  padding: 2rem 2.5rem;
+  gap: 1.25rem;
   position: relative;
   background: transparent;
 }
@@ -192,9 +186,9 @@ section.article-list > article .article-details {
 // 文章序号
 section.article-list > article .article-index {
   position: absolute;
-  top: 1.5rem;  // 🔥 从 2rem 减小到 1.5rem
-  right: 2rem;  // 🔥 从 2.5rem 减小到 2rem
-  font-size: 0.75rem;  // ✅ 保持不变
+  top: 1.5rem;
+  right: 2rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.2);
   letter-spacing: 1px;
@@ -203,18 +197,18 @@ section.article-list > article .article-index {
 // 文章标签
 section.article-list > article .article-tags {
   display: flex;
-  gap: 0.6rem;  // ✅ 保持不变
+  gap: 0.6rem;
   flex-wrap: wrap;
   
   span {
-    font-size: 0.7rem;  // ✅ 保持不变
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: rgba(255, 255, 255, 0.7);
     background: rgba(255, 255, 255, 0.08);
-    padding: 5px 12px;  // ✅ 保持不变
-    border-radius: 6px;  // ✅ 保持不变
+    padding: 5px 12px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
@@ -232,12 +226,12 @@ section.article-list > article .article-tags {
 section.article-list > article .article-title-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;  // ✅ 保持不变
+  gap: 0.85rem;
 }
 
 // 文章标题
 section.article-list > article .article-title {
-  font-size: 3rem;  // ✅ 保持不变
+  font-size: 3rem;
   font-weight: 800;
   line-height: 1.15;
   margin: 0;
@@ -265,7 +259,7 @@ section.article-list > article .article-title {
 
 // 文章副标题
 section.article-list > article .article-subtitle {
-  font-size: 1.45rem;  // ✅ 保持不变
+  font-size: 1.45rem;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.7;
   margin: 0;
@@ -281,9 +275,9 @@ section.article-list > article .article-subtitle {
 section.article-list > article .article-footer {
   display: flex;
   align-items: center;
-  gap: 2rem;  // ✅ 保持不变
-  margin-top: 1.5rem;  // ✅ 保持不变
-  padding-top: 2rem;  // ✅ 保持不变
+  gap: 2rem;
+  margin-top: 1.5rem;
+  padding-top: 2rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -291,14 +285,35 @@ section.article-list > article .article-footer {
 section.article-list > article .article-time {
   display: inline-flex;
   align-items: center;
-  gap: 10px;  // ✅ 保持不变
-  font-size: 0.95rem;  // ✅ 保持不变
+  gap: 10px;
+  font-size: 0.95rem;
   color: rgba(255, 255, 255, 1);
   
   svg {
-    width: 20px;  // ✅ 保持不变
+    width: 20px;
     height: 20px;
     opacity: 0.4;
+  }
+}
+
+// 🔥 上次更新时间（新增）
+section.article-list > article .article-lastmod {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.5);
+  
+  svg {
+    width: 20px;
+    height: 20px;
+    opacity: 0.4;
+  }
+  
+  &::before {
+    content: "·";
+    margin-right: 10px;
+    color: rgba(255, 255, 255, 0.3);
   }
 }
 
@@ -307,21 +322,21 @@ section.article-list > article .article-read-more {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 10px;  // ✅ 保持不变
-  font-size: 0.85rem;  // ✅ 保持不变
+  gap: 10px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
-  padding: 8px 16px;  // ✅ 保持不变
-  border-radius: 8px;  // ✅ 保持不变
+  padding: 8px 16px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.06);
   
   svg {
-    width: 18px;  // ✅ 保持不变
+    width: 18px;
     height: 18px;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -336,3 +351,4 @@ section.article-list > article .article-read-more {
     }
   }
 }
+
