@@ -29,8 +29,21 @@ document.addEventListener('click', function(e) {
 
 var swup;
 
+// 🔥 新增：加载动画计时器
+var loaderTimer = null;
+function hideLoader() {
+  var pageLoader = document.getElementById('page-loader');
+  if (pageLoader) {
+    pageLoader.style.display = 'none';
+    pageLoader.classList.add('hidden');
+  }
+}
+
 window.addEventListener('load', function() {
   document.body.classList.add('loaded');
+  
+  // 🔥 新增：1.5 秒后强制隐藏加载动画
+  loaderTimer = setTimeout(hideLoader, 1500);
   
   if (typeof Swup === 'undefined') return;
 
@@ -47,6 +60,9 @@ window.addEventListener('load', function() {
   swup.hooks.on('visit:start', function() {
     document.body.classList.remove('loaded');
     
+    // 🔥 新增：清除计时器
+    if (loaderTimer) clearTimeout(loaderTimer);
+    
     if (typeof window.setWarpSpeed === 'function') {
       window.setWarpSpeed(40);
     }
@@ -54,6 +70,9 @@ window.addEventListener('load', function() {
   
   swup.hooks.on('visit:end', function() {
     document.body.classList.add('loaded');
+    
+    // 🔥 新增：1.5 秒后强制隐藏加载动画
+    loaderTimer = setTimeout(hideLoader, 1500);
     
     if (typeof window.setWarpSpeedSlow === 'function') {
       window.setWarpSpeedSlow();
