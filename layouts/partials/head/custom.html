@@ -239,6 +239,7 @@ body.single-page article.main-article {
 (function() {
   var pageLoader = document.getElementById('page-loader');
   var minDisplayTime = 1500;  
+  var maxDisplayTime = 3000; // 新增：最长持续3秒
   var pageLoaded = false;
   var animationComplete = false;
   
@@ -254,6 +255,13 @@ body.single-page article.main-article {
       animationComplete = true;
       checkHideLoader();
     }, minDisplayTime);
+
+    // 新增：最长3秒后强制隐藏加载动画
+    setTimeout(function() {
+      pageLoaded = true;
+      animationComplete = true;
+      checkHideLoader();
+    }, maxDisplayTime);
     
     window.checkHideLoader = function() {
       if (pageLoaded && animationComplete) {
