@@ -237,48 +237,18 @@ body.single-page article.main-article {
 
 <script>
 (function() {
-  var pageLoader = document.getElementById('page-loader');
-  var minDisplayTime = 1500;  
-  var maxDisplayTime = 3000; // 新增：最长持续3秒
-  var pageLoaded = false;
-  var animationComplete = false;
-  
-  if (!window.__pageLoaderShown) {
-    window.__pageLoaderShown = true;
-    
-    window.addEventListener('load', function() {
-      pageLoaded = true;
-      checkHideLoader();
-    });
-    
-    setTimeout(function() {
-      animationComplete = true;
-      checkHideLoader();
-    }, minDisplayTime);
+  if (window.__pageLoaderShown) return;
+  window.__pageLoaderShown = true;
 
-    // 新增：最长3秒后强制隐藏加载动画
+  var el = document.getElementById('page-loader');
+  if (!el) return;
+
+  setTimeout(function() {
+    el.classList.add('hidden');
     setTimeout(function() {
-      pageLoaded = true;
-      animationComplete = true;
-      checkHideLoader();
-    }, maxDisplayTime);
-    
-    window.checkHideLoader = function() {
-      if (pageLoaded && animationComplete) {
-        hidePageLoader();
-      }
-    };
-    
-    window.hidePageLoader = function() {
-      if (pageLoader) {
-        pageLoader.classList.add('hidden');
-        setTimeout(function() {
-          pageLoader.style.display = 'none';
-        }, 300);
-      }
-    };
-  } else {
-    pageLoader.style.display = 'none';
-  }
+      el.style.display = 'none';
+      document.body.classList.add('loaded');
+    }, 300);
+  }, 3000);
 })();
 </script>
