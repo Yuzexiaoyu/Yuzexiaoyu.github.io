@@ -237,18 +237,35 @@ body.single-page article.main-article {
 
 <script>
 (function() {
-  if (window.__pageLoaderShown) return;
-  window.__pageLoaderShown = true;
-
-  var el = document.getElementById('page-loader');
-  if (!el) return;
-
-  setTimeout(function() {
-    el.classList.add('hidden');
+  var pageLoader = document.getElementById('page-loader');
+  var minDisplayTime = 1500;  
+  var animationComplete = false;
+  
+  if (!window.__pageLoaderShown) {
+    window.__pageLoaderShown = true;
+    
     setTimeout(function() {
-      el.style.display = 'none';
-      document.body.classList.add('loaded');
-    }, 300);
-  }, 3000);
+      animationComplete = true;
+      checkHideLoader();
+    }, minDisplayTime);
+    
+    window.checkHideLoader = function() {
+      if (animationComplete) {
+        hidePageLoader();
+      }
+    };
+    
+    window.hidePageLoader = function() {
+      if (pageLoader) {
+        pageLoader.classList.add('hidden');
+        setTimeout(function() {
+          pageLoader.style.display = 'none';
+          document.body.classList.add('loaded');
+        }, 300);
+      }
+    };
+  } else {
+    pageLoader.style.display = 'none';
+  }
 })();
 </script>
