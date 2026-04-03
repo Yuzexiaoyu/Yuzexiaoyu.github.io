@@ -14,14 +14,14 @@
             {{- if eq (printf "%T" $avatar) "string" -}}
                 <img src="{{ $avatar }}" 
                      class="site-logo"
-                     loading="lazy"
+                     loading="eager"
                      alt="Avatar">
             {{- else -}}
                 <img src="{{ $avatar.Permalink }}" 
                      width="{{ $avatar.Width }}"
                      height="{{ $avatar.Height }}"
                      class="site-logo"
-                     loading="lazy"
+                     loading="eager"
                      alt="Avatar">
             {{- end -}}
         </a>
