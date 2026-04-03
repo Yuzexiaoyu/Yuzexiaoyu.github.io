@@ -1,92 +1,99 @@
+<!-- 播放器容器 -->
+<div id="aplayer"></div>
+
 <!-- 加载 APlayer 脚本 -->
 <script src="/lib/aplayer/APlayer.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // 你的原始初始化代码，完全保留
-        const ap = new APlayer({
-            container: document.getElementById('aplayer'),
-            mini: false,
-            autoplay: false,
-            loop: 'all',
-            order: 'list',
-            preload: 'auto',
-            volume: 0.7,
-            mutex: true,
-            lrcType: 0,
-            audio: [
-                {
-                    name: 'กาลครั้งนึง',
-                    artist: '',
- 		    url: '/music/กาลครั้งนึง.mp3',
-                    cover: '/music/กาลครั้งนึง.png',
-                    theme: '#4FC3F7'
-                },
-                {
-                    name: 'So Cynical (Badum)',
-                    artist: '',
-                    url: '/music/So Cynical (Badum).mp3',
-                    cover: '/music/So Cynical (Badum).png',
-                    theme: '#4FC3F7'
-                }
-            ],
-        });
-
-        // 你的原始逻辑，完全保留
-        ap.list.audios.forEach((audio, index) => {
-            const pic = document.querySelectorAll('.aplayer-pic')[index];
-            if (pic && audio.cover) {
-                pic.style.backgroundImage = `url('${audio.cover}')`;
-            }
-        });
-        
-        const list = document.querySelector('.aplayer-list');
-        if (list) {
-            list.classList.remove('show');
-            list.classList.add('aplayer-list-hide');
-            list.style.overflowY = 'overlay';
-            list.style.overflowX = 'hidden';
+(function() {
+  if (window.aplayerInstance) return;
+  
+  function initPlayer() {
+    if (window.aplayerInstance) return;
+    
+    var ap = new APlayer({
+      container: document.getElementById('aplayer'),
+      mini: false,
+      autoplay: false,
+      loop: 'all',
+      order: 'list',
+      preload: 'metadata',
+      volume: 0.7,
+      mutex: true,
+      lrcType: 0,
+      audio: [
+        {
+          name: 'กาลครั้งนึง',
+          artist: '',
+          url: '/music/กาลครั้งนึง.mp3',
+          cover: '/music/กาลครั้งนึง.png',
+          theme: '#4FC3F7'
+        },
+        {
+          name: 'So Cynical (Badum)',
+          artist: '',
+          url: '/music/So Cynical (Badum).mp3',
+          cover: '/music/So Cynical (Badum).png',
+          theme: '#4FC3F7'
         }
-        
-        const listOl = document.querySelector('.aplayer-list ol');
-        if (listOl) {
-            listOl.style.overflowY = 'visible';
-            listOl.style.maxHeight = 'none';
-        }
-
-        const listBtn = document.querySelector('.aplayer-icon-lrc');
-        if (listBtn && list) {
-            const newBtn = listBtn.cloneNode(true);
-            listBtn.parentNode.replaceChild(newBtn, listBtn);
-            
-            let isListVisible = false;
-            newBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (isListVisible) {
-                    list.classList.remove('show');
-                    list.classList.add('aplayer-list-hide');
-                    isListVisible = false;
-                } else {
-                    list.classList.add('show');
-                    list.classList.remove('aplayer-list-hide');
-                    isListVisible = true;
-                }
-            });
-        }
-
-        // 核心：把播放器移到 html 标签下
-        const player = document.getElementById('aplayer');
-        if (player) {
-            document.documentElement.appendChild(player);
-            console.log('✅ 播放器已移到绝对安全区！');
-        }
+      ]
     });
+    
+    ap.list.audios.forEach(function(audio, index) {
+      var pic = document.querySelectorAll('.aplayer-pic')[index];
+      if (pic && audio.cover) {
+        pic.style.backgroundImage = "url('" + audio.cover + "')";
+      }
+    });
+    
+    var list = document.querySelector('.aplayer-list');
+    if (list) {
+      list.classList.remove('show');
+      list.classList.add('aplayer-list-hide');
+      list.style.overflowY = 'overlay';
+      list.style.overflowX = 'hidden';
+    }
+    
+    var listOl = document.querySelector('.aplayer-list ol');
+    if (listOl) {
+      listOl.style.overflowY = 'visible';
+      listOl.style.maxHeight = 'none';
+    }
+    
+    var listBtn = document.querySelector('.aplayer-icon-lrc');
+    if (listBtn && list) {
+      var newBtn = listBtn.cloneNode(true);
+      listBtn.parentNode.replaceChild(newBtn, listBtn);
+      
+      var isListVisible = false;
+      newBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (isListVisible) {
+          list.classList.remove('show');
+          list.classList.add('aplayer-list-hide');
+          isListVisible = false;
+        } else {
+          list.classList.add('show');
+          list.classList.remove('aplayer-list-hide');
+          isListVisible = true;
+        }
+      });
+    }
+    
+    var player = document.getElementById('aplayer');
+    if (player) {
+      document.documentElement.appendChild(player);
+    }
+    
+    window.aplayerInstance = ap;
+  }
+  
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initPlayer();
+  } else {
+    document.addEventListener('DOMContentLoaded', initPlayer);
+  }
+})();
 </script>
-
-<!-- 播放器容器 -->
-<div id="aplayer"></div>
-
-
-
