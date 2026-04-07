@@ -29,6 +29,22 @@ document.addEventListener('click', function(e) {
 
 var swup;
 
+// 🔥 预加载侧边栏链接（主资源加载完后执行）
+function preloadSidebarLinks() {
+  if (!swup || !swup.preload) return;
+  
+  var sidebarLinks = document.querySelectorAll('#main-menu a[href]:not([target="_blank"]):not([rel="external"])');
+  
+  sidebarLinks.forEach(function(link) {
+    if (link.origin === window.location.origin) {
+      // 🔥 延迟 500ms 避免阻塞主线程，逐个预加载
+      setTimeout(function() {
+        swup.preload(link.href);
+      }, 500);
+    }
+  });
+}
+
 window.addEventListener('load', function() {
   document.body.classList.add('loaded');
   
@@ -38,11 +54,17 @@ window.addEventListener('load', function() {
     containers: ['body'],
     animationDuration: 0,
     plugins: [
-      new SwupPreloadPlugin()
+      new SwupPreloadPlugin({
+        throttle: 100,           // 🔥 预加载节流 100ms
+        preloadHoverDelay: 300   // 🔥 悬停 300ms 后才预加载，避免误触
+      })
     ]
   });
 
   swupReady = true;
+
+  // 🔥 主资源加载完后，预加载侧边栏链接
+  setTimeout(preloadSidebarLinks, 1000);
 
   swup.hooks.on('visit:start', function() {
     document.body.classList.remove('loaded');
@@ -58,6 +80,9 @@ window.addEventListener('load', function() {
     if (typeof window.setWarpSpeedSlow === 'function') {
       window.setWarpSpeedSlow();
     }
+    
+    // 🔥 新页面加载完后，也预加载其侧边栏链接
+    setTimeout(preloadSidebarLinks, 1000);
   });
 
   swup.hooks.on('page:view', function() {

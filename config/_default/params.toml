@@ -12,7 +12,7 @@ favicon        = "image/avatar.jpg"
 [sidebar]
     emoji    = "🖕🏻"
     subtitle = "分享技术，记录生活"
-    avatar   = "image/avatar.png"
+    avatar   = "image/avatar.jpg"
 
 [article]
   math = false
