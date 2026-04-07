@@ -1,6 +1,6 @@
 mainSections   = ["post"]
 rssFullContent = true
-favicon        = "image/avatar.png"
+favicon        = "image/avatar.jpg"
 
 [params.search]
   enable = true
