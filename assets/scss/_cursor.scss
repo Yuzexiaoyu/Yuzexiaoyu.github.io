@@ -1,0 +1,82 @@
+// 自定义鼠标光标
+
+$cursor-path: "/cursor/";
+$link-hotspot: 3 0;
+$text-hotspot: 5 10;
+
+body {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto; 
+  
+  &.loading {
+    cursor: url("#{$cursor-path}Busy.ani"), wait;
+  }
+}
+
+a, 
+button, 
+[role="button"], 
+input[type="submit"], 
+input[type="button"],
+.nav-item, 
+.menu-item,
+.theme-toggle,
+#theme-toggle,
+.dark-mode-toggle,
+#dark-mode-toggle,
+[class*="theme-toggle"],
+[class*="dark-mode-toggle"],
+.theme-toggle *,
+#theme-toggle *
+{
+  cursor: url("#{$cursor-path}Link.cur") $link-hotspot, pointer !important;
+}
+
+input, textarea, pre, code, [contenteditable="true"] {
+  cursor: url("#{$cursor-path}Text.cur") $text-hotspot, text;
+  
+  &:focus {
+    cursor: url("#{$cursor-path}Text.cur") $text-hotspot, text;
+    outline: none;
+  }
+}
+
+[draggable="true"] {
+  cursor: url("#{$cursor-path}Grabbing.cur"), grab;
+  
+  &:active {
+    cursor: url("#{$cursor-path}Grabbing.cur"), grabbing;
+  }
+}
+
+#aplayer {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important; 
+}
+
+#aplayer .aplayer-button,
+#aplayer .aplayer-icon,
+#aplayer .aplayer-icon-lrc,
+#aplayer .aplayer-icon-volume,
+#aplayer .aplayer-list li,
+#aplayer .aplayer-list-index,
+#aplayer .aplayer-list-title,
+#aplayer .aplayer-volume-bar,
+#aplayer .aplayer-volume-wrap {
+  cursor: url("#{$cursor-path}Link.cur") $link-hotspot, pointer !important; // Link.cur保留热点
+}
+
+#aplayer .aplayer-bar,
+#aplayer .aplayer-played,
+#aplayer .aplayer-loaded,
+#aplayer .aplayer-thumb,
+#aplayer .aplayer-bar-wrap,
+#aplayer .aplayer-time,
+#aplayer .aplayer-body,
+#aplayer .aplayer-info,
+#aplayer .aplayer-music,
+#aplayer .aplayer-title,
+#aplayer .aplayer-pic,
+#aplayer .aplayer-list {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important; 
+}
+
+// 自定义鼠标光标

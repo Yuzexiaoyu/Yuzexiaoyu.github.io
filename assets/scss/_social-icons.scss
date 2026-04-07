@@ -1,0 +1,21 @@
+// 跳转社交媒体图标
+
+svg.icon.icon-tabler-brand-bilibili,
+svg.icon.icon-tabler-brand-github {
+  transition: all 0.2s ease;
+  transform-origin: center bottom;
+}
+
+svg.icon.icon-tabler-brand-bilibili:hover {
+  transform: translateY(-4px) scale(1.15) rotate(4deg);
+  fill: #00a1d2;
+  filter: drop-shadow(0 0 2px rgba(0, 161, 210, 0.3));
+}
+
+svg.icon.icon-tabler-brand-github:hover {
+  transform: translateY(-4px) scale(1.15) rotate(4deg);
+  fill: #f0f6fc;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.25));
+}
+
+// 跳转社交媒体图标

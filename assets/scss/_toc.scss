@@ -1,0 +1,33 @@
+// 右侧目录样式
+
+.widget--toc {
+    li {
+        font-size: 1rem !important;
+        
+        a {
+            font-size: 1.3rem !important;
+        }
+    }
+}
+
+.widget--toc,
+#TableOfContents,
+.toc {
+    scrollbar-width: none !important;
+    
+    &::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    
+    &::-webkit-scrollbar-track {
+        display: none !important;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        display: none !important;
+    }
+}
+
+// 右侧目录样式

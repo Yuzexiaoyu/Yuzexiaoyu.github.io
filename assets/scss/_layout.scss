@@ -1,0 +1,112 @@
+// 三栏布局配置
+
+$global-left: 1.1fr;
+$global-center: 3.8fr;
+$global-right: 1.2fr;
+
+$gap-left: 0rem;
+$gap-right: 0rem;
+
+$container-margin-left: 12rem;
+$container-margin-right: 3rem;
+
+.container.main-container,
+.container.main-container.flex,
+.container.main-container.flex.on-phone--column,
+.container.main-container.flex.on-phone--column.extended {
+  padding-left: $container-margin-left !important;
+  padding-right: $container-margin-right !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+body > .container,
+body > main-wrapper,
+*:has(> .left-sidebar),
+.container.main-container {
+  display: grid !important;
+  grid-template-columns: $global-left $global-center $global-right !important;
+  column-gap: 0 !important;
+  align-items: start !important;
+  justify-items: stretch !important;
+}
+
+.left-sidebar {
+  justify-self: start !important;
+  width: 100% !important;
+  max-width: 260px !important;
+  padding-top: var(--main-top-padding) !important;
+  padding-bottom: var(--main-top-padding) !important;
+  padding-right: $gap-left !important;
+  padding-left: 0 !important;
+}
+
+.lg\:col-span-8,
+.content-area,
+div[class*="col-span"]:nth-child(2) {
+  padding-left: $gap-left !important;
+  padding-right: $gap-right !important;
+  padding-top: var(--main-top-padding) !important;
+  padding-bottom: var(--main-top-padding) !important;
+}
+
+.right-sidebar {
+  justify-self: end !important;
+  margin-left: auto !important;
+  width: 100% !important;
+  max-width: 280px !important;
+  padding-top: var(--main-top-padding) !important;
+  padding-bottom: var(--main-top-padding) !important;
+  padding-left: $gap-right !important;
+  padding-right: 0 !important;
+}
+
+.right-sidebar {
+  .widget,
+  .search-box,
+  .search-widget,
+  .widget-search {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  input[type="search"],
+  input[type="text"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (min-width: 768px),
+       (min-width: 1024px),
+       (min-width: 1200px),
+       (min-width: 1440px),
+       (min-width: 1920px) {
+  .container.main-container {
+    grid-template-columns: $global-left $global-center $global-right !important;
+    padding-left: $container-margin-left !important;
+    padding-right: $container-margin-right !important;
+  }
+  
+  .left-sidebar {
+    padding-right: $gap-left !important;
+  }
+  
+  .lg\:col-span-8,
+  .content-area,
+  div[class*="col-span"]:nth-child(2) {
+    padding-left: $gap-left !important;
+    padding-right: $gap-right !important;
+  }
+  
+  .right-sidebar {
+    padding-left: $gap-right !important;
+  }
+}
+
+// 三栏布局配置

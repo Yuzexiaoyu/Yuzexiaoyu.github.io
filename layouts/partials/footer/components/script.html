@@ -56,7 +56,6 @@ window.addEventListener('load', function() {
     plugins: [
       new SwupPreloadPlugin({
         throttle: 100,           // 🔥 预加载节流 100ms
-        preloadHoverDelay: 300   // 🔥 悬停 300ms 后才预加载，避免误触
       })
     ]
   });
@@ -156,9 +155,9 @@ function loadGiscus() {
   var ctx = canvas.getContext('2d');
   var width, height;
   var particles = [];
-  var particleCount = 300;
-  var currentSpeed = 3;
-  var normalSpeed = 3;
+  var particleCount = 350;
+  var currentSpeed = 5;
+  var normalSpeed = 5;
   var warpSpeed = 40;
   var warpTimer = null;
 
@@ -200,7 +199,7 @@ function loadGiscus() {
   }
 
   function animate() {
-    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillStyle = 'rgba(0,0,0,0.13)';
     ctx.fillRect(0,0,width,height);
     for(var i=0;i<particles.length;i++) {
       particles[i].update(currentSpeed);

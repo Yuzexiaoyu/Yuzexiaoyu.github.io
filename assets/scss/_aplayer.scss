@@ -1,0 +1,244 @@
+// aplayer播放器
+
+html #aplayer {
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 14px !important;
+    z-index: 100 !important;
+    width: 346px !important;
+    max-width: 90vw !important;
+    background: var(--card-background) !important;
+    box-shadow: var(--shadow-lg) !important;
+    border-radius: 8px !important;
+    overflow: visible !important;
+    border: none !important;
+    outline: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+html #aplayer .aplayer-pic {
+    width: 66px !important;
+    height: 66px !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    box-shadow: none !important;
+    border: none !important;
+    position: relative !important;
+    overflow: visible !important;
+    border-radius: 8px 0 0 8px !important;
+}
+
+html #aplayer .aplayer-pic .aplayer-button {
+    background: transparent !important;
+    opacity: 1 !important;
+}
+
+html #aplayer .aplayer-pic,
+html #aplayer .aplayer-pic * {
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+html #aplayer .aplayer-pic .aplayer-button {
+    position: absolute !important;
+    bottom: 4px !important;
+    right: 4px !important;
+    top: auto !important;
+    left: auto !important;
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: 10 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+html #aplayer .aplayer-pic .aplayer-button svg {
+    width: 10px !important;
+    height: 10px !important;
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    position: static !important;
+    margin: 0 !important;
+    transition: all 0.3s ease !important;
+}
+
+html #aplayer .aplayer-pic .aplayer-button:hover {
+    background: #4FC3F7 !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 0 4px rgba(79, 195, 247, 0.4) !important;
+}
+
+html #aplayer .aplayer-pic .aplayer-button:hover svg {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    transform: scale(1.05) !important;
+}
+
+html #aplayer .aplayer-pic .aplayer-button:active {
+    transform: scale(0.95) !important;
+}
+
+html #aplayer .aplayer-body,
+html #aplayer .aplayer-info {
+    background: transparent !important;
+}
+
+html #aplayer .aplayer-info {
+    border: none !important;
+}
+
+html #aplayer .aplayer-title,
+html #aplayer .aplayer-author,
+html #aplayer .aplayer-list-title,
+html #aplayer .aplayer-list-author {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+html #aplayer .aplayer-author {
+    display: none !important;
+}
+
+html #aplayer .aplayer-list-author {
+    display: none !important;
+}
+
+html #aplayer .aplayer-list {
+    position: absolute !important;
+    bottom: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: calc(100% - 1px) !important;
+    max-height: 200px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--card-separator-color) !important;
+    border-bottom: none !important;
+    background: var(--card-background) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    margin-bottom: 5px !important;
+    margin-left: 0px !important;
+    margin-right: 1px !important;
+    padding: 2px 0 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: none !important;
+}
+
+html #aplayer .aplayer-list:not(.aplayer-list-hide) {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    max-height: 200px !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    border: 1px solid var(--card-separator-color) !important;
+    border-bottom: none !important;
+    margin-bottom: 5px !important;
+}
+
+html #aplayer .aplayer-list.aplayer-list-hide {
+    display: none !important;
+}
+
+html #aplayer .aplayer-list li {
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 0px 10px !important;
+    transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 0px !important;
+    border-radius: 6px !important;
+}
+
+html #aplayer .aplayer-list li:last-child {
+    border-bottom: none !important;
+}
+
+html #aplayer .aplayer-list li:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+html #aplayer .aplayer-list li.aplayer-list-light {
+    background: rgba(79, 195, 247, 0.2) !important;
+}
+
+html #aplayer .aplayer-list-index {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+html #aplayer .aplayer-lrc {
+    display: none !important;
+}
+
+html #aplayer .aplayer-icon-loop,
+html #aplayer .aplayer-icon-order {
+    display: none !important;
+}
+
+html #aplayer .aplayer-bar {
+    background: rgba(255, 255, 255, 0.5) !important;
+}
+
+html #aplayer .aplayer-loaded {
+    display: none !important;
+}
+
+html #aplayer .aplayer-played {
+    background: #4FC3F7 !important;
+}
+
+html #aplayer .aplayer-thumb {
+    background: #4FC3F7 !important;
+    border: none !important;
+}
+
+html #aplayer .aplayer-time {
+    color: #ffffff !important;
+}
+
+html #aplayer .aplayer-icon,
+html #aplayer .aplayer-icon svg,
+html #aplayer .aplayer-icon path {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+html #aplayer .aplayer-icon:hover,
+html #aplayer .aplayer-icon:hover svg,
+html #aplayer .aplayer-icon:hover path {
+    color: #4FC3F7 !important;
+    fill: #4FC3F7 !important;
+}
+
+html #aplayer .aplayer-icon-volume-down,
+html #aplayer .aplayer-icon-volume-down svg,
+html #aplayer .aplayer-icon-volume-down path,
+html #aplayer .aplayer-icon-volume-off,
+html #aplayer .aplayer-icon-volume-off svg,
+html #aplayer .aplayer-icon-volume-off path {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+html #aplayer .aplayer-icon-lrc,
+html #aplayer .aplayer-icon-lrc svg,
+html #aplayer .aplayer-icon-lrc path {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+html #aplayer .aplayer-volume-bar {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+// aplayer播放器
