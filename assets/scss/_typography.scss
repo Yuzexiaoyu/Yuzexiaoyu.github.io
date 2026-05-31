@@ -10,11 +10,12 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0 !important;
+    padding: 0 0 0 2px !important;
     margin: 0 auto !important;
     border-radius: 50%;
     background-color: var(--card-background);
     box-shadow: var(--shadow-l1);
+    right: -5px !important;
 }
 
 :root {
@@ -34,3 +35,21 @@ h2.site-description {
 }
 
 //副标题字体
+
+//代码块字体
+
+/* 预处理符号#*/
+.highlight .cp {
+    color: #ffcc00 !important;
+    font-weight: normal !important; 
+}
+
+/* 注释符号// */
+.highlight .c,
+.highlight .cm,
+.highlight .c1 {
+    color: #7C8596 !important;
+    font-style: normal !important; 
+}
+
+//代码块字体

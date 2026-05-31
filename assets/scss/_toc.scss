@@ -3,31 +3,94 @@
 .widget--toc {
     li {
         font-size: 1rem !important;
-        
+
         a {
             font-size: 1.3rem !important;
         }
+    }
+
+    // 折叠：H2 下的 H3 列表默认隐藏，三种情况展开：
+    //   1) 用户点击三角按钮 → 手动展开（持久 .is-manual-open）
+    //   2) 该 H2 被 scrollspy 标为 active-class（滚动当前指针在该 H2 顶部）
+    //   3) 该 H2 的后代（H3）被 scrollspy 标为 active-class（滚动当前指针在该 H2 下的子节）
+    // 手动状态独立于自动状态：scroll 离开后自动收起，但手动开过的会留着。
+    #TableOfContents > ol > li {
+        position: relative;
+
+        > ol {
+            display: none;
+        }
+
+        &.is-manual-open > ol,
+        &.active-class > ol,
+        &:has(.active-class) > ol {
+            display: block;
+        }
+    }
+
+    // H2 行左侧的折叠按钮，由 JS 在 li 上有子 ol 时注入
+    .toc-toggle {
+        position: absolute;
+        left: -1.4em;
+        top: 1.35em;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        outline: none;
+
+        // 三角放在按钮中心，纯 CSS border 画的
+        &::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            margin-left: -3px;
+            margin-top: -4px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 4px 0 4px 6px;
+            border-color: transparent transparent transparent #8b949e;
+            transition: transform 0.15s ease, border-left-color 0.15s ease;
+            transform-origin: 3px 4px;
+        }
+
+        &:hover::before,
+        &:focus-visible::before {
+            border-left-color: #58a6ff;
+        }
+    }
+
+    // 展开时（任意理由）三角顺时针 90° 变下指 + 主题蓝
+    #TableOfContents > ol > li.is-manual-open > .toc-toggle::before,
+    #TableOfContents > ol > li.active-class > .toc-toggle::before,
+    #TableOfContents > ol > li:has(.active-class) > .toc-toggle::before {
+        transform: rotate(90deg);
+        border-left-color: #58a6ff;
     }
 }
 
 .widget--toc,
 #TableOfContents,
 .toc {
+    // 隐藏滚动条（功能保留，仅去掉视觉条）
     scrollbar-width: none !important;
-    
+
     &::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
         height: 0 !important;
     }
-    
+
     &::-webkit-scrollbar-track {
         display: none !important;
     }
-    
+
     &::-webkit-scrollbar-thumb {
         display: none !important;
     }
 }
-
-// 右侧目录样式

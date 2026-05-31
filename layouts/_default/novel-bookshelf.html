@@ -1,0 +1,55 @@
+{{ define "body-class" }}template-novel-bookshelf{{ end }}
+
+{{ define "left-sidebar" }}{{ end }}
+
+{{ define "main" }}
+<style>#aplayer{display:none!important}</style>
+
+{{- $allVolumes := slice -}}
+{{- range .Site.Data.novels.shelves -}}
+  {{- range .volumes -}}
+    {{- $allVolumes = $allVolumes | append . -}}
+  {{- end -}}
+{{- end -}}
+
+<div class="novel-bookshelf">
+
+  <header class="bookshelf-header">
+    <div class="bookshelf-header-inner">
+      <h1 class="bookshelf-title">从零开始的异世界生活</h1>
+      <p class="bookshelf-subtitle">Re:Zero − Starting Life in Another World</p>
+      <p class="bookshelf-meta">共 {{ len $allVolumes }} 卷 · 长月达平</p>
+    </div>
+  </header>
+
+  <div class="bookshelf-content">
+    {{- range .Site.Data.novels.shelves }}
+    <section class="shelf-section" id="shelf-{{ .slug }}">
+      <div class="shelf-header">
+        <h2 class="shelf-name">{{ .name }}</h2>
+        <span class="shelf-count">{{ len .volumes }} 卷</span>
+      </div>
+      <div class="shelf-grid">
+        {{- range .volumes }}
+        {{- $coverExt := "jpg" }}
+        {{- $coverPath := printf "/novel/covers/%s.jpg" .key }}
+        <a href="/novel/reader/#vol={{ .key }}" class="book-card" title="{{ .label }}">
+          <div class="book-cover-wrap">
+            <img
+              src="{{ $coverPath }}"
+              alt="{{ .label }}"
+              loading="lazy"
+              onerror="this.style.display='none';this.parentElement.classList.add('no-cover');this.parentElement.setAttribute('data-label','{{ .label }}');">
+            <div class="book-shine"></div>
+          </div>
+          <span class="book-label">{{ .label }}</span>
+        </a>
+        {{- end }}
+      </div>
+    </section>
+    {{- end }}
+  </div>
+</div>
+{{ end }}
+
+{{ define "right-sidebar" }}{{ end }}

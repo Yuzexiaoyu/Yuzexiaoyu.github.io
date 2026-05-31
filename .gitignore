@@ -8,11 +8,20 @@ hugo.exe
 hugo_darwin_*
 hugo_linux_*
 
+# Hugo 运行时
+.hugo_build.lock
+
 # 编辑器
+.vs/
 .vscode/
 .idea/
 *.swp
 *~
+
+# 备份 / 临时文件（防止 git add . 误提交，例如 78MB 的 formula.epub.bak）
+*.bak
+*.tmp
+*.orig
 
 # 操作系统
 Thumbs.db
@@ -22,3 +31,6 @@ Thumbs.db
 node_modules/
 package-lock.json
 yarn.lock
+
+# Claude Code（AI 助手配置）
+.claude/

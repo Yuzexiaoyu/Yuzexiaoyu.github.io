@@ -1,0 +1,36 @@
+// 书架进入动画：随机角色全屏 cut-in 遮罩
+// 由 footer/components/script.html 里的 window.__playBookshelfIntro() 动态插入/移除。
+// 每个浏览器会话只播一次（sessionStorage）。
+
+.bookshelf-intro {
+  position: fixed;
+  inset: 0;
+  // 高于书架内容（最高 z-index 2），低于全局 page-loader（999999）
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0f;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  // 避免插入瞬间触发触摸滚动
+  overscroll-behavior: contain;
+
+  &.is-visible {
+    opacity: 1;
+  }
+
+  // JS 在结束时加上，触发淡出后移除元素
+  &.is-closing {
+    opacity: 0;
+  }
+
+  &__video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; // 铺满全屏，轻微裁切
+    display: block;
+    background: #0a0a0f;
+  }
+}

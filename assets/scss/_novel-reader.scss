@@ -1,0 +1,915 @@
+// 小说阅读器 — 手写 CSS column 双页翻书布局（无 iframe / 无 epub.js）
+
+// ========== 布局覆盖 ==========
+.template-novel-reader {
+  background: var(--reader-bg);
+  margin: 0 !important;
+  padding: 0 !important;
+
+  .left-sidebar,
+  .right-sidebar {
+    display: none !important;
+  }
+
+  .container.main-container,
+  .container.main-container.flex,
+  .container.main-container.flex.on-phone--column,
+  .container.main-container.flex.on-phone--column.compact,
+  .container.main-container.flex.on-phone--column.extended {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  main.main,
+  main.main.full-width {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  footer,
+  #page-loader {
+    display: none !important;}
+
+// ========== 主题变量 ==========
+#novel-reader-root {
+  --reader-bg: #0d1117;
+  --reader-text: #e6edf3;
+  --reader-text-secondary: #8b949e;
+  --reader-toolbar-bg: rgba(13, 17, 23, 0.88);
+  --reader-accent: #58a6ff;
+  --reader-border: #30363d;
+  --reader-progress-bg: #21262d;
+  --reader-stage-bg: #161b22;
+  --reader-page-shadow: rgba(0, 0, 0, 0.5);
+
+  &[data-theme="light"] {
+    --reader-bg: #e8eaed;
+    --reader-text: #1a1a1a;
+    --reader-text-secondary: #666666;
+    --reader-toolbar-bg: rgba(255, 255, 255, 0.92);
+    --reader-accent: #0969da;
+    --reader-border: #d0d7de;
+    --reader-progress-bg: #d0d7de;
+    --reader-stage-bg: #ffffff;
+    --reader-page-shadow: rgba(0, 0, 0, 0.12);
+  }
+
+  &[data-theme="sepia"] {
+    --reader-bg: #d4c5a9;
+    --reader-text: #5b4636;
+    --reader-text-secondary: #8b7355;
+    --reader-toolbar-bg: rgba(244, 236, 216, 0.92);
+    --reader-accent: #b85c2e;
+    --reader-border: #c4b593;
+    --reader-progress-bg: #c4b593;
+    --reader-stage-bg: #f4ecd8;
+    --reader-page-shadow: rgba(0, 0, 0, 0.15);
+  }
+
+  &[data-theme="eye"] {
+    --reader-bg: #a3c9a7;
+    --reader-text: #2c3e2d;
+    --reader-text-secondary: #5a7a5c;
+    --reader-toolbar-bg: rgba(204, 232, 207, 0.92);
+    --reader-accent: #2d8a4e;
+    --reader-border: #8ab88d;
+    --reader-progress-bg: #8ab88d;
+    --reader-stage-bg: #cce8cf;
+    --reader-page-shadow: rgba(0, 0, 0, 0.12);
+  }
+}
+
+// ========== 阅读器容器 ==========
+#novel-reader-root {
+  min-height: 100vh;
+  height: 100vh;
+  background: var(--reader-bg);
+  color: var(--reader-text);
+  transition: background 0.35s ease, color 0.35s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// ========== 返回首页按钮 ==========
+.reader-home-btn {
+  text-decoration: none !important;
+  color: var(--reader-text-secondary) !important;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--reader-text) !important;
+    border-color: var(--reader-accent) !important;
+    background: rgba(128, 128, 128, 0.08) !important;
+  }
+}
+
+// ========== 工具栏 ==========
+.reader-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: var(--reader-toolbar-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--reader-border);
+  gap: 12px;
+  flex-shrink: 0;
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--reader-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--reader-text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    line-height: 1;
+
+    &:hover {
+      color: var(--reader-text);
+      border-color: var(--reader-accent);
+      background: rgba(128, 128, 128, 0.08);
+    }
+
+    &.active {
+      color: var(--reader-accent);
+      border-color: var(--reader-accent);
+      background: rgba(128, 128, 128, 0.1);
+    }
+
+    &.font-btn {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    &.dropdown-trigger {
+      width: auto;
+      padding: 0 8px;
+      gap: 4px;
+
+      .dropdown-icon {
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .dropdown-icon-line svg {
+        display: block;
+      }
+
+      .dropdown-caret {
+        font-size: 10px;
+        opacity: 0.7;
+        line-height: 1;
+      }
+    }
+  }
+
+  .reader-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      transform: translateY(-4px);
+      margin-top: 6px;
+      padding: 4px 0;
+      background: var(--reader-bg);
+      border: 1px solid var(--reader-border);
+      border-radius: 8px;
+      box-shadow: 0 6px 24px var(--reader-page-shadow);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+    }
+
+    // 在 trigger 和 menu 之间留出 6px 的缓冲带，避免鼠标移过去时菜单收回
+    &::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 8px;
+      pointer-events: none;
+    }
+
+    &:hover::after,
+    &:focus-within::after {
+      pointer-events: auto;
+    }
+
+    &:hover .dropdown-menu,
+    &:focus-within .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 32px;
+      padding: 4px 0;
+      border: none;
+      background: transparent;
+      color: var(--reader-text-secondary);
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 0.1s ease, background 0.1s ease;
+
+      &:hover {
+        color: var(--reader-text);
+        background: rgba(128, 128, 128, 0.08);
+      }
+
+      &.active {
+        color: var(--reader-accent);
+        background: rgba(128, 128, 128, 0.06);
+      }
+
+      .font-icon {
+        font-family: inherit;
+        font-weight: 700;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+      }
+      .font-icon-s { font-size: 11px; }
+      .font-icon-m { font-size: 14px; }
+      .font-icon-l { font-size: 17px; }
+
+      .line-icon {
+        display: block;
+      }
+    }
+  }
+
+  .theme-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 4px;
+
+    button {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.15s ease;
+
+      &:hover { transform: scale(1.15); }
+      &.active { border-color: var(--reader-accent); transform: scale(1.1); }
+
+      &.theme-dark  { background: #0d1117; border: 1px solid #30363d; }
+      &.theme-light { background: #ffffff; border: 1px solid #d0d7de; }
+      &.theme-sepia { background: #f4ecd8; border: 1px solid #d4c5a9; }
+      &.theme-eye  { background: #cce8cf; border: 1px solid #a3c9a7; }
+    }
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--reader-border);
+    margin: 0 4px;
+  }
+
+  .volume-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--reader-text);
+    min-width: 90px;
+    text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .toolbar-spacer {
+    flex: 1;
+  }
+}
+
+// ========== 迷你播放器 ==========
+.reader-mini-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--reader-border);
+  border-radius: 8px;
+  flex-shrink: 0;
+  -webkit-user-select: none;
+  user-select: none;
+
+  .mini-cover {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .mini-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--reader-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 60px;
+    max-width: 220px;
+    min-width: 0;
+    line-height: 1;
+  }
+
+  .mini-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--reader-text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+
+    &:hover { background: rgba(128, 128, 128, 0.12); }
+
+    svg { width: 14px; height: 14px; }
+
+    &.mini-play-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 4px;
+      color: var(--reader-text-secondary);
+      margin: 0 -4px;
+    }
+
+    &.mini-prev-btn { margin-right: -4px; }
+    &.mini-next-btn { margin-left: -4px; }
+  }
+
+  .mini-bar-wrap {
+    flex: 1;
+    min-width: 100px;
+    height: 34px;
+    margin-left: 6px;
+    cursor: pointer;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100%;
+      height: 4px;
+      background: var(--reader-progress-bg);
+      border-radius: 2px;
+      opacity: 0.6;
+    }
+  }
+
+  .mini-bar-played {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 4px;
+    background: var(--reader-accent);
+    border-radius: 2px;
+  }
+
+  .mini-time {
+    font-size: 11px;
+    color: var(--reader-text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1;
+    min-width: 55px;
+    text-align: right;
+  }
+
+  .mini-bar-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--reader-accent);
+    margin-left: -5px;
+  }
+}
+
+// 音量
+.mini-vol-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  .mini-vol-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--reader-text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+
+    &:hover { background: rgba(128, 128, 128, 0.12); }
+    svg { width: 14px; height: 14px; }
+  }
+
+  .mini-vol-bar-outer {
+    max-width: 0;
+    overflow: visible;
+    display: flex;
+    align-items: center;
+    transition: max-width 0.22s ease, padding 0.22s ease, opacity 0.15s ease;
+    opacity: 0;
+  }
+
+  &.expanded .mini-vol-bar-outer {
+    max-width: 80px;
+    opacity: 1;
+  }
+
+  .mini-vol-bar-wrap {
+    width: 70px;
+    height: 34px;
+    margin-left: 8px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100%;
+      height: 4px;
+      background: var(--reader-progress-bg);
+      border-radius: 2px;
+    }
+  }
+
+  .mini-vol-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 4px;
+    background: var(--reader-accent);
+    border-radius: 2px;
+  }
+
+  .mini-vol-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--reader-accent);
+    margin-left: -6px;
+  }
+}
+
+// 歌单弹窗
+.reader-mini-list {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  width: 200px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--reader-bg);
+  border: 1px solid var(--reader-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  z-index: 300;
+  padding: 4px 0;
+
+  .mini-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--reader-text-secondary);
+    cursor: pointer;
+    transition: all 0.1s ease;
+
+    &:hover {
+      color: var(--reader-text);
+      background: rgba(128, 128, 128, 0.06);
+    }
+
+    &.active {
+      color: var(--reader-accent);
+      font-weight: 600;
+      background: rgba(128, 128, 128, 0.06);
+    }
+  }
+
+  .mini-list-idx {
+    font-size: 11px;
+    opacity: 0.5;
+    min-width: 18px;
+  }
+}
+
+// APlayer 隐藏由 novel-reader.html 内联 <style> 处理（因为被 JS 移到了 <html> 下）
+
+// ========== 手写阅读区：JS 分页 + flex 双页布局 ==========
+// 布局: toolbar(~66px) + viewport(flex) = 100vh
+.reader-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--reader-bg);
+}
+
+// .reader-content 是翻页变换容器；JS 在里面塞 .reader-pages > .reader-page[]
+// 翻页 = transform: translateX(-currentSpread × viewportWidth)
+.reader-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: max-content;
+  box-sizing: border-box;
+  font-size: 105%;
+  line-height: 1.85;
+  color: var(--reader-text);
+  background: var(--reader-bg);
+  transform: translateX(0);
+
+  // 所有 page 水平排列
+  .reader-pages {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    width: max-content;
+  }
+
+  // 单页：50vw 宽，固定高 = viewport 高，overflow:hidden 强制不跨页
+  // 内容由 JS 按高度 chunk 分配进每一页，绝不出现文字跨页
+  .reader-page {
+    width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    padding: 32px 48px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  // 段落
+  p {
+    margin: 0.5em 0;
+    text-indent: 2em;
+    text-align: justify;
+    overflow-wrap: break-word;
+  }
+
+  // 标题
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0.8em 0 0.6em;
+    line-height: 1.4;
+    text-indent: 0;
+  }
+  h1 { font-size: 1.8em; }
+  h2 { font-size: 1.5em; }
+  h3 { font-size: 1.25em; }
+
+  // 图片：限制在一页内
+  img, image, svg {
+    max-width: 100%;
+    max-height: calc(100vh - 132px);
+    object-fit: contain;
+    display: block;
+    margin: 1em auto;
+  }
+
+  // 链接
+  a {
+    color: var(--reader-link);
+    text-decoration: none;
+  }
+  a:hover { text-decoration: underline; }
+
+  // 行内 code / pre 之类
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(127, 127, 127, 0.08);
+    border-radius: 3px;
+    padding: 0 0.3em;
+  }
+  pre {
+    padding: 0.6em 0.8em;
+    overflow-x: auto;
+  }
+
+  blockquote {
+    border-left: 3px solid var(--reader-link);
+    padding-left: 1em;
+    margin: 0.6em 0;
+    opacity: 0.85;
+  }
+
+  ul, ol {
+    padding-left: 2em;
+    margin: 0.5em 0;
+  }
+}
+
+// 加载提示
+.reader-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--reader-text);
+  background: var(--reader-bg);
+  pointer-events: none;
+}
+
+// 主题色映射（这些变量由 #novel-reader-root[data-theme=...] 设置，已在 _novel-reader.scss 上方部分定义）
+// 这里给 reader-content 内部链接定义一个语义化变量名
+#novel-reader-root[data-theme="dark"] {
+  --reader-link: #58a6ff;
+}
+#novel-reader-root[data-theme="light"] {
+  --reader-link: #0969da;
+}
+#novel-reader-root[data-theme="sepia"] {
+  --reader-link: #b85c2e;
+}
+#novel-reader-root[data-theme="eye"] {
+  --reader-link: #2d8a4e;
+}
+
+// 小屏幕：单页阅读（一页 100vw）
+@media (max-width: 720px) {
+  .reader-content .reader-page {
+    width: 100vw;
+    padding: 20px 24px;
+  }
+}
+
+// ========== TOC 遮罩 ==========
+.reader-toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s ease;
+
+  &.open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// ========== TOC 右侧抽屉 ==========
+.reader-toc-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 340px;
+  height: 100vh;
+  background: var(--reader-bg);
+  border-left: 1px solid var(--reader-border);
+  z-index: 201;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
+
+  &.open { transform: translateX(0); }
+
+  .toc-close {
+    position: absolute;
+    top: 10px;
+    right: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--reader-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--reader-text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.15s ease;
+    z-index: 2;
+
+    &:hover { color: var(--reader-text); border-color: var(--reader-accent); }
+  }
+
+  .toc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 19px 61px 18.5px 35px;
+    border-bottom: 1px solid var(--reader-border);
+    flex-shrink: 0;
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--reader-text);
+      margin: 0;
+    }
+  }
+
+  .toc-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+
+    .toc-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--reader-text-secondary);
+      font-size: 14px;
+    }
+
+    .toc-volume-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-bottom: 1px solid var(--reader-border);
+      background: transparent;
+      color: var(--reader-text);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      text-align: left;
+      transition: background 0.1s ease;
+
+      &:hover { background: rgba(128, 128, 128, 0.05); }
+
+      .toc-volume-arrow {
+        font-size: 10px;
+        color: var(--reader-text-secondary);
+        flex-shrink: 0;
+      }
+    }
+
+    .toc-volume-items {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.25s ease;
+      &.open { max-height: none; }
+    }
+
+    .toc-arc-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 20px 9px 28px;
+      border: none;
+      border-bottom: 1px solid var(--reader-border);
+      background: rgba(128, 128, 128, 0.03);
+      color: var(--reader-text);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      text-align: left;
+      transition: background 0.1s ease;
+
+      &:hover { background: rgba(128, 128, 128, 0.06); }
+
+      .toc-arc-arrow {
+        font-size: 10px;
+        color: var(--reader-text-secondary);
+        flex-shrink: 0;
+      }
+    }
+
+    .toc-arc-items {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease;
+      &.open { max-height: none; }
+
+      .toc-item {
+        padding-left: 44px;
+      }
+    }
+
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      background: transparent;
+      color: var(--reader-text-secondary);
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+      text-align: left;
+      transition: all 0.1s ease;
+
+      &:hover {
+        color: var(--reader-text);
+        background: rgba(128, 128, 128, 0.05);
+      }
+
+      &.active {
+        color: var(--reader-accent);
+        background: rgba(128, 128, 128, 0.06);
+        font-weight: 600;
+      }
+
+      .toc-item-index {
+        font-size: 12px;
+        color: var(--reader-text-secondary);
+        font-variant-numeric: tabular-nums;
+        min-width: 32px;
+        opacity: 0.6;
+      }
+
+      .toc-item-title {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }  }
+}

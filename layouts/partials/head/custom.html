@@ -1,4 +1,78 @@
-<link rel="stylesheet" href="/lib/aplayer/APlayer.min.css">
+{{/* APlayer CSS 异步加载，避免阻塞首次渲染 */}}
+<link rel="preload" href="/lib/aplayer/APlayer.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="/lib/aplayer/APlayer.min.css"></noscript>
+
+{{/* Swup 库在 footer 中已经用 defer 加载，无需重复预加载 */}}
+
+{{/* 小说阅读器用 JSZip 解压 EPUB（自写 reader 不依赖 epub.js）
+     脚本已移到 novel-reader.html body 中，确保 Swup 切换时能正确加载 */}}
+
+{{/* 在 page-loader 动画播放期间，用浏览器空闲带宽预加载首页/列表页的文章卡片图片。
+     放在 head 顶部，让浏览器一解析到这里就开始拉图，与 1.5s 动画并行。
+     replace-media-links.py 会把这里的 href 也重写到 R2 CDN。 */}}
+{{/* ──── 预加载级联（Phase 1 / 头像 + 卡片图）────
+     放在 head 顶部，浏览器一解析就开始拉，与 1.5s 进入动画并行。
+     replace-media-links.py 会把这些 href 同步重写到 R2 CDN。 */}}
+{{- $isList := or .IsHome (eq .Kind "section") (eq .Kind "taxonomy") (eq .Kind "term") -}}
+
+{{/* 头像最高优先：每个页面都显示 */}}
+{{- $avatarUrl := "" -}}
+{{- with .Site.Params.sidebar.avatar -}}
+  {{- $a := partial "helper/image" (dict "Image" . "Resources" resources) -}}
+  {{- if $a -}}
+    {{- if eq (printf "%T" $a) "string" -}}
+      {{- $avatarUrl = $a -}}
+    {{- else -}}
+      {{- $avatarUrl = $a.Permalink -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if $avatarUrl }}
+<link rel="preload" as="image" href="{{ $avatarUrl }}" fetchpriority="high">
+{{- end }}
+
+{{/* 文章卡片图：仅列表页（书架页不显示文章卡片，跳过以免和开场视频抢带宽）
+     只有前 2 张卡片图设置 high 优先级，其余使用默认优先级避免带宽竞争 */}}
+{{- $cardUrls := slice -}}
+{{- if and $isList (ne .Layout "novel-bookshelf") -}}
+  {{- range first 8 .Site.RegularPages -}}
+    {{- $img := partial "helper/image" (dict "Image" .Params.image "Resources" .Resources) -}}
+    {{- if $img -}}
+      {{- $cardUrls = $cardUrls | append $img.Permalink -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- range $idx, $url := $cardUrls }}
+  {{- if lt $idx 2 }}
+<link rel="preload" as="image" href="{{ $url }}" fetchpriority="high">
+  {{- else }}
+<link rel="preload" as="image" href="{{ $url }}">
+  {{- end }}
+{{- end }}
+
+{{/* JS 级联用的 URL 列表：novelCovers / novelEpubs 是后续 phase。
+     Phase 1 (头像+卡片图) 已通过 <link rel="preload"> 启动，无需 JS 重复加载。 */}}
+
+{{- $novelCoverUrls := slice -}}
+{{- range .Site.Data.novels.shelves -}}
+  {{- range .volumes -}}
+    {{- $novelCoverUrls = $novelCoverUrls | append (printf "/novel/covers/%s.jpg" .key) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $novelEpubUrls := slice -}}
+{{- $mainVols := (index .Site.Data.novels.shelves 0).volumes -}}
+{{- range first 5 $mainVols -}}
+  {{- $novelEpubUrls = $novelEpubUrls | append (printf "/novel/%s.epub" .key) -}}
+{{- end -}}
+
+{{- $preloadData := dict
+  "novelCovers" $novelCoverUrls
+  "novelEpubs" $novelEpubUrls
+-}}
+<script>
+window.__preloadData = {{ $preloadData | jsonify | safeJS }};
+</script>
 
 <!-- 🔥 页面加载动画（故障风格，必须播放完一次） -->
 <div id="page-loader" class="loading">
@@ -44,7 +118,7 @@
   letter-spacing: 5px;
   z-index: 1;
   animation: shift 1s ease-in-out infinite alternate;
-  font-family: "Poppins", sans-serif;
+  font-family: sans-serif;
 }
 
 .glitch:before,
@@ -89,175 +163,127 @@
   71% { transform: skewX(10deg) skewY(-10deg); }
 }
 
-/* ========== 文章渐入动画（标题和图片不参与） ========== */
-
-:root {
-  --fade-duration: 0.25s;
+/* ========== 文章逐段淡入 ========== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-/* 🔥 标题 - 不参与动画，立即显示 */
-body.article-page article.main-article h1,
-body.article-page article.main-article h2,
-body.article-page article.main-article h3,
-body.post-page article.main-article h1,
-body.post-page article.main-article h2,
-body.post-page article.main-article h3 {
-  opacity: 1;
-}
-
-/* 🔥 图片 - 不参与动画，立即显示 */
-body.article-page article.main-article img,
-body.post-page article.main-article img {
-  opacity: 1;
-}
-
-/* 🔥 元信息 - 0ms */
-body.article-page article.main-article .post-meta,
-body.article-page article.main-article .date,
-body.article-page article.main-article .tags,
-body.post-page article.main-article .post-meta,
-body.post-page article.main-article .date,
-body.post-page article.main-article .tags {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article .post-meta,
-body.loaded.article-page article.main-article .date,
-body.loaded.article-page article.main-article .tags,
-body.loaded.post-page article.main-article .post-meta,
-body.loaded.post-page article.main-article .date,
-body.loaded.post-page article.main-article .tags {
-  animation-play-state: running;
-}
-
-/* 🔥 段落 - 20ms */
-body.article-page article.main-article p,
-body.post-page article.main-article p {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0.02s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article p,
-body.loaded.post-page article.main-article p {
-  animation-play-state: running;
-}
-
-/* 🔥 列表 - 40ms */
-body.article-page article.main-article ul,
-body.article-page article.main-article ol,
-body.article-page article.main-article li,
-body.post-page article.main-article ul,
-body.post-page article.main-article ol,
-body.post-page article.main-article li {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0.04s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article ul,
-body.loaded.article-page article.main-article ol,
-body.loaded.article-page article.main-article li,
-body.loaded.post-page article.main-article ul,
-body.loaded.post-page article.main-article ol,
-body.loaded.post-page article.main-article li {
-  animation-play-state: running;
-}
-
-/* 🔥 代码块 - 60ms */
-body.article-page article.main-article pre,
-body.article-page article.main-article code,
-body.post-page article.main-article pre,
-body.post-page article.main-article code {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0.06s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article pre,
-body.loaded.article-page article.main-article code,
-body.loaded.post-page article.main-article pre,
-body.loaded.post-page article.main-article code {
-  animation-play-state: running;
-}
-
-/* 🔥 引用块 - 80ms */
-body.article-page article.main-article blockquote,
-body.post-page article.main-article blockquote {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0.08s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article blockquote,
-body.loaded.post-page article.main-article blockquote {
-  animation-play-state: running;
-}
-
-/* 🔥 分割线 - 100ms */
-body.article-page article.main-article hr,
-body.post-page article.main-article hr {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0.1s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article hr,
-body.loaded.post-page article.main-article hr {
-  animation-play-state: running;
-}
-
-/* 🔥 表格 - 120ms */
-body.article-page article.main-article table,
-body.post-page article.main-article table {
-  opacity: 0;
-  animation: fadeIn var(--fade-duration) ease-out 0.12s forwards;
-  animation-play-state: paused;
-}
-
-body.loaded.article-page article.main-article table,
-body.loaded.post-page article.main-article table {
-  animation-play-state: running;
-}
-
-/* 🔥 文章容器 - 立即显示 */
 body.article-page article.main-article,
 body.post-page article.main-article,
 body.single-page article.main-article {
   opacity: 1;
+}
+
+/* 标题、元信息、封面图 — 立即显示 */
+body.article-page article.main-article .article-header,
+body.article-page article.main-article .article-header *,
+body.post-page article.main-article .article-header,
+body.post-page article.main-article .article-header * {
+  opacity: 1;
+  animation: none;
+}
+
+/* 正文直接子元素 — 初始隐藏，JS 动态分配延迟 */
+body.article-page article.main-article .article-content > *,
+body.post-page article.main-article .article-content > * {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease-out forwards;
+  animation-play-state: paused;
+}
+
+body.loaded.article-page article.main-article .article-content > *,
+body.loaded.post-page article.main-article .article-content > * {
+  animation-play-state: running;
+}
+
+/* ========== Hero Banner: 标题叠在封面图上 ========== */
+article.main-article.has-image .article-header {
+  position: relative;
+  overflow: hidden;
+}
+
+article.main-article.has-image .article-image {
+  height: clamp(260px, 38vh, 440px);
+  position: relative;
+}
+
+article.main-article.has-image .article-image img {
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: cover;
+}
+
+/* 渐变遮罩 — 底部加深保证文字可读 */
+article.main-article.has-image .article-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 15%,
+    rgba(0, 0, 0, 0.1) 40%,
+    rgba(0, 0, 0, 0.55) 75%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 标题/副标题/元信息 浮在图片底部 */
+article.main-article.has-image .article-details {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 2.5rem 2rem 1.5rem !important;
+}
+
+article.main-article.has-image .article-title a {
+  color: #fff !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+article.main-article.has-image .article-subtitle {
+  color: rgba(255, 255, 255, 0.8) !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+article.main-article.has-image .article-category a {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(4px);
+}
+
+article.main-article.has-image .article-time,
+article.main-article.has-image .article-time *,
+article.main-article.has-image .article-lastmod-inline {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+article.main-article.has-image .article-time svg {
+  opacity: 0.65;
 }
 </style>
 
 <script>
 (function() {
   var pageLoader = document.getElementById('page-loader');
-  var minDisplayTime = 1500;  
-  var animationComplete = false;
-  
+  var displayTime = 1500;  // 固定显示 1.5 秒
+
   if (!window.__pageLoaderShown) {
     window.__pageLoaderShown = true;
-    
+
+    // 固定显示时间
     setTimeout(function() {
-      animationComplete = true;
-      checkHideLoader();
-    }, minDisplayTime);
-    
-    window.checkHideLoader = function() {
-      if (animationComplete) {
-        hidePageLoader();
-      }
-    };
-    
+      hidePageLoader();
+    }, displayTime);
+
     window.hidePageLoader = function() {
       if (pageLoader) {
         pageLoader.classList.add('hidden');
+        setupArticleStagger();
         setTimeout(function() {
           pageLoader.style.display = 'none';
           document.body.classList.add('loaded');
@@ -267,5 +293,20 @@ body.single-page article.main-article {
   } else {
     pageLoader.style.display = 'none';
   }
+
+  window.setupArticleStagger = function() {
+    var items = document.querySelectorAll('.article-content > *');
+    var windowHeight = window.innerHeight;
+    items.forEach(function(el, i) {
+      if (el.getBoundingClientRect().top < windowHeight) {
+        el.style.animationDelay = (i * 0.05) + 's';
+      } else {
+        el.style.opacity = '1';
+        el.style.animation = 'none';
+      }
+    });
+  };
+
+  window.setupArticleStagger();
 })();
 </script>

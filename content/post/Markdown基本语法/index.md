@@ -1,15 +1,13 @@
 ---
 title: Markdown基本语法
-date: 2026-03-31
-lastmod: 2026-03-31
-weight: 2
+date: 2026-03-30
+lastmod: 2026-03-30
+weight: 50
 description: Markdown 语法和 HTML 元素格式。
 image: star.jpg
 comments: true
 ---
 
-> [!NOTE] 提示
->&ensp;最基础的Markdown语法不再赘述
 ## 标题
 
 使用“#”控制标题大小，最大为1个“#”，最小为6个“#”，此标题为"##"
@@ -17,7 +15,7 @@ comments: true
 ```html
 写法：
 #(一个空格)(文字)
-## (一个空格)(文字)
+##(一个空格)(文字)
 ...
 ```
 

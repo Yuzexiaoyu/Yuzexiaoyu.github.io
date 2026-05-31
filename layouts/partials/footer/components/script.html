@@ -8,14 +8,14 @@
     <script type="text/javascript" src="{{ $customScript.RelPermalink }}" defer></script>
 {{- end -}}
 
-<script src="/lib/Swup.umd.js"></script>
-<script src="/lib/index.umd.js"></script>
+<script src="/lib/Swup.umd.js" defer></script>
+<script src="/lib/index.umd.js" defer></script>
 
 {{- $js := `
 var swupReady = false;
 document.addEventListener('click', function(e) {
   if (swupReady) return;
-  var link = e.target.closest('a[href]:not([target="_blank"]):not([rel="external"])');
+  var link = e.target.closest('a[href]:not([target="_blank"]):not([rel="external"]):not([data-no-swup])');
   if (link && link.origin === window.location.origin) {
     e.preventDefault();
     var checkSwup = setInterval(function() {
@@ -27,61 +27,384 @@ document.addEventListener('click', function(e) {
   }
 }, true);
 
+// 目录折叠按钮：在每个有子 ol 的 H2 li 上注入一个三角按钮。
+// 点击按钮切换 .is-manual-open（持久）。
+// 自动展开（is-manual-open / active-class / 后代 active-class）的逻辑在 _toc.scss 里。
+function setupTocToggles() {
+  document.querySelectorAll('#TableOfContents > ol > li').forEach(function(li) {
+    if (!li.querySelector(':scope > ol')) return;
+    if (li.querySelector(':scope > .toc-toggle')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toc-toggle';
+    btn.setAttribute('aria-label', '折叠/展开子目录');
+    li.prepend(btn);
+  });
+}
+
+// 滚动到其他 H2 后，自动清掉手动展开——但只清"用户在浏览这一段期间点开的"。
+// 关键：data-toc-manual-during-visit 标记由点击 handler 在 li 当前 active 时打上。
+// 在别处 active 时点开的 li 不打这个标记，所以滚动不会清；
+// 直到滚到该 li → active 触发本函数把 manual 也算进 "during-visit" → 再滚走时清。
+function setupTocAutoCollapse() {
+  var toc = document.getElementById('TableOfContents');
+  if (!toc) return;
+  if (toc.__tocAutoCollapseObserver) return;
+
+  function isLiActive(li) {
+    return li.classList.contains('active-class') || !!li.querySelector('.active-class');
+  }
+
+  function syncState() {
+    toc.querySelectorAll(':scope > ol > li').forEach(function(li) {
+      var hasActive = isLiActive(li);
+      var hasManual = li.classList.contains('is-manual-open');
+      var duringVisit = li.dataset.tocManualDuringVisit === '1';
+      if (hasActive) {
+        // 进入浏览状态。如果此时已经手动展开，标记为"在浏览中开着"
+        if (hasManual && !duringVisit) {
+          li.dataset.tocManualDuringVisit = '1';
+        }
+      } else if (duringVisit && hasManual) {
+        // 离开浏览，且这次浏览期间有手动展开 → 清
+        li.classList.remove('is-manual-open');
+        delete li.dataset.tocManualDuringVisit;
+      }
+    });
+  }
+
+  // 初次：当前正在 active 的 li，如果碰巧已经手动开了，也算上
+  syncState();
+
+  var observer = new MutationObserver(function(mutations) {
+    // 只在 active-class 实际变化时同步——is-manual-open 加减不触发
+    var activeChanged = false;
+    for (var i = 0; i < mutations.length; i++) {
+      var m = mutations[i];
+      if (m.type !== 'attributes' || m.attributeName !== 'class') continue;
+      var hadActive = m.oldValue && m.oldValue.indexOf('active-class') !== -1;
+      var hasActive = m.target.classList.contains('active-class');
+      if (hadActive !== hasActive) { activeChanged = true; break; }
+    }
+    if (activeChanged) syncState();
+  });
+  observer.observe(toc, {
+    attributes: true,
+    attributeFilter: ['class'],
+    attributeOldValue: true,
+    subtree: true
+  });
+  toc.__tocAutoCollapseObserver = observer;
+}
+
+// 用 capture 阶段事件委托，无视 Swup 切页换 DOM
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest && e.target.closest('.toc-toggle');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  var li = btn.parentElement;
+  if (!li) return;
+  var wasManual = li.classList.contains('is-manual-open');
+  li.classList.toggle('is-manual-open');
+  if (wasManual) {
+    // 用户主动关掉 → 清掉"在浏览中点开"标记
+    delete li.dataset.tocManualDuringVisit;
+  } else {
+    // 用户刚点开。如果当前 li 正在被浏览（active），打上标记，方便滚走时清掉它
+    var nowActive = li.classList.contains('active-class') || !!li.querySelector('.active-class');
+    if (nowActive) li.dataset.tocManualDuringVisit = '1';
+  }
+}, true);
+
+// 初次页面加载：脚本在 body 尾部，DOM 已就绪，立即注入
+setupTocToggles();
+setupTocAutoCollapse();
+
 var swup;
 
-// 🔥 预加载侧边栏链接（主资源加载完后执行）
-function preloadSidebarLinks() {
-  if (!swup || !swup.preload) return;
-  
-  var sidebarLinks = document.querySelectorAll('#main-menu a[href]:not([target="_blank"]):not([rel="external"])');
-  
-  sidebarLinks.forEach(function(link) {
-    if (link.origin === window.location.origin) {
-      // 🔥 延迟 500ms 避免阻塞主线程，逐个预加载
-      setTimeout(function() {
-        swup.preload(link.href);
-      }, 500);
-    }
+// ──── 预加载级联 ────
+// Phase 1: 头像 + 卡片图（在 head 里通过 <link rel="preload"> 已启动，浏览器自动管理）
+// Phase 2: 侧边栏导航链接（HTML，走 Swup cache 或 link prefetch）
+// Phase 3: 小说封面（image 资源）
+// Phase 4: 小说 EPUB（fetch 资源，按顺序逐个，避免占满带宽）
+
+function __prefetchLink(url, asType) {
+  return new Promise(function(res) {
+    var link = document.createElement('link');
+    link.rel = 'prefetch';
+    if (asType) link.as = asType;
+    link.addEventListener('load', res, { once: true });
+    link.addEventListener('error', res, { once: true });
+    link.href = url;
+    document.head.appendChild(link);
+    setTimeout(res, 8000);
   });
+}
+
+function __waitSwup(maxMs) {
+  // 给 Swup 一个上限的等待窗口；若到时还没准备好，phase 2 走原生 prefetch 兜底
+  var deadline = Date.now() + (maxMs || 3000);
+  return new Promise(function(res) {
+    (function check() {
+      if (typeof swup !== 'undefined' && swup && typeof swup.preload === 'function') return res(true);
+      if (Date.now() > deadline) return res(false);
+      setTimeout(check, 100);
+    })();
+  });
+}
+
+async function runPreloadChain() {
+  if (window.__preloadChainStarted) return;
+  window.__preloadChainStarted = true;
+  var data = window.__preloadData || {};
+
+  // Phase 1: 已通过 <link rel="preload"> 在 head 中启动，浏览器自动管理
+  // 直接进入 Phase 2，无需等待
+
+  // Phase 2: 侧栏导航链接。Swup 就绪 → 用 swup.preload 让 Swup cache 命中；否则 link prefetch 兜底
+  var sidebarLinks = Array.from(document.querySelectorAll('#main-menu a[href]'))
+    .filter(function(a) { return a.origin === location.origin && !a.target; })
+    .map(function(a) { return a.href; });
+  if (sidebarLinks.length) {
+    var swupReady = await __waitSwup(3000);
+    await Promise.all(sidebarLinks.map(function(url) {
+      if (swupReady) return Promise.resolve(swup.preload(url)).catch(function(){});
+      return __prefetchLink(url, 'document');
+    }));
+  }
+
+  // Phase 3 & 4: 小说资源在浏览器空闲时预加载，避免影响关键资源
+  // 使用 requestIdleCallback 确保在主线程空闲时才执行
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(function() {
+      runNovelPreloadChain(data);
+    }, { timeout: 5000 });
+  } else {
+    // 降级方案：延迟 2 秒后执行
+    setTimeout(function() {
+      runNovelPreloadChain(data);
+    }, 2000);
+  }
+}
+
+// 小说资源预加载链（Phase 3 & 4）
+async function runNovelPreloadChain(data) {
+  if (window.__novelPreloadStarted) return;
+  window.__novelPreloadStarted = true;
+
+  // Phase 3: 小说封面（image，可并行）
+  if (data.novelCovers && data.novelCovers.length) {
+    await Promise.all(data.novelCovers.map(function(url) { return __prefetchLink(url, 'image'); }));
+  }
+
+  // Phase 4: 小说 EPUB（大文件，按顺序）
+  if (data.novelEpubs && data.novelEpubs.length) {
+    for (var i = 0; i < data.novelEpubs.length; i++) {
+      await __prefetchLink(data.novelEpubs[i]);
+    }
+  }
+}
+
+// 脚本在 body 尾部，DOM 已就绪，立即启动级联（不等 1 秒）
+runPreloadChain();
+
+// ──── 书架进入动画（随机角色 cut-in，每会话只播一次）────
+// 触发点：① Swup 切到 /novel/（page:view 钩子里调用）；② 直接打开/刷新 /novel/（下面 load 里调用）
+window.__bookshelfAnims = [
+  '/novel/animations/joker.mp4',
+  '/novel/animations/futaba.mp4',
+  '/novel/animations/twins.mp4',
+  '/novel/animations/kasumi.mp4',
+  '/novel/animations/haru.mp4',
+  '/novel/animations/ann.mp4',
+  '/novel/animations/muffin.mp4',
+  '/novel/animations/mona.mp4',
+  '/novel/animations/makoto.mp4',
+  '/novel/animations/bluehair.mp4',
+  '/novel/animations/blondehair.mp4'
+];
+
+function revealBookshelf() {
+  var shelf = document.querySelector('.novel-bookshelf');
+  if (shelf) shelf.classList.add('is-revealed');
+}
+
+window.__playBookshelfIntro = function() {
+  if (!document.querySelector('.novel-bookshelf')) return;
+  if (window.__bookshelfIntroActive) return;
+  var anims = window.__bookshelfAnims || [];
+  if (!anims.length) {
+    revealBookshelf();
+    return;
+  }
+
+  // 直接打开/刷新 /novel/ 时，先等全局 page-loader 收起，避免叠加
+  function loaderHidden() {
+    var l = document.getElementById('page-loader');
+    return !l || l.classList.contains('hidden') || l.style.display === 'none';
+  }
+  if (!loaderHidden()) {
+    var waited = 0;
+    var poll = setInterval(function() {
+      waited += 100;
+      if (loaderHidden() || waited >= 3000) {
+        clearInterval(poll);
+        startBookshelfIntro(anims);
+      }
+    }, 100);
+  } else {
+    startBookshelfIntro(anims);
+  }
+};
+
+function startBookshelfIntro(anims) {
+  if (window.__bookshelfIntroActive) return;
+  window.__bookshelfIntroActive = true;
+
+  // 进入动画期间暂停 BGM（仅当原本在播放），动画结束/跳过后在 finish() 里恢复
+  var resumeAudio = false;
+  try {
+    var ap = window.aplayerInstance;
+    if (ap && ap.audio && !ap.audio.paused) {
+      resumeAudio = true;
+      ap.pause();
+    }
+  } catch (e) {}
+
+  var src = anims[Math.floor(Math.random() * anims.length)];
+
+  var overlay = document.createElement('div');
+  overlay.id = 'bookshelf-intro';
+  overlay.className = 'bookshelf-intro';
+
+  var video = document.createElement('video');
+  video.className = 'bookshelf-intro__video';
+  video.src = src;
+  video.setAttribute('playsinline', '');
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.muted = false;
+
+  overlay.appendChild(video);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(function() { overlay.classList.add('is-visible'); });
+
+  var done = false;
+  var failTimer, maxTimer;
+
+  function cleanup() {
+    document.removeEventListener('keydown', onKeydown);
+    if (failTimer) clearTimeout(failTimer);
+    if (maxTimer) clearTimeout(maxTimer);
+  }
+
+  function finish() {
+    if (done) return;
+    done = true;
+    // 恢复 BGM（仅当进入动画前在播放）
+    if (resumeAudio) {
+      resumeAudio = false;
+      try { if (window.aplayerInstance) window.aplayerInstance.play(); } catch (e) {}
+    }
+    cleanup();
+    try { video.pause(); } catch (e) {}
+    overlay.classList.remove('is-visible');
+    overlay.classList.add('is-closing');
+    var removed = false;
+    function rm() {
+      if (removed) return;
+      removed = true;
+      window.__bookshelfIntroActive = false;
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    overlay.addEventListener('transitionend', rm, { once: true });
+    setTimeout(rm, 600);
+    // 显示书架内容（与 overlay 淡出交叉淡入）
+    revealBookshelf();
+  }
+
+  function onKeydown() { finish(); }
+
+  overlay.addEventListener('click', finish);
+  document.addEventListener('keydown', onKeydown);
+  video.addEventListener('ended', finish, { once: true });
+  video.addEventListener('error', finish, { once: true });
+
+  function tryPlay() {
+    var p = video.play();
+    if (p && typeof p.then === 'function') {
+      p.catch(function() {
+        // 带声音被浏览器拦截 → 降级为静音重试
+        video.muted = true;
+        var p2 = video.play();
+        if (p2 && typeof p2.catch === 'function') p2.catch(function() { finish(); });
+      });
+    }
+  }
+
+  if (video.readyState >= 2) {
+    tryPlay();
+  } else {
+    video.addEventListener('canplay', tryPlay, { once: true });
+  }
+
+  // 加载不出来兜底：3.5s 还没法播就收起，绝不卡住用户
+  failTimer = setTimeout(function() {
+    if (!done && video.readyState < 2) finish();
+  }, 3500);
+  // ended 没触发兜底：最长 15s 强制收起
+  maxTimer = setTimeout(finish, 15000);
 }
 
 window.addEventListener('load', function() {
   document.body.classList.add('loaded');
-  
+
+  // 直接打开/刷新 /novel/ 时也播放进入动画
+  if (document.querySelector('.novel-bookshelf') && typeof window.__playBookshelfIntro === 'function') {
+    window.__playBookshelfIntro();
+  }
+
   if (typeof Swup === 'undefined') return;
+  if (swup) return;
 
   swup = new Swup({
     containers: ['body'],
     animationDuration: 0,
     plugins: [
       new SwupPreloadPlugin({
-        throttle: 100,           // 🔥 预加载节流 100ms
+        throttle: 100,
       })
     ]
   });
 
   swupReady = true;
 
-  // 🔥 主资源加载完后，预加载侧边栏链接
-  setTimeout(preloadSidebarLinks, 1000);
+  // 同页 hash 链接由浏览器原生导航，Swup 不介入
+  swup.hooks.replace('link:click', function(visit, _args, defaultHandler) {
+    if (visit.from.url === visit.to.url && visit.to.hash) return;
+    return defaultHandler(visit, _args);
+  });
 
   swup.hooks.on('visit:start', function() {
     document.body.classList.remove('loaded');
-    
+
     if (typeof window.setWarpSpeed === 'function') {
       window.setWarpSpeed(40);
     }
   });
-  
+
   swup.hooks.on('visit:end', function() {
     document.body.classList.add('loaded');
-    
+
+    if (typeof window.setupArticleStagger === 'function') {
+      window.setupArticleStagger();
+    }
+
     if (typeof window.setWarpSpeedSlow === 'function') {
       window.setWarpSpeedSlow();
     }
-    
-    // 🔥 新页面加载完后，也预加载其侧边栏链接
-    setTimeout(preloadSidebarLinks, 1000);
   });
 
   swup.hooks.on('page:view', function() {
@@ -90,14 +413,41 @@ window.addEventListener('load', function() {
       pageLoader.style.display = 'none';
       pageLoader.classList.add('hidden');
     }
-    
+
     cleanupGiscus();
-    window.dispatchEvent(new Event('scroll'));
-    window.dispatchEvent(new Event('resize'));
-    window.dispatchEvent(new Event('load'));
+
+    if (window.Stack && typeof window.Stack.init === 'function') {
+      window.Stack.init();
+    }
+
+    // Swup 切到新文章 → 重新注入折叠按钮
+    setupTocToggles();
+    setupTocAutoCollapse();
+
+    // Swup 导航到阅读器时重新初始化
+    if (document.getElementById('novel-reader-root')) {
+      if (typeof window.__initNovelReader !== 'function') {
+        var scripts = document.querySelectorAll('script:not([src]):not([type])');
+        for (var i = 0; i < scripts.length; i++) {
+          if (scripts[i].textContent.indexOf('__initNovelReader') !== -1) {
+            eval(scripts[i].textContent);
+            break;
+          }
+        }
+      }
+      if (typeof window.__initNovelReader === 'function') {
+        window.__initNovelReader();
+      }
+    }
+
+    // Swup 切到书架 → 播放进入动画
+    if (document.querySelector('.novel-bookshelf') && typeof window.__playBookshelfIntro === 'function') {
+      window.__playBookshelfIntro();
+    }
+
     setTimeout(loadGiscus, 300);
   });
-  
+
   setTimeout(loadGiscus, 300);
 });
 
@@ -158,8 +508,8 @@ function loadGiscus() {
   var particleCount = 350;
   var currentSpeed = 5;
   var normalSpeed = 5;
-  var warpSpeed = 40;
-  var warpTimer = null;
+  var targetSpeed = 5;
+  var holdTimer = null;
 
   function Particle() {
     this.x = Math.random() * width - width/2;
@@ -187,7 +537,7 @@ function loadGiscus() {
     ctx.beginPath();
     ctx.moveTo(px, py);
     ctx.lineTo(sx, sy);
-    ctx.strokeStyle = 'rgba(100, 150, 255, ' + alpha + ')';
+    ctx.strokeStyle = 'rgba(100, 210, 255, ' + alpha + ')';
     ctx.lineWidth = 1.5;
     ctx.stroke();
     this.pz = this.z;
@@ -199,6 +549,13 @@ function loadGiscus() {
   }
 
   function animate() {
+    if (Math.abs(currentSpeed - targetSpeed) > 0.1) {
+      var lerp = currentSpeed < targetSpeed ? 0.3 : 0.015;
+      currentSpeed += (targetSpeed - currentSpeed) * lerp;
+    } else {
+      currentSpeed = targetSpeed;
+    }
+
     ctx.fillStyle = 'rgba(0,0,0,0.13)';
     ctx.fillRect(0,0,width,height);
     for(var i=0;i<particles.length;i++) {
@@ -209,22 +566,17 @@ function loadGiscus() {
   }
 
   window.setWarpSpeed = function(speed) {
+    if (holdTimer) clearTimeout(holdTimer);
     currentSpeed = speed;
+    targetSpeed = speed;
   };
 
   window.setWarpSpeedSlow = function() {
-    if (warpTimer) clearTimeout(warpTimer);
-    warpTimer = setTimeout(function() {
-      var slowInterval = setInterval(function() {
-        if (currentSpeed > normalSpeed) {
-          currentSpeed -= 1;
-          if (currentSpeed <= normalSpeed) {
-            currentSpeed = normalSpeed;
-            clearInterval(slowInterval);
-          }
-        }
-      }, 30);
-    }, 100);
+    if (holdTimer) clearTimeout(holdTimer);
+    holdTimer = setTimeout(function() {
+      targetSpeed = normalSpeed;
+      holdTimer = null;
+    }, 350);
   };
 
   function init() {

@@ -1,0 +1,1461 @@
+{{ define "body-class" }}template-novel-reader{{ end }}
+
+{{ define "left-sidebar" }}{{ end }}
+
+{{ define "main" }}
+{{/* APlayer 被移到了 <html> 下，必须用全局选择器隐藏 */}}
+<style>#aplayer{display:none!important}</style>
+<div id="novel-reader-root" data-theme="dark">
+
+  {{/* 工具栏 */}}
+  <div class="reader-toolbar" id="reader-toolbar">
+    <a href="/" class="toolbar-btn reader-home-btn" title="返回首页">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+    </a>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group" id="volume-selector">
+      <button class="toolbar-btn" id="vol-prev" title="上一卷">◀</button>
+      <span class="volume-label" id="volume-label">第一卷</span>
+      <button class="toolbar-btn" id="vol-next" title="下一卷">▶</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group">
+      <div class="theme-dots" id="theme-dots">
+        <button class="theme-dark active" data-theme="dark" title="暗色"></button>
+        <button class="theme-light" data-theme="light" title="亮色"></button>
+        <button class="theme-sepia" data-theme="sepia" title="羊皮纸"></button>
+        <button class="theme-eye" data-theme="eye" title="护眼"></button>
+      </div>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group font-group">
+      <div class="reader-dropdown" id="font-dropdown">
+        <button class="toolbar-btn dropdown-trigger" id="font-trigger" title="字号" type="button" aria-haspopup="true" aria-expanded="false">
+          <span class="dropdown-icon">A</span>
+          <span class="dropdown-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="font-menu" role="menu">
+          <button class="dropdown-item" data-font="0" role="menuitem" title="小" aria-label="小">
+            <span class="font-icon font-icon-s">A</span>
+          </button>
+          <button class="dropdown-item" data-font="1" role="menuitem" title="中" aria-label="中">
+            <span class="font-icon font-icon-m">A</span>
+          </button>
+          <button class="dropdown-item" data-font="2" role="menuitem" title="大" aria-label="大">
+            <span class="font-icon font-icon-l">A</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="reader-dropdown" id="line-dropdown">
+        <button class="toolbar-btn dropdown-trigger" id="line-trigger" title="行间距" type="button" aria-haspopup="true" aria-expanded="false">
+          <span class="dropdown-icon dropdown-icon-line" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+            </svg>
+          </span>
+          <span class="dropdown-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="line-menu" role="menu">
+          <button class="dropdown-item" data-line="0" role="menuitem" title="紧" aria-label="紧">
+            <svg class="line-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="4" y1="9" x2="20" y2="9"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="15" x2="20" y2="15"></line>
+            </svg>
+          </button>
+          <button class="dropdown-item" data-line="1" role="menuitem" title="中" aria-label="中">
+            <svg class="line-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="17" x2="20" y2="17"></line>
+            </svg>
+          </button>
+          <button class="dropdown-item" data-line="2" role="menuitem" title="松" aria-label="松">
+            <svg class="line-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="4" y1="5" x2="20" y2="5"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="19" x2="20" y2="19"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <span class="toolbar-spacer"></span>
+
+    <button class="toolbar-btn" id="toc-toggle-btn" title="目录">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="6" x2="18" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="6" y1="18" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  {{/* 手写阅读区：column-based 双页布局，不再使用 epub.js / iframe */}}
+  <div class="reader-viewport" id="reader-viewport">
+    <div id="reader-content" class="reader-content"></div>
+    <div class="reader-loading" id="reader-loading">加载中…</div>
+  </div>
+
+  {{/* TOC 遮罩 */}}
+  <div class="reader-toc-overlay" id="toc-overlay"></div>
+
+  {{/* TOC 右侧抽屉 */}}
+  <div class="reader-toc-drawer" id="toc-drawer">
+    <button class="toc-close" id="toc-close">✕</button>
+    <div class="toc-header">
+      <h3>目录</h3>
+    </div>
+    <div class="toc-list" id="toc-list"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+<script>
+window.__initNovelReader = function() {
+  var root = document.getElementById('novel-reader-root');
+  if (!root || root.dataset.readerInit) return;
+  root.dataset.readerInit = '1';
+
+  /* ======================= 工具函数 ======================= */
+  function $(id) { return document.getElementById(id); }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  /* ======================= 常量 ======================= */
+  var STORAGE_KEY = 'novel-reader-state';
+  var FONT_SIZE_STEPS = [95, 100, 105];
+  var LINE_HEIGHT_STEPS = [1.3, 1.5, 1.85];
+  var WHEEL_MOUSE_DELTA = 50;  // |deltaY| ≥ 此值（或行/页模式）判定为鼠标滚轮
+  var WHEEL_MIN_DELTA = 4;     // |deltaY| 小于此值视为惯性尾末梢，忽略
+  var WHEEL_GESTURE_GAP = 180; // 触摸板：静止多久后，下一次划动算作新手势
+
+  /* ======================= 卷列表 ======================= */
+  {{- $volumes := slice -}}
+  {{- range .Site.Data.novels.shelves -}}
+    {{- range .volumes -}}
+      {{- $volumes = $volumes | append (dict "key" .key "label" .label) -}}
+    {{- end -}}
+  {{- end -}}
+  var VOLUMES = {{ $volumes | jsonify | safeJS }};
+
+  /* ======================= 状态 ======================= */
+  var state = { theme: 'dark', fontSizeIndex: 1, lineHeightIndex: 1, currentVolIndex: 0 };
+  var book = null;             // 当前加载的书 { zip, opfDir, items, spineIds, toc, blobUrls, chapters }
+  var tocItems = [];           // 目录 UI 按钮列表（用于 highlight）
+  var currentPage = 0;
+  var totalPages = 1;
+  var spreadWidth = 0;         // = reader-viewport 的 clientWidth
+  var loadToken = 0;           // 防卷切换 race
+  var wheelArmed = true;       // 滚轮是否"已武装"（可触发下一次翻页）
+  var lastWheelTime = 0;       // 上个 wheel 事件时间戳
+  var lastWheelDir = 0;        // 上次手势方向（+1/-1）
+
+  /* ======================= DOM 引用 ======================= */
+  var volumeLabel = $('volume-label');
+  var volPrev = $('vol-prev');
+  var volNext = $('vol-next');
+  var themeDots = $('theme-dots');
+  var fontDropdown = $('font-dropdown');
+  var fontTrigger = $('font-trigger');
+  var fontMenu = $('font-menu');
+  var lineDropdown = $('line-dropdown');
+  var lineTrigger = $('line-trigger');
+  var lineMenu = $('line-menu');
+  var tocToggle = $('toc-toggle-btn');
+  var tocDrawer = $('toc-drawer');
+  var tocOverlay = $('toc-overlay');
+  var tocClose = $('toc-close');
+  var tocListEl = $('toc-list');
+  var viewportEl = $('reader-viewport');
+  var contentEl = $('reader-content');
+  var loadingEl = $('reader-loading');
+  var toolbar = $('reader-toolbar');
+
+  /* ======================= 持久化 ======================= */
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (s.theme) state.theme = s.theme;
+      if (typeof s.fontSizeIndex === 'number') {
+        state.fontSizeIndex = Math.max(0, Math.min(s.fontSizeIndex, FONT_SIZE_STEPS.length - 1));
+      }
+      if (typeof s.lineHeightIndex === 'number') {
+        state.lineHeightIndex = Math.max(0, Math.min(s.lineHeightIndex, LINE_HEIGHT_STEPS.length - 1));
+      }
+      if (typeof s.currentVolIndex === 'number') state.currentVolIndex = s.currentVolIndex;
+    } catch(e) {}
+  }
+
+  function persistState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch(e) {}
+  }
+
+  /* ======================= 主题 / 字号 =======================
+   * 主题用 data-theme 属性 + CSS 变量，所有元素在主 document 里，不需要 iframe 注入。
+   * 字号直接给 #reader-content 加 inline font-size。 */
+  function applyTheme(name) {
+    state.theme = name;
+    root.setAttribute('data-theme', name);
+    themeDots.querySelectorAll('button').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-theme') === name);
+    });
+    persistState();
+  }
+
+  function applyFontSize(idx) {
+    state.fontSizeIndex = Math.max(0, Math.min(idx, FONT_SIZE_STEPS.length - 1));
+    if (contentEl) contentEl.style.fontSize = FONT_SIZE_STEPS[state.fontSizeIndex] + '%';
+    updateFontMenu();
+    persistState();
+    // 字号变化后总页数变了，重新分页
+    requestAnimationFrame(function() { relayout(); });
+  }
+
+  function applyLineHeight(idx) {
+    state.lineHeightIndex = Math.max(0, Math.min(idx, LINE_HEIGHT_STEPS.length - 1));
+    if (contentEl) contentEl.style.lineHeight = String(LINE_HEIGHT_STEPS[state.lineHeightIndex]);
+    updateLineMenu();
+    persistState();
+    requestAnimationFrame(function() { relayout(); });
+  }
+
+  function updateFontMenu() {
+    if (!fontMenu) return;
+    fontMenu.querySelectorAll('.dropdown-item').forEach(function(b) {
+      b.classList.toggle('active', parseInt(b.getAttribute('data-font'), 10) === state.fontSizeIndex);
+    });
+  }
+
+  function updateLineMenu() {
+    if (!lineMenu) return;
+    lineMenu.querySelectorAll('.dropdown-item').forEach(function(b) {
+      b.classList.toggle('active', parseInt(b.getAttribute('data-line'), 10) === state.lineHeightIndex);
+    });
+  }
+
+  /* ======================= 卷切换 ======================= */
+  function switchVolume(idx) {
+    if (idx === state.currentVolIndex) return;
+    state.currentVolIndex = idx;
+    persistState();
+    updateVolumeLabel();
+    loadVolume(VOLUMES[idx].key);
+  }
+
+  function updateVolumeLabel() {
+    var vol = VOLUMES[state.currentVolIndex];
+    volumeLabel.textContent = vol.label;
+    volPrev.style.visibility = state.currentVolIndex === 0 ? 'hidden' : '';
+    volNext.style.visibility = state.currentVolIndex === VOLUMES.length - 1 ? 'hidden' : '';
+  }
+
+  /* ======================= 目录 UI ======================= */
+  function groupTocByArc(tocList) {
+    var frontMatter = [];
+    var arcs = [];
+    var currentArc = null;
+    for (var i = 0; i < tocList.length; i++) {
+      var item = tocList[i];
+      if (/^【.+】$/.test(item.label)) {
+        currentArc = { label: item.label, items: [item] };
+        arcs.push(currentArc);
+      } else if (currentArc === null) {
+        frontMatter.push(item);
+      } else {
+        currentArc.items.push(item);
+      }
+    }
+    return { frontMatter: frontMatter, arcs: arcs };
+  }
+
+  function createTocItemEl(item, index) {
+    var btn = document.createElement('button');
+    btn.className = 'toc-item';
+    btn.innerHTML = '<span class="toc-item-index">' + (index + 1) + '</span><span class="toc-item-title">' + escapeHtml(item.label) + '</span>';
+    btn.addEventListener('click', function() {
+      closeToc();
+      gotoTocHref(item.href);
+      highlightTocByHref(item.href);
+    });
+    tocItems.push({ btn: btn, href: item.href });
+    return btn;
+  }
+
+  function buildToc(tocList) {
+    tocListEl.innerHTML = '';
+    tocItems = [];
+    if (!tocList || !tocList.length) {
+      tocListEl.innerHTML = '<div class="toc-empty">暂无目录</div>';
+      return;
+    }
+
+    var vol = VOLUMES[state.currentVolIndex];
+    var grouped = groupTocByArc(tocList);
+
+    var header = document.createElement('button');
+    header.className = 'toc-volume-header';
+    header.innerHTML = '<span class="toc-volume-arrow">▼</span>' + vol.label;
+
+    var itemsWrap = document.createElement('div');
+    itemsWrap.className = 'toc-volume-items open';
+
+    var globalIdx = 0;
+
+    grouped.frontMatter.forEach(function(item) {
+      itemsWrap.appendChild(createTocItemEl(item, globalIdx++));
+    });
+
+    // 存储弧数据用于 scrollspy 自动展开/折叠
+    var arcDataList = [];
+
+    grouped.arcs.forEach(function(arc) {
+      var arcHeader = document.createElement('button');
+      arcHeader.className = 'toc-arc-header';
+      arcHeader.innerHTML = '<span class="toc-arc-arrow">▶</span>' + arc.label;
+      var arcItems = document.createElement('div');
+      arcItems.className = 'toc-arc-items';
+      var hrefBases = [];
+      arc.items.forEach(function(item) {
+        arcItems.appendChild(createTocItemEl(item, globalIdx++));
+        hrefBases.push((item.href || '').split('#')[0].split('/').pop().toLowerCase());
+      });
+      arcHeader.addEventListener('click', function() {
+        var open = arcItems.classList.toggle('open');
+        arcHeader.querySelector('.toc-arc-arrow').textContent = open ? '▼' : '▶';
+      });
+      itemsWrap.appendChild(arcHeader);
+      itemsWrap.appendChild(arcItems);
+      arcDataList.push({ header: arcHeader, items: arcItems, hrefs: hrefBases });
+    });
+
+    book.tocArcData = arcDataList;
+
+    header.addEventListener('click', function() {
+      var open = itemsWrap.classList.toggle('open');
+      header.querySelector('.toc-volume-arrow').textContent = open ? '▼' : '▶';
+    });
+
+    tocListEl.appendChild(header);
+    tocListEl.appendChild(itemsWrap);
+  }
+
+
+  function openToc() {
+    tocDrawer.classList.add('open');
+    tocOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeToc() {
+    tocDrawer.classList.remove('open');
+    tocOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  /* ======================= EPUB 解析 =======================
+   * EPUB 本质就是 ZIP：
+   *   - META-INF/container.xml → 指向 OPF 文件路径
+   *   - OPF → manifest（所有资源）+ spine（章节顺序）
+   *   - nav.xhtml (EPUB3) 或 toc.ncx (EPUB2) → 目录
+   * 用 JSZip 解压，DOMParser 解析 XML，结构很直白。 */
+
+  async function loadVolume(volKey) {
+    var token = ++loadToken;
+    if (loadingEl) {
+      loadingEl.textContent = '加载中…';
+      loadingEl.style.display = '';
+    }
+    if (contentEl) contentEl.style.opacity = '0';
+
+    // 释放上一本的 blob URL
+    cleanupBook();
+
+    try {
+      var resp = await fetch('/novel/' + volKey + '.epub');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var buf = await resp.arrayBuffer();
+      if (token !== loadToken) return;
+
+      var zip = await JSZip.loadAsync(buf);
+      if (token !== loadToken) return;
+
+      // 1. container.xml → OPF 路径
+      var containerFile = zip.file('META-INF/container.xml');
+      if (!containerFile) throw new Error('container.xml 不存在');
+      var containerXml = await containerFile.async('string');
+      var containerDoc = new DOMParser().parseFromString(containerXml, 'application/xml');
+      var rootfile = containerDoc.querySelector('rootfile');
+      if (!rootfile) throw new Error('rootfile 节点缺失');
+      var opfPath = rootfile.getAttribute('full-path');
+      var opfDir = opfPath.indexOf('/') >= 0 ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : '';
+
+      // 2. OPF 文件 → manifest + spine
+      var opfFile = zip.file(opfPath);
+      if (!opfFile) throw new Error('OPF 文件不存在');
+      var opfXml = await opfFile.async('string');
+      var opfDoc = new DOMParser().parseFromString(opfXml, 'application/xml');
+
+      var items = {};
+      var manifestItems = opfDoc.getElementsByTagName('item');
+      for (var i = 0; i < manifestItems.length; i++) {
+        var it = manifestItems[i];
+        var id = it.getAttribute('id');
+        if (!id) continue;
+        items[id] = {
+          href: it.getAttribute('href') || '',
+          type: it.getAttribute('media-type') || '',
+          props: it.getAttribute('properties') || ''
+        };
+      }
+
+      var spineIds = [];
+      var spineRefs = opfDoc.getElementsByTagName('itemref');
+      for (var j = 0; j < spineRefs.length; j++) {
+        var idref = spineRefs[j].getAttribute('idref');
+        if (idref) spineIds.push(idref);
+      }
+
+      book = {
+        zip: zip,
+        opfDir: opfDir,
+        items: items,
+        spineIds: spineIds,
+        toc: [],
+        blobUrls: {},
+        chapters: []
+      };
+
+      // 3. 目录
+      var navItem = null, ncxItem = null;
+      for (var id2 in items) {
+        if (items[id2].props.split(/\s+/).indexOf('nav') !== -1) navItem = items[id2];
+        if (items[id2].type === 'application/x-dtbncx+xml') ncxItem = items[id2];
+      }
+      if (navItem) book.toc = await parseNav(opfDir + navItem.href);
+      else if (ncxItem) book.toc = await parseNcx(opfDir + ncxItem.href);
+
+      if (token !== loadToken) return;
+
+      // 4. 渲染章节到 #reader-content
+      contentEl.innerHTML = '';
+      for (var k = 0; k < spineIds.length; k++) {
+        if (token !== loadToken) return;
+        var item = items[spineIds[k]];
+        if (!item) continue;
+        var chapterPath = opfDir + item.href;
+        var chapterEl = await loadChapter(chapterPath, k);
+        if (token !== loadToken) return;
+        contentEl.appendChild(chapterEl);
+        book.chapters.push({ idx: k, href: item.href, anchor: chapterEl });
+      }
+
+      if (token !== loadToken) return;
+
+      // 5. 应用字号 + 行间距 + 主题（主题靠 root data-theme 自动生效）+ 构建目录
+      contentEl.style.fontSize = FONT_SIZE_STEPS[state.fontSizeIndex] + '%';
+      contentEl.style.lineHeight = String(LINE_HEIGHT_STEPS[state.lineHeightIndex]);
+      buildToc(book.toc);
+
+      // 6. JS 手动分页 —— 必须等图片加载完后才能测准每个 block 的高度
+      await paginate();
+      if (token !== loadToken) return;
+
+      currentPage = 0;
+      applyTransform();
+
+      if (loadingEl) loadingEl.style.display = 'none';
+      contentEl.style.opacity = '';
+    } catch (err) {
+      console.error('[novel-reader] loadVolume failed:', err);
+      if (loadingEl) {
+        loadingEl.style.display = '';
+        loadingEl.textContent = '加载失败：' + (err && err.message ? err.message : err);
+      }
+    }
+  }
+
+  async function loadChapter(path, idx) {
+    var section = document.createElement('section');
+    section.className = 'reader-chapter';
+    section.id = 'chapter-' + idx;
+    section.dataset.spineIdx = String(idx);
+    section.dataset.href = path;
+
+    var file = book.zip.file(path);
+    if (!file) return section;
+    var xmlStr = await file.async('string');
+
+    // XHTML 可能声明命名空间，DOMParser 用 application/xhtml+xml 解析最稳
+    var doc;
+    try {
+      doc = new DOMParser().parseFromString(xmlStr, 'application/xhtml+xml');
+      if (doc.querySelector('parsererror')) doc = null;
+    } catch(e) { doc = null; }
+    if (!doc) {
+      try { doc = new DOMParser().parseFromString(xmlStr, 'text/html'); } catch(e2) {}
+    }
+    if (!doc) return section;
+
+    var body = doc.body || doc.querySelector('body');
+    if (!body) return section;
+
+    // 替换 <img src> 为 blob URL（EPUB 内 src 可能 URL-encoded，ZIP 内文件名是 raw）
+    var imgs = body.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      var img = imgs[i];
+      var src = img.getAttribute('src') || img.getAttribute('xlink:href') || '';
+      if (!src || src.indexOf('://') !== -1 || src.indexOf('data:') === 0) continue;
+      try { src = decodeURIComponent(src); } catch(_) {}
+      var absPath = resolvePath(path, src);
+      var url = await getBlobUrl(absPath);
+      if (url) img.setAttribute('src', url);
+      else console.warn('[novel-reader] img not found in zip:', src, '→', absPath);
+    }
+    // 也处理 SVG <image>
+    var svgImages = body.querySelectorAll('image');
+    for (var s = 0; s < svgImages.length; s++) {
+      var im = svgImages[s];
+      // 部分 EPUB（如 calibre 导出的 vol 4-8 titlepage）会写 preserveAspectRatio="none"，
+      // 让 SVG 把图片强行拉到视口比例，绕过我们 reader CSS 的 object-fit。修掉它。
+      var svgEl = im.closest('svg');
+      if (svgEl) svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      var href = im.getAttribute('href') || im.getAttribute('xlink:href') || '';
+      if (!href || href.indexOf('://') !== -1) continue;
+      try { href = decodeURIComponent(href); } catch(_) {}
+      var absPath2 = resolvePath(path, href);
+      var url2 = await getBlobUrl(absPath2);
+      if (url2) {
+        im.setAttribute('href', url2);
+        im.setAttribute('xlink:href', url2);
+      } else console.warn('[novel-reader] svg image not found in zip:', href, '→', absPath2);
+    }
+
+    // EPUB 内目录页 / 章节内的 <a> 不能交给 Swup 接管：
+    // 否则 Swup 会把 "../Text/Xxx.xhtml" 当站内导航发 XHR → 404。
+    // 打 data-no-swup 让 Swup 跳过这些链接，剩下的由 document click 拦截器接手。
+    var bodyLinks = body.querySelectorAll('a[href]');
+    for (var li = 0; li < bodyLinks.length; li++) {
+      bodyLinks[li].setAttribute('data-no-swup', '');
+    }
+
+    // 把 body 内子节点搬到 section
+    while (body.firstChild) section.appendChild(body.firstChild);
+    return section;
+  }
+
+  async function getBlobUrl(path) {
+    if (!book) return null;
+    if (book.blobUrls[path]) return book.blobUrls[path];
+    var file = book.zip.file(path);
+    if (!file && path.charAt(0) === '/') file = book.zip.file(path.slice(1));
+    if (!file) {
+      // 兜底：按 basename 大小写无关扫一遍 zip 内所有文件
+      var basename = path.split('/').pop().toLowerCase();
+      var allFiles = book.zip.file(/.+/);
+      for (var i = 0; i < allFiles.length; i++) {
+        var f = allFiles[i];
+        if (f.name.split('/').pop().toLowerCase() === basename) {
+          file = f;
+          break;
+        }
+      }
+    }
+    if (!file) return null;
+    try {
+      var blob = await file.async('blob');
+      // 给 blob 指定 MIME，否则浏览器有时按 octet-stream 处理，拒显图片
+      var ext = (file.name.split('.').pop() || '').toLowerCase();
+      var mimeMap = {
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+        gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+        bmp: 'image/bmp'
+      };
+      if (mimeMap[ext] && blob.type !== mimeMap[ext]) {
+        blob = new Blob([blob], { type: mimeMap[ext] });
+      }
+      var url = URL.createObjectURL(blob);
+      book.blobUrls[path] = url;
+      return url;
+    } catch(e) {
+      console.warn('[novel-reader] blob creation failed:', path, e);
+      return null;
+    }
+  }
+
+  function cleanupBook() {
+    if (!book) return;
+    if (book.blobUrls) {
+      for (var p in book.blobUrls) {
+        try { URL.revokeObjectURL(book.blobUrls[p]); } catch(_) {}
+      }
+    }
+    book = null;
+  }
+
+  function resolvePath(basePath, relative) {
+    if (!relative) return '';
+    if (relative.charAt(0) === '/') return relative.slice(1);
+    var baseDir = basePath.indexOf('/') >= 0 ? basePath.substring(0, basePath.lastIndexOf('/') + 1) : '';
+    var parts = (baseDir + relative).split('/');
+    var stack = [];
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (p === '..') stack.pop();
+      else if (p && p !== '.') stack.push(p);
+    }
+    return stack.join('/');
+  }
+
+  async function parseNav(navPath) {
+    var file = book.zip.file(navPath);
+    if (!file) return [];
+    var xmlStr = await file.async('string');
+    var doc;
+    try { doc = new DOMParser().parseFromString(xmlStr, 'application/xhtml+xml'); } catch(_) {}
+    if (!doc || doc.querySelector('parsererror')) {
+      try { doc = new DOMParser().parseFromString(xmlStr, 'text/html'); } catch(_) {}
+    }
+    if (!doc) return [];
+
+    // 找 toc nav：epub:type="toc" 优先，没有就拿第一个 nav
+    var navs = doc.getElementsByTagName('nav');
+    var tocNav = null;
+    for (var i = 0; i < navs.length; i++) {
+      var t = navs[i].getAttribute('epub:type') || navs[i].getAttributeNS('http://www.idpf.org/2007/ops', 'type');
+      if (t && t.indexOf('toc') !== -1) { tocNav = navs[i]; break; }
+    }
+    if (!tocNav && navs.length) tocNav = navs[0];
+    if (!tocNav) return [];
+
+    // 扁平化扫所有 li > a / li > span（保留出现顺序）
+    var toc = [];
+    var anchors = tocNav.querySelectorAll('li > a, li > span');
+    for (var a = 0; a < anchors.length; a++) {
+      var el = anchors[a];
+      toc.push({
+        label: (el.textContent || '').trim(),
+        href: el.getAttribute('href') || ''
+      });
+    }
+    return toc;
+  }
+
+  async function parseNcx(ncxPath) {
+    var file = book.zip.file(ncxPath);
+    if (!file) return [];
+    var xmlStr = await file.async('string');
+    var doc;
+    try { doc = new DOMParser().parseFromString(xmlStr, 'application/xml'); } catch(_) { return []; }
+    var toc = [];
+    var navPoints = doc.getElementsByTagName('navPoint');
+    for (var i = 0; i < navPoints.length; i++) {
+      var np = navPoints[i];
+      var labelEl = np.querySelector('navLabel > text');
+      var contentEl2 = np.querySelector('content');
+      if (labelEl && contentEl2) {
+        toc.push({
+          label: (labelEl.textContent || '').trim(),
+          href: contentEl2.getAttribute('src') || ''
+        });
+      }
+    }
+    return toc;
+  }
+
+  /* ======================= JS 手动分页 + 翻页 =======================
+   * 完全放弃 CSS multicolumn —— 它在跨章节单页 section 区域会引发 parity 错位、
+   * 段落跨页切字。改成 JS 主动测量：
+   *
+   *   1. 章节内容已加载到 .reader-chapter section 内
+   *   2. 等所有 <img> 加载完成（高度稳定）
+   *   3. 遍历每个块级元素，依次塞进当前 .reader-page；scrollHeight 超过页高就
+   *      把它移到新 .reader-page —— 段落整段不切，绝不出现"文字穿页"
+   *   4. 章节边界（每章第一个 block）强制开新 page —— 每章从新页开始
+   *   5. .reader-page width:50vw + height:100% + overflow:hidden，flex 横向排列
+   *   6. 翻页 = transform translateX (-currentSpread × viewportWidth)，
+   *      一个 spread = 2 page（双页布局）
+   *
+   * 字号变化、窗口 resize → 重新分页（relayout）。 */
+
+  function createPage(width) {
+    var p = document.createElement('div');
+    p.className = 'reader-page';
+    if (width != null) p.style.width = width + 'px';
+    return p;
+  }
+
+  // 把"纯容器" div/section 递归拆成细粒度叶子块。
+  // 某些 EPUB 把整章正文包在单个 <div> 里 —— 章节直接子元素只有 1 个，
+  // paginate 无法在章节内部断页，导致"一章一页"。拆包后每个段落独立成块。
+  var DRILL_TAGS = { DIV: 1, SECTION: 1, ARTICLE: 1, MAIN: 1 };
+
+  function hasDirectText(el) {
+    for (var n = el.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3 && n.textContent && n.textContent.trim()) return true;
+    }
+    return false;
+  }
+
+  function collectLeafBlocks(el, out) {
+    var kids = el.children;
+    for (var k = 0; k < kids.length; k++) {
+      var kid = kids[k];
+      // 无自身文字的容器（DIV/SECTION/...）→ 下钻；否则作为叶子块
+      if (DRILL_TAGS[kid.tagName] && kid.children.length > 0 && !hasDirectText(kid)) {
+        collectLeafBlocks(kid, out);
+      } else {
+        out.push(kid);
+      }
+    }
+    return out;
+  }
+
+  async function paginate() {
+    if (!book || !contentEl || !viewportEl) return;
+
+    // 等所有图片加载完成（高度稳定后才能正确测量）
+    var allImgs = contentEl.querySelectorAll('img');
+    if (allImgs.length) {
+      await Promise.all(Array.from(allImgs).map(function(img) {
+        if (img.complete && img.naturalHeight > 0) return Promise.resolve();
+        return new Promise(function(resolve) {
+          var done = false;
+          var finish = function() { if (done) return; done = true; resolve(); };
+          img.addEventListener('load', finish, { once: true });
+          img.addEventListener('error', finish, { once: true });
+          setTimeout(finish, 3000); // 安全超时
+        });
+      }));
+    }
+
+    // 收集所有章节的块级 children（连同章节归属）
+    var chapters = Array.from(contentEl.querySelectorAll('.reader-chapter'));
+    if (!chapters.length) return;
+
+    var blocks = [];
+    for (var ci = 0; ci < chapters.length; ci++) {
+      var chapter = chapters[ci];
+      var spineIdx = parseInt(chapter.dataset.spineIdx, 10) || 0;
+      var leaves = collectLeafBlocks(chapter, []);
+      for (var c = 0; c < leaves.length; c++) {
+        blocks.push({
+          el: leaves[c],
+          chapterIdx: spineIdx,
+          firstInChapter: c === 0
+        });
+      }
+    }
+
+    // 清空 contentEl，准备 pages 容器
+    contentEl.innerHTML = '';
+    var pagesEl = document.createElement('div');
+    pagesEl.className = 'reader-pages';
+    contentEl.appendChild(pagesEl);
+
+    // page 宽度由 JS 接管，避免 CSS 50vw 与 viewport.clientWidth 因滚动条/亚像素累积偏移
+    var viewportW = viewportEl.clientWidth;
+    var isSinglePage = window.matchMedia('(max-width: 720px)').matches;
+    var pageWidth = isSinglePage ? viewportW : viewportW / 2;
+
+    var pageHeight = viewportEl.clientHeight;
+    var currentPageEl = createPage(pageWidth);
+    pagesEl.appendChild(currentPageEl);
+    var chapterStartPages = {};
+
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      var child = b.el;
+
+      // 章节边界：当前 page 已有内容就强制开新 page
+      if (b.firstInChapter) {
+        if (currentPageEl.children.length > 0) {
+          currentPageEl = createPage(pageWidth);
+          pagesEl.appendChild(currentPageEl);
+        }
+        currentPageEl.dataset.chapterStart = String(b.chapterIdx);
+        chapterStartPages[b.chapterIdx] = pagesEl.children.length - 1;
+      }
+
+      currentPageEl.appendChild(child);
+
+      // 测溢出 —— page overflow:hidden，所以读 scrollHeight 反映内容真实高度
+      if (currentPageEl.scrollHeight > pageHeight + 2 && currentPageEl.children.length > 1) {
+        currentPageEl.removeChild(child);
+        currentPageEl = createPage(pageWidth);
+        pagesEl.appendChild(currentPageEl);
+        currentPageEl.appendChild(child);
+      }
+      // 单 child 自身比一页大（罕见，多为巨幅插图）：留它溢出，由 CSS max-height 限制
+    }
+
+    book.chapterStartPages = chapterStartPages;
+    book.totalPagesCount = pagesEl.children.length;
+
+    // 一个 spread 的位移：单页模式 = 1 page，双页模式 = 2 page；严格匹配 inline pageWidth
+    spreadWidth = isSinglePage ? pageWidth : pageWidth * 2;
+    totalPages = Math.max(1, Math.ceil(book.totalPagesCount / 2));
+  }
+
+  // 字号变 / resize 后重排
+  async function relayout() {
+    if (!book || !contentEl) return;
+    // 把已经分页的内容 unflatten 回 chapter sections（让 paginate 重新走一遍）
+    var pagesEl = contentEl.querySelector('.reader-pages');
+    if (pagesEl) {
+      // 重建 chapter sections，把每个 page 的 children 按 chapterStart 归位
+      var rebuiltChapters = {};
+      var currentChapterIdx = -1;
+      Array.from(pagesEl.children).forEach(function(pageEl) {
+        if (pageEl.dataset.chapterStart !== undefined) {
+          currentChapterIdx = parseInt(pageEl.dataset.chapterStart, 10);
+        }
+        if (currentChapterIdx === -1) return;
+        if (!rebuiltChapters[currentChapterIdx]) {
+          rebuiltChapters[currentChapterIdx] = [];
+        }
+        Array.from(pageEl.children).forEach(function(child) {
+          rebuiltChapters[currentChapterIdx].push(child);
+        });
+      });
+
+      // 用 book.chapters 顺序重建
+      contentEl.innerHTML = '';
+      for (var i = 0; i < book.chapters.length; i++) {
+        var ch = book.chapters[i];
+        var section = document.createElement('section');
+        section.className = 'reader-chapter';
+        section.id = 'chapter-' + ch.idx;
+        section.dataset.spineIdx = String(ch.idx);
+        var items = rebuiltChapters[ch.idx] || [];
+        items.forEach(function(it) { section.appendChild(it); });
+        contentEl.appendChild(section);
+        ch.anchor = section;
+      }
+    }
+    await paginate();
+    currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
+    applyTransform();
+  }
+
+  function applyTransform() {
+    if (!contentEl) return;
+    currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
+    contentEl.style.transform = 'translateX(' + (-currentPage * spreadWidth) + 'px)';
+    highlightTocByPage();
+  }
+
+  function gotoPage(p) {
+    var prev = currentPage;
+    currentPage = Math.max(0, Math.min(p, totalPages - 1));
+    if (currentPage !== prev) applyTransform();
+  }
+
+  function nextPage() { if (currentPage < totalPages - 1) gotoPage(currentPage + 1); }
+  function prevPage() { if (currentPage > 0) gotoPage(currentPage - 1); }
+
+  function gotoChapter(idx) {
+    if (!book || !book.chapterStartPages) return;
+    var pageIdx = book.chapterStartPages[idx];
+    if (pageIdx === undefined) return;
+    // pageIdx 是 single-page 索引，转 spread 索引
+    gotoPage(Math.floor(pageIdx / 2));
+  }
+
+  function gotoTocHref(href) {
+    if (!book || !href) return;
+    var pathOnly = href.split('#')[0];
+    if (!pathOnly) return;
+    var pathBase = pathOnly.split('/').pop().toLowerCase();
+    for (var i = 0; i < book.spineIds.length; i++) {
+      var it = book.items[book.spineIds[i]];
+      if (!it) continue;
+      var itBase = (it.href || '').split('/').pop().toLowerCase();
+      if (itBase === pathBase) { gotoChapter(i); return; }
+    }
+  }
+
+  function highlightTocByHref(href) {
+    if (!href) return;
+    var targetBase = href.split('#')[0].split('/').pop().toLowerCase();
+    tocItems.forEach(function(entry) {
+      var entryBase = (entry.href || '').split('#')[0].split('/').pop().toLowerCase();
+      entry.btn.classList.toggle('active', entryBase === targetBase);
+    });
+  }
+
+  function highlightTocByPage() {
+    if (!book || !book.chapterStartPages || !tocItems.length || !book.chapters) return;
+    var firstPageIdx = currentPage * 2;
+    var activeChapterIdx = -1;
+    for (var key in book.chapterStartPages) {
+      var sp = book.chapterStartPages[key];
+      var k = parseInt(key, 10);
+      if (sp <= firstPageIdx + 1 && k > activeChapterIdx) activeChapterIdx = k;
+    }
+    if (activeChapterIdx < 0) { autoExpandTocArcs(null); return; }
+    var ch = null;
+    for (var c = 0; c < book.chapters.length; c++) {
+      if (book.chapters[c].idx === activeChapterIdx) { ch = book.chapters[c]; break; }
+    }
+    if (!ch) { autoExpandTocArcs(null); return; }
+    var activeBase = (ch.href || '').split('/').pop().toLowerCase();
+    tocItems.forEach(function(entry) {
+      var entryBase = (entry.href || '').split('#')[0].split('/').pop().toLowerCase();
+      entry.btn.classList.toggle('active', entryBase === activeBase);
+    });
+    autoExpandTocArcs(activeBase);
+  }
+
+  function autoExpandTocArcs(activeBase) {
+    if (!book || !book.tocArcData) return;
+    book.tocArcData.forEach(function(arcData) {
+      var isActive = activeBase && arcData.hrefs.indexOf(activeBase) >= 0;
+      if (isActive) {
+        arcData.items.classList.add('open');
+        arcData.header.querySelector('.toc-arc-arrow').textContent = '▼';
+      } else {
+        arcData.items.classList.remove('open');
+        arcData.header.querySelector('.toc-arc-arrow').textContent = '▶';
+      }
+    });
+  }
+
+
+  /* ======================= 输入：滚轮 / 键盘 / 触摸 =======================
+   * 主 document 监听，没有 iframe boundary 问题。 */
+
+  /* 滚轮翻页（设备自适应）：
+   * 鼠标滚轮一"格" = 一个离散 wheel 事件 → 每个事件直接翻 1 页，
+   *   零延迟、不限速，连滚连翻，滚多快翻多快。
+   * 触摸板一次划动 = 一连串事件（含惯性尾）→ 手势去抖：
+   *   只在手势首个事件翻 1 页，其余吞掉，静止 WHEEL_GESTURE_GAP 后重新武装。
+   * 判定：deltaMode 非像素，或 |deltaY| 较大 → 鼠标滚轮。 */
+  function onWheel(e) {
+    e.preventDefault();
+    var dy = e.deltaY;
+    if (!dy) return;
+    var dir = dy > 0 ? 1 : -1;
+
+    var isMouse = e.deltaMode !== 0 || Math.abs(dy) >= WHEEL_MOUSE_DELTA;
+    if (isMouse) {
+      // 鼠标滚轮：每个事件即一格，立刻翻页，不去抖、不限速
+      if (dir > 0) nextPage(); else prevPage();
+      lastWheelDir = dir;
+      return;
+    }
+
+    // 触摸板：手势去抖
+    if (Math.abs(dy) < WHEEL_MIN_DELTA) return; // 惯性尾末梢，忽略
+    var now = Date.now();
+    if (now - lastWheelTime > WHEEL_GESTURE_GAP || dir !== lastWheelDir) {
+      wheelArmed = true; // 静止够久 / 反向 → 新手势
+    }
+    lastWheelTime = now;
+    lastWheelDir = dir;
+
+    if (!wheelArmed) return; // 手势进行中（含惯性尾），吞掉
+    wheelArmed = false;
+    if (dir > 0) nextPage(); else prevPage();
+  }
+
+  function bindInputHandlers() {
+    if (viewportEl) {
+      viewportEl.addEventListener('wheel', onWheel, { passive: false });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (!root.dataset.readerInit) return;
+      var t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (tocDrawer.classList.contains('open')) return;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); prevPage(); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextPage(); }
+      else if (e.key === 'Home') { e.preventDefault(); gotoPage(0); }
+      else if (e.key === 'End') { e.preventDefault(); gotoPage(totalPages - 1); }
+    });
+
+    // 触摸滑动（移动设备）
+    var touchStartX = 0, touchStartY = 0, touchActive = false;
+    if (viewportEl) {
+      viewportEl.addEventListener('touchstart', function(e) {
+        if (e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchActive = true;
+      }, { passive: true });
+      viewportEl.addEventListener('touchend', function(e) {
+        if (!touchActive) return;
+        touchActive = false;
+        var t = e.changedTouches[0];
+        var dx = t.clientX - touchStartX;
+        var dy = t.clientY - touchStartY;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+          if (dx < 0) nextPage(); else prevPage();
+        }
+      }, { passive: true });
+    }
+
+    // 拦截 EPUB 内 <a> 的浏览器导航。
+    // EPUB 内目录页的 href 是相对内部路径（如 "../Text/Cection02.xhtml"），
+    // 浏览器会解析为 /novel/Text/... → 404。挂 document 上 + capture，确保比任何
+    // 浏览器默认行为先一步拿到事件。
+    document.addEventListener('click', function(e) {
+      var a = e.target && e.target.closest && e.target.closest('a');
+      if (!a) return;
+      if (!contentEl || !contentEl.contains(a)) return;
+      var href = a.getAttribute('href') || '';
+      console.log('[novel-reader] intercept link click:', href);
+      if (!href) { e.preventDefault(); return; }
+      if (/^(https?:|mailto:|tel:)/i.test(href)) {
+        e.preventDefault();
+        window.open(href, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (href.charAt(0) === '#') { e.preventDefault(); return; }
+      e.preventDefault();
+      gotoTocHref(href);
+    }, true);
+    console.log('[novel-reader] link interceptor attached');
+  }
+
+  /* ======================= 迷你播放器（APlayer 嵌入） =======================
+   * 这段和阅读器内核完全无关，原封从旧版搬过来。 */
+  function buildMiniPlayer() {
+    var ap = window.aplayerInstance;
+    if (!ap || !toolbar) return;
+
+    var fontGroup = toolbar.querySelector('.font-group');
+    if (!fontGroup || document.getElementById('reader-mini-player')) return;
+
+    var container = document.createElement('div');
+    container.id = 'reader-mini-player';
+    container.className = 'reader-mini-player';
+
+    var cover = document.createElement('img');
+    cover.className = 'mini-cover';
+    var cur = ap.list.audios[ap.list.index];
+    cover.src = (cur && cur.cover) || '';
+
+    var title = document.createElement('span');
+    title.className = 'mini-title';
+    title.textContent = (cur && cur.name) || '';
+
+    var prevBtn = document.createElement('button');
+    prevBtn.className = 'mini-btn mini-prev-btn';
+    prevBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>';
+    prevBtn.title = '上一首';
+    prevBtn.addEventListener('click', function() { ap.skipBack(); setTimeout(function() { barPlayed.style.width = '0%'; barThumb.style.left = '0%'; updateCoverAndTitle(); setPlayIcon(); if (ap.audio.duration && !isNaN(ap.audio.duration)) time.textContent = '0:00 / ' + fmtTime(ap.audio.duration); }, 50); });
+
+    var playBtn = document.createElement('button');
+    playBtn.className = 'mini-btn mini-play-btn';
+    playBtn.id = 'mini-play-btn';
+    playBtn.title = '播放/暂停';
+    var playSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    playSvg.setAttribute('viewBox', '0 0 24 24');
+    playSvg.setAttribute('fill', 'currentColor');
+    playSvg.setAttribute('stroke', 'none');
+    playSvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+    playSvg.classList.add('mini-icon-play');
+    var pauseSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    pauseSvg.setAttribute('viewBox', '0 0 24 24');
+    pauseSvg.setAttribute('fill', 'currentColor');
+    pauseSvg.setAttribute('stroke', 'none');
+    pauseSvg.innerHTML = '<rect x="5" y="3" width="5" height="18"></rect><rect x="14" y="3" width="5" height="18"></rect>';
+    pauseSvg.classList.add('mini-icon-pause');
+    pauseSvg.style.display = 'none';
+    playBtn.appendChild(playSvg);
+    playBtn.appendChild(pauseSvg);
+    function setPlayIcon() {
+      playSvg.style.display = ap.paused ? '' : 'none';
+      pauseSvg.style.display = ap.paused ? 'none' : '';
+    }
+    setPlayIcon();
+    playBtn.addEventListener('click', function() { ap.toggle(); setPlayIcon(); });
+
+    var nextBtn = document.createElement('button');
+    nextBtn.className = 'mini-btn mini-next-btn';
+    nextBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>';
+    nextBtn.title = '下一首';
+    nextBtn.addEventListener('click', function() { ap.skipForward(); setTimeout(function() { barPlayed.style.width = '0%'; barThumb.style.left = '0%'; updateCoverAndTitle(); setPlayIcon(); if (ap.audio.duration && !isNaN(ap.audio.duration)) time.textContent = '0:00 / ' + fmtTime(ap.audio.duration); }, 50); });
+
+    var barWrap = document.createElement('div');
+    barWrap.className = 'mini-bar-wrap';
+    var barPlayed = document.createElement('div');
+    barPlayed.className = 'mini-bar-played';
+    barPlayed.id = 'mini-bar-played';
+    var barThumb = document.createElement('div');
+    barThumb.className = 'mini-bar-thumb';
+    barThumb.id = 'mini-bar-thumb';
+    barWrap.appendChild(barPlayed);
+    barWrap.appendChild(barThumb);
+    var draggingBar = false;
+    function updateBarSeek(e) {
+      var rect = barWrap.getBoundingClientRect();
+      var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      barPlayed.style.width = (pct * 100) + '%';
+      barThumb.style.left = (pct * 100) + '%';
+      var duration = ap.audio.duration;
+      if (duration) { time.textContent = fmtTime(pct * duration) + ' / ' + fmtTime(duration); }
+      return pct;
+    }
+    barWrap.addEventListener('mousedown', function(e) {
+      draggingBar = true;
+      var pct = updateBarSeek(e);
+      var duration = ap.audio.duration;
+      if (duration) ap.seek(pct * duration);
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!draggingBar) return;
+      var pct = updateBarSeek(e);
+      var duration = ap.audio.duration;
+      if (duration) ap.seek(pct * duration);
+    });
+    document.addEventListener('mouseup', function() { draggingBar = false; });
+
+    var time = document.createElement('span');
+    time.className = 'mini-time';
+    time.id = 'mini-time';
+    time.textContent = '0:00 / 0:00';
+
+    var volWrap = document.createElement('div');
+    volWrap.className = 'mini-vol-wrap';
+
+    var volIcon = document.createElement('button');
+    volIcon.className = 'mini-vol-icon';
+    var savedVolume = 0.7;
+
+    var volSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    volSvg.setAttribute('viewBox', '0 0 24 24');
+    volSvg.setAttribute('fill', 'none');
+    volSvg.setAttribute('stroke', 'currentColor');
+    volSvg.setAttribute('stroke-width', '1.5');
+    volSvg.setAttribute('stroke-linecap', 'round');
+    volSvg.innerHTML =
+      '<polygon class="vol-speaker" points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>' +
+      '<line class="vol-mute-x1" x1="23" y1="9" x2="17" y2="15" style="display:none"></line>' +
+      '<line class="vol-mute-x2" x1="17" y1="9" x2="23" y2="15" style="display:none"></line>' +
+      '<line class="vol-bar1" x1="15" y1="9" x2="15" y2="15" style="display:none"></line>' +
+      '<line class="vol-bar2" x1="18" y1="7" x2="18" y2="17" style="display:none"></line>' +
+      '<line class="vol-bar3" x1="21" y1="5" x2="21" y2="19" style="display:none"></line>';
+    volIcon.appendChild(volSvg);
+    var volMuteX1 = volSvg.querySelector('.vol-mute-x1');
+    var volMuteX2 = volSvg.querySelector('.vol-mute-x2');
+    var volBar1 = volSvg.querySelector('.vol-bar1');
+    var volBar2 = volSvg.querySelector('.vol-bar2');
+    var volBar3 = volSvg.querySelector('.vol-bar3');
+    function setVolIcon() {
+      var v = ap.audio.volume;
+      var muted = v === 0;
+      volMuteX1.style.display = muted ? '' : 'none';
+      volMuteX2.style.display = muted ? '' : 'none';
+      volBar1.style.display = (!muted) ? '' : 'none';
+      volBar2.style.display = (!muted && v > 0.33) ? '' : 'none';
+      volBar3.style.display = (!muted && v > 0.66) ? '' : 'none';
+    }
+    setVolIcon();
+
+    volIcon.addEventListener('click', function() {
+      if (ap.audio.volume > 0) {
+        savedVolume = ap.audio.volume;
+        ap.volume(0, false);
+      } else {
+        ap.volume(savedVolume || 0.7, false);
+      }
+    });
+
+    function unmuteIfNeeded() {
+      if (ap.audio.volume === 0) {
+        ap.volume(savedVolume || 0.7, false);
+      }
+    }
+
+    var volBarOuter = document.createElement('div');
+    volBarOuter.className = 'mini-vol-bar-outer';
+
+    var volBarWrap = document.createElement('div');
+    volBarWrap.className = 'mini-vol-bar-wrap';
+    var volFill = document.createElement('div');
+    volFill.className = 'mini-vol-bar-fill';
+    volFill.id = 'mini-vol-fill';
+    var volThumb = document.createElement('div');
+    volThumb.className = 'mini-vol-thumb';
+    volBarWrap.appendChild(volFill);
+    volBarWrap.appendChild(volThumb);
+    var draggingVol = false;
+    volWrap.addEventListener('mouseenter', function() { volWrap.classList.add('expanded'); });
+    volWrap.addEventListener('mouseleave', function() {
+      if (!draggingVol) volWrap.classList.remove('expanded');
+    });
+
+    function updateVolDrag(e) {
+      var rect = volBarWrap.getBoundingClientRect();
+      var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      volFill.style.width = (pct * 100) + '%';
+      volThumb.style.left = (pct * 100) + '%';
+      return pct;
+    }
+    volBarWrap.addEventListener('mousedown', function(e) {
+      draggingVol = true;
+      volWrap.classList.add('expanded');
+      unmuteIfNeeded();
+      var pct = updateVolDrag(e);
+      ap.volume(pct, false);
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!draggingVol) return;
+      var pct = updateVolDrag(e);
+      ap.volume(pct, false);
+    });
+    document.addEventListener('mouseup', function() {
+      if (draggingVol && ap.audio.volume > 0) savedVolume = ap.audio.volume;
+      draggingVol = false;
+      var rect = volWrap.getBoundingClientRect();
+      var mx = window.mouseX || 0;
+      var my = window.mouseY || 0;
+      if (mx < rect.left || mx > rect.right || my < rect.top || my > rect.bottom) {
+        volWrap.classList.remove('expanded');
+      }
+    });
+    document.addEventListener('mousemove', function(e) { window.mouseX = e.clientX; window.mouseY = e.clientY; });
+
+    volBarOuter.appendChild(volBarWrap);
+    volWrap.appendChild(volIcon);
+    volWrap.appendChild(volBarOuter);
+
+    var listBtn = document.createElement('button');
+    listBtn.className = 'mini-btn';
+    listBtn.title = '歌单';
+    listBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="6" y1="18" x2="18" y2="18"></line></svg>';
+
+    var listPopup = document.createElement('div');
+    listPopup.className = 'reader-mini-list';
+    listPopup.id = 'mini-list-popup';
+    listPopup.style.display = 'none';
+    buildPlaylist(listPopup, ap);
+
+    listBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var showing = listPopup.style.display === 'block';
+      listPopup.style.display = showing ? 'none' : 'block';
+      if (!showing) buildPlaylist(listPopup, ap);
+    });
+    document.addEventListener('click', function() { listPopup.style.display = 'none'; });
+
+    container.appendChild(cover);
+    container.appendChild(title);
+    container.appendChild(prevBtn);
+    container.appendChild(playBtn);
+    container.appendChild(nextBtn);
+    container.appendChild(barWrap);
+    container.appendChild(time);
+    container.appendChild(listBtn);
+    container.appendChild(volWrap);
+    container.appendChild(listPopup);
+    fontGroup.after(container);
+
+    function updateCoverAndTitle() {
+      var cur2 = ap.list.audios[ap.list.index];
+      cover.src = (cur2 && cur2.cover) || '';
+      title.textContent = (cur2 && cur2.name) || '';
+    }
+    function updateProgressUI() {
+      if (ap.audio.duration && !draggingBar) {
+        var pct = ap.audio.currentTime / ap.audio.duration * 100;
+        barPlayed.style.width = pct + '%';
+        barThumb.style.left = pct + '%';
+        time.textContent = fmtTime(ap.audio.currentTime) + ' / ' + fmtTime(ap.audio.duration);
+      }
+    }
+    function updateVolumeUI() {
+      setVolIcon();
+      if (!draggingVol) {
+        var vpct = ap.audio.volume * 100;
+        volFill.style.width = vpct + '%';
+        volThumb.style.left = vpct + '%';
+      }
+    }
+    ap.on('play', function() {
+      setPlayIcon();
+      if (ap.audio.currentTime < 0.5) {
+        setTimeout(function() {
+          barPlayed.style.width = '0%';
+          barThumb.style.left = '0%';
+          updateCoverAndTitle();
+          buildPlaylist(listPopup, ap);
+          if (ap.audio.duration && !isNaN(ap.audio.duration))
+            time.textContent = '0:00 / ' + fmtTime(ap.audio.duration);
+        }, 50);
+      }
+    });
+    ap.on('pause', function() { setPlayIcon(); });
+    ap.on('timeupdate', updateProgressUI);
+    ap.on('volumechange', updateVolumeUI);
+    updateCoverAndTitle();
+    updateVolumeUI();
+    updateProgressUI();
+
+    function onAudioMeta(e) {
+      if (e.target.tagName === 'AUDIO' && e.target.duration && !isNaN(e.target.duration)) {
+        time.textContent = fmtTime(e.target.currentTime) + ' / ' + fmtTime(e.target.duration);
+      }
+    }
+    document.addEventListener('loadedmetadata', onAudioMeta, true);
+    document.addEventListener('durationchange', onAudioMeta, true);
+
+    function buildPlaylist(plPopup, ap) {
+      plPopup.innerHTML = '';
+      ap.list.audios.forEach(function(audio, i) {
+        var item = document.createElement('div');
+        item.className = 'mini-list-item' + (i === ap.list.index ? ' active' : '');
+        item.innerHTML = '<span class="mini-list-idx">' + (i + 1) + '</span><span>' + audio.name + '</span>';
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          ap.list.switch(i);
+          plPopup.style.display = 'none';
+          setTimeout(function() {
+            barPlayed.style.width = '0%';
+            barThumb.style.left = '0%';
+            updateCoverAndTitle();
+            setPlayIcon();
+            if (ap.audio.duration && !isNaN(ap.audio.duration)) time.textContent = '0:00 / ' + fmtTime(ap.audio.duration);
+          }, 50);
+        });
+        plPopup.appendChild(item);
+      });
+    }
+
+    function fmtTime(sec) {
+      var m = Math.floor(sec / 60);
+      var s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+  }
+
+  /* ======================= 启动 ======================= */
+  function init() {
+    loadState();
+    root.setAttribute('data-theme', state.theme);
+
+    // hash 卷选择（书库跳转）
+    var hash = window.location.hash;
+    if (hash && hash.indexOf('#vol=') === 0) {
+      var targetKey = hash.slice(5);
+      for (var i = 0; i < VOLUMES.length; i++) {
+        if (VOLUMES[i].key === targetKey) {
+          state.currentVolIndex = i;
+          persistState();
+          break;
+        }
+      }
+    }
+
+    themeDots.querySelectorAll('button').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-theme') === state.theme);
+    });
+
+    volPrev.addEventListener('click', function() {
+      if (state.currentVolIndex > 0) switchVolume(state.currentVolIndex - 1);
+    });
+    volNext.addEventListener('click', function() {
+      if (state.currentVolIndex < VOLUMES.length - 1) switchVolume(state.currentVolIndex + 1);
+    });
+    updateVolumeLabel();
+
+    themeDots.addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (btn) applyTheme(btn.getAttribute('data-theme'));
+    });
+
+    fontMenu.addEventListener('click', function(e) {
+      var btn = e.target.closest('.dropdown-item');
+      if (!btn) return;
+      var idx = parseInt(btn.getAttribute('data-font'), 10);
+      if (!isNaN(idx)) applyFontSize(idx);
+      btn.blur();
+    });
+
+    lineMenu.addEventListener('click', function(e) {
+      var btn = e.target.closest('.dropdown-item');
+      if (!btn) return;
+      var idx = parseInt(btn.getAttribute('data-line'), 10);
+      if (!isNaN(idx)) applyLineHeight(idx);
+      btn.blur();
+    });
+
+    tocToggle.addEventListener('click', openToc);
+    tocClose.addEventListener('click', closeToc);
+    tocOverlay.addEventListener('click', closeToc);
+
+    bindInputHandlers();
+
+    // resize 时重新分页
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function() {
+        relayout();
+      }, 150);
+    });
+
+    updateFontMenu();
+    updateLineMenu();
+
+    // 等 JSZip 准备好（head 里 CDN 加载）
+    var waitJsZip = function(cb) {
+      if (typeof JSZip !== 'undefined') return cb();
+      var tries = 0;
+      var t = setInterval(function() {
+        if (typeof JSZip !== 'undefined') { clearInterval(t); cb(); }
+        else if (++tries > 50) { clearInterval(t); console.warn('JSZip 未加载'); }
+      }, 100);
+    };
+    waitJsZip(function() {
+      loadVolume(VOLUMES[state.currentVolIndex].key);
+    });
+
+    // 迷你播放器
+    var playerCheck = setInterval(function() {
+      if (window.aplayerInstance && window.aplayerInstance.list) {
+        buildMiniPlayer();
+        clearInterval(playerCheck);
+      }
+    }, 30);
+    setTimeout(function() { clearInterval(playerCheck); }, 5000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.__initNovelReader);
+} else {
+  window.__initNovelReader();
+}
+</script>
+{{ end }}
+
+{{ define "right-sidebar" }}{{ end }}

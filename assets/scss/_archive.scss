@@ -1,9 +1,9 @@
-//  归档页面
-
+// ========== 归档页面 ==========
 body.template-archives,
 body.page-archives,
 body[class*="archives"] {
     
+    // 重置默认样式
     .archives-year,
     section,
     div[class*="year"],
@@ -15,6 +15,7 @@ body[class*="archives"] {
         margin: 0 !important;
     }
     
+    // 三列网格容器
     .article-list--compact {
         display: grid !important;
         grid-template-columns: repeat(3, 1fr) !important;
@@ -26,6 +27,7 @@ body[class*="archives"] {
         background: transparent !important;
     }
 
+    // ========== 文章卡片（归档专用） ==========
     .article-list--compact article {
         opacity: 0;  
         transform: translateY(30px);  
@@ -45,7 +47,9 @@ body[class*="archives"] {
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
         margin: 0 !important;
         padding: 0 !important;
+        position: relative !important;
         
+        // 卡片悬停效果
         &:hover {
             transform: translateY(-3px) !important;
             background: rgba(255, 255, 255, 0.12) !important;
@@ -56,13 +60,14 @@ body[class*="archives"] {
                 transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
             
+            // 🔧 图片悬停：使用 3D transform + 预栅格化基准
             .article-image img {
-                transform: scale(1.05) !important;
-                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                transform: scale(1.051) translate3d(0, 0, 0) !important;
             }
         }
     }
 
+    // 卡片链接
     .article-list--compact article a {
         display: flex !important;
         flex-direction: row !important;
@@ -70,8 +75,10 @@ body[class*="archives"] {
         width: 100% !important;
         height: 100% !important;
         min-height: 120px !important;
+        position: relative !important;
     }
 
+    // 文章详情区域
     .article-list--compact .article-details {
         flex: 1 !important;
         padding: 1rem 1.25rem !important;
@@ -84,6 +91,7 @@ body[class*="archives"] {
         min-width: 0 !important;
     }
 
+    // 文章标题
     .article-list--compact .article-title {
         font-size: 2rem !important;           
         font-weight: 600 !important;
@@ -96,9 +104,10 @@ body[class*="archives"] {
         overflow: hidden !important;
         word-break: break-word !important;
         transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        width: 100% !important;                 
+        width: 100% !important;
     }
 
+    // 文章时间
     .article-list--compact .article-time {
         font-size: 0.75rem !important;
         opacity: 0.6 !important;
@@ -112,6 +121,7 @@ body[class*="archives"] {
         justify-content: center !important;
     }
 
+    // ========== 🔧 图片区域核心修复（归档专用） ==========
     .article-list--compact .article-image {
         width: 120px !important;
         min-width: 120px !important;
@@ -121,18 +131,56 @@ body[class*="archives"] {
         justify-content: center !important;
         background: rgba(0, 0, 0, 0.1) !important;
         overflow: hidden !important;
-    }
+        position: relative !important;
+        border-radius: 12px !important;
 
-    .article-list--compact .article-image img {
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-        min-width: 120px !important;
-        min-height: 120px !important;
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        // 🔧 防抖动缓冲：抵消放大时边缘裁剪抖动
+        padding: 1px !important;
+        margin: -1px !important;
+        
+        // 🔧 3D 渲染上下文 + 合成层稳定
+        perspective: 1000px !important;
+        transform: translate3d(0, 0, 0) !important;
+        backface-visibility: hidden !important;
+        -webkit-backface-visibility: hidden !important;
+        will-change: transform !important;
+        contain: paint !important;
+
+        // 🔧 图片核心样式修复
+        img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            min-width: 120px !important;
+            min-height: 120px !important;
+
+            // ✅ 修复1: 居中变换原点，放大均匀扩展
+            transform-origin: center center !important;
+            
+            // ✅ 修复2: 预栅格化 + 独立合成层（消除闪烁核心）
+            transform: scale(1.001) translate3d(0, 0, 0) !important;
+            opacity: 0.999 !important;
+            
+            // ✅ 修复3: 提前告知浏览器优化
+            will-change: transform !important;
+            
+            // ✅ 修复4: 防止亚像素渲染问题
+            backface-visibility: hidden !important;
+            -webkit-backface-visibility: hidden !important;
+            
+            // ✅ 修复5: 标准渲染，避免强制重采样
+            image-rendering: auto !important;
+            
+            // ✅ 修复6: 限制重绘范围
+            contain: paint !important;
+            
+            // 过渡动画
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
     }
 }
 
+// 揭示动画（归档专用，与主列表区分）
 @keyframes articleReveal {
     from {
         opacity: 0;
@@ -143,5 +191,3 @@ body[class*="archives"] {
         transform: translateY(0);
     }
 }
-
-//归档界面

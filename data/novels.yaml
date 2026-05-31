@@ -1,0 +1,70 @@
+shelves:
+  - name: "正篇"
+    slug: "main"
+    volumes:
+      - { key: "01", label: "第一卷" }
+      - { key: "02", label: "第二卷" }
+      - { key: "03", label: "第三卷" }
+      - { key: "04", label: "第四卷" }
+      - { key: "05", label: "第五卷" }
+      - { key: "06", label: "第六卷" }
+      - { key: "07", label: "第七卷" }
+      - { key: "08", label: "第八卷" }
+      - { key: "09", label: "第九卷" }
+      - { key: "10", label: "第十卷" }
+      - { key: "11", label: "第十一卷" }
+      - { key: "12", label: "第十二卷" }
+      - { key: "13", label: "第十三卷" }
+      - { key: "14", label: "第十四卷" }
+      - { key: "15", label: "第十五卷" }
+      - { key: "16", label: "第十六卷" }
+      - { key: "17", label: "第十七卷" }
+      - { key: "18", label: "第十八卷" }
+      - { key: "19", label: "第十九卷" }
+      - { key: "20", label: "第二十卷" }
+      - { key: "21", label: "第二十一卷" }
+      - { key: "22", label: "第二十二卷" }
+      - { key: "23", label: "第二十三卷" }
+      - { key: "24", label: "第二十四卷" }
+      - { key: "25", label: "第二十五卷" }
+      - { key: "26", label: "第二十六卷" }
+      - { key: "27", label: "第二十七卷" }
+      - { key: "28", label: "第二十八卷" }
+      - { key: "29", label: "第二十九卷" }
+      - { key: "30", label: "第三十卷" }
+      - { key: "31", label: "第三十一卷" }
+      - { key: "32", label: "第三十二卷" }
+      - { key: "33", label: "第三十三卷" }
+      - { key: "34", label: "第三十四卷" }
+      - { key: "35", label: "第三十五卷" }
+      - { key: "36", label: "第三十六卷" }
+      - { key: "37", label: "第三十七卷" }
+      - { key: "38", label: "第三十八卷" }
+      - { key: "39", label: "第三十九卷" }
+      - { key: "40", label: "第四十卷" }
+      - { key: "41", label: "第四十一卷" }
+      - { key: "42", label: "第四十二卷" }
+      - { key: "43", label: "第四十三卷" }
+      - { key: "44", label: "第四十四卷" }
+  - name: "外传"
+    slug: "extra"
+    volumes:
+      - { key: "ex1", label: "Ex1" }
+      - { key: "ex2", label: "Ex2" }
+      - { key: "ex3", label: "Ex3" }
+      - { key: "ex4", label: "Ex4" }
+      - { key: "ex5", label: "Ex5" }
+  - name: "短篇集"
+    slug: "short"
+    volumes:
+      - { key: "ss01", label: "短篇集01" }
+      - { key: "ss02", label: "短篇集02" }
+      - { key: "ss03", label: "短篇集03" }
+      - { key: "ss04", label: "短篇集04" }
+      - { key: "ss05", label: "短篇集05" }
+      - { key: "ss06", label: "短篇集06" }
+  - name: "其他"
+    slug: "other"
+    volumes:
+      - { key: "if", label: "IF线合集" }
+      - { key: "formula", label: "公式书" }

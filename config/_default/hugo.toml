@@ -13,6 +13,7 @@ relativeURLs = false
 [permalinks]
     post = "/p/:slug/"
     page = "/:slug/"
+    novel = "/novel/:slug/"
 
 [services.disqus]
     shortname = "hugo-theme-stack"

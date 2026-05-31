@@ -38,7 +38,7 @@
 */
 :root {
     --sys-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Droid Sans", "Helvetica Neue";
-    --base-font-family: "Lato", var(--sys-font-family), sans-serif;
+    --base-font-family: var(--sys-font-family), sans-serif;
     --code-font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 

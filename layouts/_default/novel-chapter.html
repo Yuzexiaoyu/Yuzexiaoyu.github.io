@@ -1,0 +1,28 @@
+{{ define "main" }}
+<article class="novel-chapter-standalone">
+  <header class="novel-chapter-standalone__header">
+    <a href="/novel/" class="novel-chapter-back">
+      {{ partial "helper/icon" "arrow-back" }}
+      <span>返回阅读器</span>
+    </a>
+    <h1 class="novel-chapter-standalone__title">{{ .Title }}</h1>
+  </header>
+
+  <div class="novel-chapter-content article-content">
+    {{ .Content }}
+  </div>
+
+  <footer class="novel-chapter-standalone__footer">
+    {{ with .PrevInSection }}
+      <a href="{{ .Permalink }}" class="novel-chapter-nav novel-chapter-nav--prev">
+        ← {{ .Title }}
+      </a>
+    {{ end }}
+    {{ with .NextInSection }}
+      <a href="{{ .Permalink }}" class="novel-chapter-nav novel-chapter-nav--next">
+        {{ .Title }} →
+      </a>
+    {{ end }}
+  </footer>
+</article>
+{{ end }}

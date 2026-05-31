@@ -1,0 +1,289 @@
+// 书库/书架页面
+
+// ========== 布局覆盖 ==========
+.template-novel-bookshelf {
+  background: #0a0a0f;
+  margin: 0 !important;
+  padding: 0 !important;
+
+  .left-sidebar,
+  .right-sidebar {
+    display: none !important;
+  }
+
+  .container.main-container,
+  .container.main-container.flex,
+  .container.main-container.flex.on-phone--column,
+  .container.main-container.flex.on-phone--column.compact,
+  .container.main-container.flex.on-phone--column.extended {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  main.main,
+  main.main.full-width {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  footer,
+  #page-loader {
+    display: none !important;
+  }
+}
+
+// ========== 书架容器 ==========
+.novel-bookshelf {
+  min-height: 100vh;
+  background: #0a0a0f;
+  color: #e6edf3;
+  overflow-y: auto;
+  // 默认隐藏，等 intro 动画结束或跳过时由 JS 添加 .is-revealed 显示
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  &.is-revealed {
+    opacity: 1;
+  }
+}
+
+// ========== 顶部标题区 ==========
+.bookshelf-header {
+  padding: 80px 40px 50px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 30%, rgba(88, 166, 255, 0.06), transparent),
+      radial-gradient(ellipse 50% 50% at 80% 60%, rgba(88, 166, 255, 0.03), transparent),
+      radial-gradient(ellipse 50% 50% at 20% 60%, rgba(88, 166, 255, 0.03), transparent);
+    pointer-events: none;
+  }
+}
+
+.bookshelf-header-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.bookshelf-title {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  margin: 0 0 12px;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #e6edf3 0%, #58a6ff 50%, #e6edf3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bookshelf-subtitle {
+  font-size: 14px;
+  color: #8b949e;
+  margin: 0 0 8px;
+  font-style: italic;
+  letter-spacing: 1px;
+}
+
+.bookshelf-meta {
+  font-size: 13px;
+  color: #484f58;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+// ========== 主体内容 ==========
+.bookshelf-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+// ========== 书架区块 ==========
+.shelf-section {
+  margin-bottom: 60px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.shelf-header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 28px;
+  position: relative;
+
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, rgba(48, 54, 61, 0.8), transparent);
+    margin-left: 8px;
+  }
+}
+
+.shelf-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0;
+  white-space: nowrap;
+  letter-spacing: 1px;
+}
+
+.shelf-count {
+  font-size: 13px;
+  color: #484f58;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+// ========== 封面网格 ==========
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 24px 16px;
+}
+
+// ========== 书卡 ==========
+.book-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none !important;
+  color: inherit;
+  position: relative;
+  cursor: pointer;
+
+  &:hover {
+    .book-cover-wrap {
+      transform: translateY(-4px);
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(88, 166, 255, 0.2),
+        0 4px 12px rgba(88, 166, 255, 0.1);
+    }
+
+    .book-shine {
+      opacity: 0.12;
+    }
+  }
+}
+
+.book-cover-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 4px 12px 12px 4px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(48, 54, 61, 0.6);
+  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.25s ease;
+  background: #161b22;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  // 无封面回退
+  &.no-cover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #161b22;
+    border: 1px dashed #30363d;
+
+    &::after {
+      content: attr(data-label);
+      font-size: 14px;
+      font-weight: 600;
+      color: #484f58;
+      text-align: center;
+      padding: 8px;
+      line-height: 1.4;
+    }
+  }
+}
+
+.book-shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 30%,
+    rgba(255, 255, 255, 0.03) 60%,
+    transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.book-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b949e;
+  text-align: center;
+  line-height: 1.2;
+  transition: color 0.2s ease;
+
+  .book-card:hover & {
+    color: #58a6ff;
+  }
+}
+
+// ========== 响应式 ==========
+@media (max-width: 768px) {
+  .bookshelf-header {
+    padding: 50px 20px 36px;
+  }
+
+  .bookshelf-content {
+    padding: 0 16px 60px;
+  }
+
+  .shelf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 18px 10px;
+  }
+
+  .shelf-name {
+    font-size: 17px;
+  }
+
+  .book-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .shelf-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px 8px;
+  }
+}

@@ -1,6 +1,7 @@
 // 自定义鼠标光标
 
 $cursor-path: "/cursor/";
+
 $link-hotspot: 3 0;
 $text-hotspot: 5 10;
 
@@ -76,7 +77,21 @@ input, textarea, pre, code, [contenteditable="true"] {
 #aplayer .aplayer-title,
 #aplayer .aplayer-pic,
 #aplayer .aplayer-list {
-  cursor: url("#{$cursor-path}Pointer.cur"), auto !important; 
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important;
+}
+
+// 迷你播放器
+.reader-mini-player {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important;
+}
+.reader-mini-player .mini-btn,
+.reader-mini-player .mini-vol-icon,
+.reader-mini-player .mini-list-item {
+  cursor: url("#{$cursor-path}Link.cur") $link-hotspot, pointer !important;
+}
+.reader-mini-player .mini-bar-wrap,
+.reader-mini-player .mini-vol-bar-wrap {
+  cursor: url("#{$cursor-path}Pointer.cur"), auto !important;
 }
 
 // 自定义鼠标光标
