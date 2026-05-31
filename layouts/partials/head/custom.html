@@ -2,7 +2,8 @@
 <link rel="preload" href="/lib/aplayer/APlayer.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="/lib/aplayer/APlayer.min.css"></noscript>
 
-{{/* Swup 库在 footer 中已经用 defer 加载，无需重复预加载 */}}
+{{/* 外部 CDN 预连接 */}}
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
 {{/* 小说阅读器用 JSZip 解压 EPUB（自写 reader 不依赖 epub.js）
      脚本已移到 novel-reader.html body 中，确保 Swup 切换时能正确加载 */}}
