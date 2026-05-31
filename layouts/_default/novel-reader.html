@@ -121,6 +121,7 @@
   </div>
 </div>
 
+<script src="/lib/jszip.min.js"></script>
 <script>
 window.__initNovelReader = function() {
   var root = document.getElementById('novel-reader-root');
@@ -1419,7 +1420,7 @@ window.__initNovelReader = function() {
     updateFontMenu();
     updateLineMenu();
 
-    // 等 JSZip 准备好（head 里 CDN 加载）
+    // 等 JSZip 准备好（head 里 defer 加载）
     var waitJsZip = function(cb) {
       if (typeof JSZip !== 'undefined') return cb();
       var tries = 0;
