@@ -314,22 +314,21 @@ async function runPreloadChain() {
   // Phase 1: 已通过 <link rel="preload"> 在 head 中启动，浏览器自动管理
   // 直接进入 Phase 2，无需等待
 
-  // Phase 2: 侧栏导航链接。Swup 就绪 → 用 swup.preload 让 Swup cache 命中；否则 link prefetch 兜底。
-  // ⚠️ 限 ×2 并发：Chromium 对 as=document 的 prefetch 会触发 NoState Prefetch，顺带预取页面里
-  // 所有的 <link rel=preload> 子资源（其中不少指向 R2 CDN → 冷缓存回源风暴 → 503）。
-  // 且 /novel/ 跳过 —— 它已有 Phase 3–5 专属预热链，双重 prefetch 只有反效果。
+  // Phase 2: 侧栏导航链接。只走 swup.preload()（内部 fetch()，不走浏览器 speculative
+  // 子资源预取），Swup 内部去重。不用 <link rel=prefetch as=document> 兜底 —— 它会创建
+  // 第二个独立 HTTP 请求，不与 swup.preload() 共享去重，在 Chromium 还触发 NoState
+  // Prefetch 子资源风暴。Swup 未就绪则跳过，让 SwupPreloadPlugin hover 预取自然接管。
   var sidebarLinks = Array.from(document.querySelectorAll('#main-menu a[href]'))
     .filter(function(a) { return a.origin === location.origin && !a.target && a.pathname !== '/novel/'; })
     .map(function(a) { return a.href; });
   if (sidebarLinks.length) {
     var swupReady = await __waitSwup(3000);
-    var sidebarTasks = sidebarLinks.map(function(url) {
-      return function() {
-        if (swupReady) return Promise.resolve(swup.preload(url)).catch(function(){});
-        return __prefetchLink(url, 'document');
-      };
-    });
-    await __pool(sidebarTasks, 2);
+    if (swupReady) {
+      var sidebarTasks = sidebarLinks.map(function(url) {
+        return function() { return swup.preload(url).catch(function(){}); };
+      });
+      await __pool(sidebarTasks, 2);
+    }
   }
 
   // Phase 3 & 4: 小说资源在浏览器空闲时预加载，避免影响关键资源
