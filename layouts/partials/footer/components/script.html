@@ -184,6 +184,29 @@ function __prefetchLink(url, asType, crossOrigin) {
   });
 }
 
+// 并发池：限制同时进行的请求数量，避免冷缓存时一次性全发打爆 R2 回源（57 封面 → 全 503）。
+function __pool(tasks, limit) {
+  limit = limit || 4;
+  var results = [];
+  var running = 0;
+  var cursor = 0;
+  return new Promise(function(resolve) {
+    function pump() {
+      if (cursor >= tasks.length && running === 0) return resolve(results);
+      while (running < limit && cursor < tasks.length) {
+        var i = cursor++;
+        running++;
+        Promise.resolve(tasks[i]()).then(function(r) {
+          results[i] = r; running--; pump();
+        }).catch(function(r) {
+          results[i] = r; running--; pump();
+        });
+      }
+    }
+    pump();
+  });
+}
+
 // 随机定好"下次书架入场要播的那一个动画"，存到 window.__nextBookshelfAnim。
 // 预热和播放都读这个变量，保证预热的 URL == 播放的 URL（缓存才命中）。
 // 已定且对应预热 video 仍在 → 不重复改选（避免预热白费）。
@@ -291,16 +314,20 @@ async function runNovelPreloadChain(data) {
     await __warmVideo(window.__nextBookshelfAnim);
   }
 
-  // Phase 4: 小说封面（image，可并行）
+  // Phase 4: 小说封面（image，并发池限制 ×4，避免 57 个冷缓存同时回源 → 全 503）
   if (data.novelCovers && data.novelCovers.length) {
-    await Promise.all(data.novelCovers.map(function(url) { return __prefetchLink(url, 'image'); }));
+    var coverTasks = data.novelCovers.map(function(url) {
+      return function() { return __prefetchLink(url, 'image'); };
+    });
+    await __pool(coverTasks, 4);
   }
 
-  // Phase 5: 小说 EPUB（大文件，按顺序；as=fetch + crossorigin 匹配后续实际 fetch()）
+  // Phase 5: 小说 EPUB（限 ×2 并发，防顺序串行太慢又不至于打爆回源）
   if (data.novelEpubs && data.novelEpubs.length) {
-    for (var i = 0; i < data.novelEpubs.length; i++) {
-      await __prefetchLink(data.novelEpubs[i], 'fetch', 'anonymous');
-    }
+    var epubTasks = data.novelEpubs.map(function(url) {
+      return function() { return __prefetchLink(url, 'fetch', 'anonymous'); };
+    });
+    await __pool(epubTasks, 2);
   }
 }
 
