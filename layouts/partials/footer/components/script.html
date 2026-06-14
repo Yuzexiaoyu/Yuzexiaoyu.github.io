@@ -184,7 +184,46 @@ function __prefetchLink(url, asType, crossOrigin) {
   });
 }
 
-// 并发池：限制同时进行的请求数量，避免冷缓存时一次性全发打爆 R2 回源（57 封面 → 全 503）。
+// 图片预取：用 new Image() 代替 <link rel=prefetch as=image>。
+// prefetch 是 no-cors 请求，R2 偶尔 503 时返回 HTML 错误页，浏览器 ORB 检测到
+// opaque 响应与 as=image 不匹配就拦截，控制台刷屏。new Image() 走的是 <img> 原生
+// 加载通道，ORB 不适用于 <img> 元素，失败只是静默 onerror，不会弹警告。
+// 且 <img> 与页面上的真实 <img> 请求模式完全一致 → 缓存互通。
+function __preloadImage(url) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() { resolve(); };
+    img.onerror = function() { resolve(); };
+    img.src = url;
+    setTimeout(resolve, 10000);
+  });
+}
+
+// 通用资源预取（EPUB 等），带指数退避重试（针对瞬时 503）。
+function __prefetchLinkRetry(url, asType, crossOrigin, maxRetries) {
+  maxRetries = maxRetries || 3;
+  return new Promise(function(resolve) {
+    function attempt(n) {
+      if (n > maxRetries) return resolve();
+      var link = document.createElement('link');
+      link.rel = 'prefetch';
+      if (asType) link.as = asType;
+      if (crossOrigin) link.crossOrigin = crossOrigin;
+      var settled = false;
+      function done() { if (!settled) { settled = true; resolve(); } }
+      link.addEventListener('load', done, { once: true });
+      link.addEventListener('error', function() {
+        link.remove();
+        // 退避：500ms / 1500ms / 3500ms 后重试
+        setTimeout(function() { attempt(n + 1); }, 500 * Math.pow(2, n) + 300);
+      }, { once: true });
+      link.href = url;
+      document.head.appendChild(link);
+      setTimeout(done, 12000);
+    }
+    attempt(0);
+  });
+}
 function __pool(tasks, limit) {
   limit = limit || 4;
   var results = [];
@@ -268,16 +307,22 @@ async function runPreloadChain() {
   // Phase 1: 已通过 <link rel="preload"> 在 head 中启动，浏览器自动管理
   // 直接进入 Phase 2，无需等待
 
-  // Phase 2: 侧栏导航链接。Swup 就绪 → 用 swup.preload 让 Swup cache 命中；否则 link prefetch 兜底
+  // Phase 2: 侧栏导航链接。Swup 就绪 → 用 swup.preload 让 Swup cache 命中；否则 link prefetch 兜底。
+  // ⚠️ 限 ×2 并发：Chromium 对 as=document 的 prefetch 会触发 NoState Prefetch，顺带预取页面里
+  // 所有的 <link rel=preload> 子资源（其中不少指向 R2 CDN → 冷缓存回源风暴 → 503）。
+  // 且 /novel/ 跳过 —— 它已有 Phase 3–5 专属预热链，双重 prefetch 只有反效果。
   var sidebarLinks = Array.from(document.querySelectorAll('#main-menu a[href]'))
-    .filter(function(a) { return a.origin === location.origin && !a.target; })
+    .filter(function(a) { return a.origin === location.origin && !a.target && a.pathname !== '/novel/'; })
     .map(function(a) { return a.href; });
   if (sidebarLinks.length) {
     var swupReady = await __waitSwup(3000);
-    await Promise.all(sidebarLinks.map(function(url) {
-      if (swupReady) return Promise.resolve(swup.preload(url)).catch(function(){});
-      return __prefetchLink(url, 'document');
-    }));
+    var sidebarTasks = sidebarLinks.map(function(url) {
+      return function() {
+        if (swupReady) return Promise.resolve(swup.preload(url)).catch(function(){});
+        return __prefetchLink(url, 'document');
+      };
+    });
+    await __pool(sidebarTasks, 2);
   }
 
   // Phase 3 & 4: 小说资源在浏览器空闲时预加载，避免影响关键资源
@@ -314,18 +359,18 @@ async function runNovelPreloadChain(data) {
     await __warmVideo(window.__nextBookshelfAnim);
   }
 
-  // Phase 4: 小说封面（image，并发池限制 ×4，避免 57 个冷缓存同时回源 → 全 503）
+  // Phase 4: 小说封面（new Image() → 绕过 ORB，图片缓存与页面 <img> 互通）
   if (data.novelCovers && data.novelCovers.length) {
     var coverTasks = data.novelCovers.map(function(url) {
-      return function() { return __prefetchLink(url, 'image'); };
+      return function() { return __preloadImage(url); };
     });
     await __pool(coverTasks, 4);
   }
 
-  // Phase 5: 小说 EPUB（限 ×2 并发，防顺序串行太慢又不至于打爆回源）
+  // Phase 5: 小说 EPUB（带 503 重试，限 ×2 并发）
   if (data.novelEpubs && data.novelEpubs.length) {
     var epubTasks = data.novelEpubs.map(function(url) {
-      return function() { return __prefetchLink(url, 'fetch', 'anonymous'); };
+      return function() { return __prefetchLinkRetry(url, 'fetch', 'anonymous', 3); };
     });
     await __pool(epubTasks, 2);
   }
