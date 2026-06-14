@@ -199,29 +199,36 @@ function __preloadImage(url) {
   });
 }
 
-// 通用资源预取（EPUB 等），带指数退避重试（针对瞬时 503）。
-function __prefetchLinkRetry(url, asType, crossOrigin, maxRetries) {
-  maxRetries = maxRetries || 3;
+// EPUB 预取：用 fetch() 替代 <link rel=prefetch>。
+// prefetch 在 crossorigin=anonymous 时行为不确定（有些浏览器发 OPTIONS 预检、
+// 有些忽略跨域 prefetch、有些缓存不与后续 fetch() 互通）。fetch() 是简单 CORS GET，
+// 不发预检，与阅读器里 fetch(epubUrl) 请求模式完全一致 → 缓存必然互通。
+// 消费 body 以确保完整下载写入 HTTP 缓存，最多重试 2 次（针对瞬时 503）。
+function __prefetchEpub(url, retries) {
+  retries = retries || 0;
   return new Promise(function(resolve) {
-    function attempt(n) {
-      if (n > maxRetries) return resolve();
-      var link = document.createElement('link');
-      link.rel = 'prefetch';
-      if (asType) link.as = asType;
-      if (crossOrigin) link.crossOrigin = crossOrigin;
-      var settled = false;
-      function done() { if (!settled) { settled = true; resolve(); } }
-      link.addEventListener('load', done, { once: true });
-      link.addEventListener('error', function() {
-        link.remove();
-        // 退避：500ms / 1500ms / 3500ms 后重试
-        setTimeout(function() { attempt(n + 1); }, 500 * Math.pow(2, n) + 300);
-      }, { once: true });
-      link.href = url;
-      document.head.appendChild(link);
-      setTimeout(done, 12000);
-    }
-    attempt(0);
+    fetch(url, { mode: 'cors', credentials: 'omit' })
+      .then(function(resp) {
+        if (!resp.ok) {
+          // 503 / 5xx → 退避重试
+          if (retries < 2 && resp.status >= 500) {
+            return new Promise(function(r) {
+              setTimeout(function() { r(__prefetchEpub(url, retries + 1)); }, 800 * (retries + 1));
+            }).then(resolve);
+          }
+          return resolve();
+        }
+        // 消费 body 确保完整响应进入 HTTP 缓存，读完后 resolve
+        return resp.arrayBuffer().then(function() { resolve(); });
+      })
+      .catch(function() {
+        if (retries < 2) {
+          setTimeout(function() { __prefetchEpub(url, retries + 1).then(resolve); }, 800 * (retries + 1));
+        } else {
+          resolve();
+        }
+      });
+    setTimeout(resolve, 20000);
   });
 }
 function __pool(tasks, limit) {
@@ -367,12 +374,12 @@ async function runNovelPreloadChain(data) {
     await __pool(coverTasks, 4);
   }
 
-  // Phase 5: 小说 EPUB（带 503 重试，限 ×2 并发）
+  // Phase 5: 小说 EPUB（fetch() 预取，串行 —— 大文件 2-7MB，串行避免带宽争抢）
   if (data.novelEpubs && data.novelEpubs.length) {
     var epubTasks = data.novelEpubs.map(function(url) {
-      return function() { return __prefetchLinkRetry(url, 'fetch', 'anonymous', 3); };
+      return function() { return __prefetchEpub(url); };
     });
-    await __pool(epubTasks, 2);
+    await __pool(epubTasks, 1);
   }
 }
 
