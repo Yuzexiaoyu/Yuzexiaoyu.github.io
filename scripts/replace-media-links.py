@@ -165,6 +165,17 @@ def replace_links(html_file, new_domain, public_dir):
         # ========== 4. 处理 <link rel="preload"/"prefetch"> 的 href ==========
         # head 里 Hugo 输出的卡片图 preload 走的是站内域名（yuzexiaoyu.space），
         # 实际文件已迁到 R2，需要在这里同步重写到 CDN。
+        #
+        # ⚠️ 仅改写真正上传到 R2 的媒体扩展名（与 deploy.yml 的 --include 完全对齐）。
+        # 站内 /lib/ 下的 APlayer.min.css、JSZip 等并未上传 R2，若一并改写会指向
+        # 404（onload 永不触发 → rel 不切 stylesheet → 样式/脚本整段丢失）。
+        # 故按扩展名白名单放行所有非 R2 资源（.css/.js 等）。
+        R2_MEDIA_EXTS = (
+            '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico',
+            '.mp3', '.wav', '.ogg', '.m4a',
+            '.mp4', '.webm', '.mov', '.avi',
+            '.pdf', '.zip', '.epub',
+        )
         new_host = new_domain.replace('https://', '').replace('http://', '').rstrip('/')
         for tag in soup.find_all('link'):
             rels = tag.get('rel', [])
@@ -173,11 +184,20 @@ def replace_links(html_file, new_domain, public_dir):
             href = (tag.get('href') or '').strip()
             if not href:
                 continue
-            if 'yuzexiaoyu.space' in href:
-                new_href = href.replace('yuzexiaoyu.space', new_host)
-                tag['href'] = new_href
-                changed = True
-                print(f"✅ [preload 链接] {href[:60]}... → {new_href[:60]}...")
+            if 'yuzexiaoyu.space' not in href:
+                continue
+            # 已经是 CDN 地址则跳过，避免 cdn.cdn.yuzexiaoyu.space 重复改写
+            if new_host in href:
+                continue
+            # 取路径扩展名（剥掉 ?query / #fragment），只改写 R2 托管的媒体
+            path_only = href.split('?', 1)[0].split('#', 1)[0]
+            if not path_only.lower().endswith(R2_MEDIA_EXTS):
+                print(f"⏭️  [preload 跳过非R2资源] {href[:70]}...")
+                continue
+            new_href = href.replace('yuzexiaoyu.space', new_host)
+            tag['href'] = new_href
+            changed = True
+            print(f"✅ [preload 链接] {href[:60]}... → {new_href[:60]}...")
         
         # 保存修改后的文件
         if changed:
