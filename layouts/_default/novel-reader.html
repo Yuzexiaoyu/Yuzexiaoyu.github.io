@@ -102,6 +102,12 @@
     </button>
   </div>
 
+  {{/* 当前卷阅读进度条 */}}
+  <div class="reader-progress" id="reader-progress">
+    <div class="reader-progress-fill" id="reader-progress-fill"></div>
+    <span class="reader-progress-text" id="reader-progress-text">0%</span>
+  </div>
+
   {{/* 手写阅读区：column-based 双页布局，不再使用 epub.js / iframe */}}
   <div class="reader-viewport" id="reader-viewport">
     <div id="reader-content" class="reader-content"></div>
@@ -121,7 +127,6 @@
   </div>
 </div>
 
-<script src="/lib/jszip.min.js"></script>
 <script>
 window.__initNovelReader = function() {
   var root = document.getElementById('novel-reader-root');
@@ -155,7 +160,7 @@ window.__initNovelReader = function() {
   var VOLUMES = {{ $volumes | jsonify | safeJS }};
 
   /* ======================= 状态 ======================= */
-  var state = { theme: 'dark', fontSizeIndex: 1, lineHeightIndex: 1, currentVolIndex: 0 };
+  var state = { theme: 'dark', fontSizeIndex: 1, lineHeightIndex: 1, currentVolIndex: 0, lastVolKey: '', progress: {} };
   var book = null;             // 当前加载的书 { zip, opfDir, items, spineIds, toc, blobUrls, chapters }
   var tocItems = [];           // 目录 UI 按钮列表（用于 highlight）
   var currentPage = 0;
@@ -186,6 +191,8 @@ window.__initNovelReader = function() {
   var contentEl = $('reader-content');
   var loadingEl = $('reader-loading');
   var toolbar = $('reader-toolbar');
+  var progressFill = $('reader-progress-fill');
+  var progressText = $('reader-progress-text');
 
   /* ======================= 持久化 ======================= */
   function loadState() {
@@ -201,6 +208,8 @@ window.__initNovelReader = function() {
         state.lineHeightIndex = Math.max(0, Math.min(s.lineHeightIndex, LINE_HEIGHT_STEPS.length - 1));
       }
       if (typeof s.currentVolIndex === 'number') state.currentVolIndex = s.currentVolIndex;
+      if (s.lastVolKey) state.lastVolKey = s.lastVolKey;
+      if (s.progress && typeof s.progress === 'object') state.progress = s.progress;
     } catch(e) {}
   }
 
@@ -386,6 +395,8 @@ window.__initNovelReader = function() {
       loadingEl.style.display = '';
     }
     if (contentEl) contentEl.style.opacity = '0';
+    if (progressFill) progressFill.style.width = '0%';
+    if (progressText) progressText.textContent = '0%';
 
     // 释放上一本的 blob URL
     cleanupBook();
@@ -481,6 +492,12 @@ window.__initNovelReader = function() {
       if (token !== loadToken) return;
 
       currentPage = 0;
+      // 恢复该卷上次阅读位置（按比例，兼容字号/窗宽变化导致的总页数变动）
+      var saved = state.progress && state.progress[volKey];
+      if (saved && saved.t > 1 && totalPages > 1) {
+        currentPage = Math.round((saved.p / (saved.t - 1)) * (totalPages - 1));
+      }
+      currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
       applyTransform();
 
       if (loadingEl) loadingEl.style.display = 'none';
@@ -862,6 +879,24 @@ window.__initNovelReader = function() {
     currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
     contentEl.style.transform = 'translateX(' + (-currentPage * spreadWidth) + 'px)';
     highlightTocByPage();
+    updateProgress();
+  }
+
+  // 当前卷阅读进度：currentPage / (totalPages-1)，末页=100%、单页卷=100%
+  function updateProgress() {
+    if (!progressFill) return;
+    var pct = totalPages <= 1 ? 100 : (currentPage / (totalPages - 1)) * 100;
+    pct = Math.max(0, Math.min(100, pct));
+    progressFill.style.width = pct.toFixed(1) + '%';
+    if (progressText) progressText.textContent = Math.round(pct) + '%';
+    // 记忆当前卷阅读位置（书架展示 + 刷新恢复）
+    if (book && totalPages > 0) {
+      var vk = VOLUMES[state.currentVolIndex].key;
+      if (!state.progress) state.progress = {};
+      state.progress[vk] = { p: currentPage, t: totalPages };
+      state.lastVolKey = vk;
+      persistState();
+    }
   }
 
   function gotoPage(p) {
@@ -877,8 +912,50 @@ window.__initNovelReader = function() {
     if (!book || !book.chapterStartPages) return;
     var pageIdx = book.chapterStartPages[idx];
     if (pageIdx === undefined) return;
-    // pageIdx 是 single-page 索引，转 spread 索引
     gotoPage(Math.floor(pageIdx / 2));
+  }
+
+  // 注释（.cyu）跨引用导航：根据内联 ID（如 refn1）找到目标元素所在页并翻过去
+  // 通过 clickedEl 定位所属章节范围，避免多章节 ID 重复导致的全局匹配错误
+  function navigateToAnnotation(targetId, clickedEl) {
+    if (!contentEl) return;
+    var pagesEl = contentEl.querySelector('.reader-pages');
+    if (!pagesEl) return;
+
+    // 1. 确定点击链接所在的 reader-page
+    var clickPage = clickedEl.closest('.reader-page');
+    if (!clickPage) { console.warn('[anno] clicked link not inside a .reader-page'); return; }
+    var clickPageIdx = Array.from(pagesEl.children).indexOf(clickPage);
+
+    // 2. 向上找到当前章节起始页（data-chapter-start 标记）
+    var chapterStartIdx = 0;
+    for (var i = clickPageIdx; i >= 0; i--) {
+      var ps = pagesEl.children[i].dataset.chapterStart;
+      if (ps !== undefined) { chapterStartIdx = i; break; }
+    }
+
+    // 3. 向下找到当前章节结束页（下一个 chapterStart 或末尾）
+    var chapterEndIdx = pagesEl.children.length - 1;
+    for (var j = chapterStartIdx + 1; j < pagesEl.children.length; j++) {
+      if (pagesEl.children[j].dataset.chapterStart !== undefined) { chapterEndIdx = j - 1; break; }
+    }
+
+    // 4. 仅在本章节的 page 范围内搜索目标 ID
+    var target = null;
+    for (var p = chapterStartIdx; p <= chapterEndIdx; p++) {
+      target = pagesEl.children[p].querySelector('#' + targetId);
+      if (target) break;
+    }
+    if (!target) { console.warn('[anno] target not found in chapter range:', targetId); return; }
+
+    // 5. 计算目标所在 spread 并翻页
+    var pageIndex = Array.from(pagesEl.children).indexOf(target.closest('.reader-page'));
+    if (pageIndex < 0) return;
+    var targetSpread = Math.min(Math.floor(pageIndex / 2), totalPages - 1);
+    if (targetSpread !== currentPage) {
+      currentPage = targetSpread;
+      applyTransform();
+    }
   }
 
   function gotoTocHref(href) {
@@ -1026,6 +1103,12 @@ window.__initNovelReader = function() {
       var href = a.getAttribute('href') || '';
       console.log('[novel-reader] intercept link click:', href);
       if (!href) { e.preventDefault(); return; }
+      // 注（.cyu）跨引用：导航到目标注释段落所在页并高亮
+      if (a.classList.contains('cyu') && href.charAt(0) === '#' && href.length > 1) {
+        e.preventDefault();
+        navigateToAnnotation(href.slice(1), a);
+        return;
+      }
       if (/^(https?:|mailto:|tel:)/i.test(href)) {
         e.preventDefault();
         window.open(href, '_blank', 'noopener,noreferrer');
@@ -1324,6 +1407,18 @@ window.__initNovelReader = function() {
 
     function buildPlaylist(plPopup, ap) {
       plPopup.innerHTML = '';
+      // 上传音乐入口（共用 window.__musicUploads，与主页同一管理面板）
+      if (window.__musicUploads) {
+        var upRow = document.createElement('div');
+        upRow.className = 'mu-upload-bar';
+        upRow.innerHTML = window.__musicUploads.uploadBarHTML();
+        upRow.addEventListener('click', function(e) {
+          e.stopPropagation();
+          plPopup.style.display = 'none';
+          window.__musicUploads.openPanel(ap);
+        });
+        plPopup.appendChild(upRow);
+      }
       ap.list.audios.forEach(function(audio, i) {
         var item = document.createElement('div');
         item.className = 'mini-list-item' + (i === ap.list.index ? ' active' : '');
@@ -1420,17 +1515,16 @@ window.__initNovelReader = function() {
     updateFontMenu();
     updateLineMenu();
 
-    // 等 JSZip 准备好（head 里 defer 加载）
-    var waitJsZip = function(cb) {
-      if (typeof JSZip !== 'undefined') return cb();
-      var tries = 0;
-      var t = setInterval(function() {
-        if (typeof JSZip !== 'undefined') { clearInterval(t); cb(); }
-        else if (++tries > 50) { clearInterval(t); console.warn('JSZip 未加载'); }
-      }, 100);
-    };
-    waitJsZip(function() {
+    // 按需加载 JSZip（仅 reader 触发注入，其余页面不拉 97KB）
+    var loadJsZip = window.__loadJsZip ? window.__loadJsZip() : Promise.resolve();
+    loadJsZip.then(function() {
       loadVolume(VOLUMES[state.currentVolIndex].key);
+    }).catch(function(err) {
+      console.error('[novel-reader] JSZip 加载失败:', err);
+      if (loadingEl) {
+        loadingEl.style.display = '';
+        loadingEl.textContent = 'JSZip 加载失败，请刷新页面重试';
+      }
     });
 
     // 迷你播放器

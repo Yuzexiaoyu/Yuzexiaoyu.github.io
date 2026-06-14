@@ -185,6 +185,12 @@ html #aplayer .aplayer-icon-order {
     display: none !important;
 }
 
+/* 列表（歌单）按钮：APlayer 默认仅在 .aplayer-withlist（≥2 首）时显示 .aplayer-icon-menu，
+   曲目删到只剩 1 首会移除 withlist → 按钮消失。强制常显，保证任何曲目数下都能打开歌单/上传。 */
+html #aplayer .aplayer-icon-menu {
+    display: inline-block !important;
+}
+
 html #aplayer .aplayer-bar {
     background: rgba(255, 255, 255, 0.5) !important;
 }

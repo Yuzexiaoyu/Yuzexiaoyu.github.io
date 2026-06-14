@@ -1,10 +1,186 @@
+{{/* ════════════════════════════════════════════════════════════════
+     移动端访问拦截（同步执行，渲染前拦截，无内容闪现）
+     - 纯 User-Agent 判断：桌面拉窄窗口不会被误伤
+     - 含 iPadOS 13+ 伪装桌面 Safari 的补判，平板一并拦截
+     - 命中后给 <html> 加 is-mobile-blocked，显示全屏黑底提示
+     ════════════════════════════════════════════════════════════════ */}}
+<script>
+(function () {
+  var ua = navigator.userAgent || "";
+  // 常见移动 / 平板 UA
+  var mobileRE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk|Kindle|PlayBook|BB10|Windows Phone/i;
+  var isMobile = mobileRE.test(ua);
+  // iPadOS 13+ 把自己伪装成桌面 Mac Safari：用触点数 + Mac 平台补判
+  var isIPadOS = /Macintosh/.test(ua) && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
+  if (isMobile || isIPadOS) {
+    document.documentElement.className += " is-mobile-blocked";
+  }
+})();
+</script>
+<style>
+html.is-mobile-blocked,
+html.is-mobile-blocked body {
+  overflow: hidden !important;
+  height: 100% !important;
+  touch-action: none !important;
+}
+/* 拦截前先隐藏一切，避免正文/加载动画透出 */
+html.is-mobile-blocked body > *:not(#mobile-block) {
+  display: none !important;
+}
+#mobile-block {
+  display: none;
+}
+html.is-mobile-blocked #mobile-block {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;          /* 高于 page-loader 的 999999 */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  background-color: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#mobile-block .mb-title {
+  font-size: clamp(2rem, 11vw, 4rem);
+  font-weight: 800;
+  letter-spacing: 3px;
+  line-height: 1.4;
+  margin-bottom: 1.1rem;
+}
+#mobile-block .mb-sub {
+  font-size: clamp(1rem, 4.5vw, 1.5rem);
+  line-height: 1.7;
+  opacity: 0.7;
+}
+/* Claude Max 风彩虹流光：多色渐变裁切到文字 + 横向流动 + 柔和辉光 */
+#mobile-block .mb-brand {
+  margin-top: 2.2rem;
+  font-size: clamp(0.85rem, 3.5vw, 1.1rem);
+  letter-spacing: 3px;
+  font-weight: 700;
+  background-image: linear-gradient(
+    90deg,
+    #ff5e62, #ff9966, #ffd166, #5cdb95, #4dabf7, #b197fc, #ff5e62
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 0 10px rgba(177, 151, 252, 0.45));
+  animation: mb-brand-rainbow 4.5s linear infinite;
+}
+@keyframes mb-brand-rainbow {
+  to { background-position: -200% center; }
+}
+</style>
+<div id="mobile-block">
+  <div class="mb-title">禁止移动端访问</div>
+  <div class="mb-brand">Yuzexiaoyu.space</div>
+</div>
+
+{{/* ════ 外部域名预连接（DNS + TCP + TLS 提前握手，省 100-300ms）════
+     R2 CDN（所有媒体）、jsdelivr（Mermaid）、giscus（评论） */}}
+<link rel="preconnect" href="https://cdn.yuzexiaoyu.space" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://giscus.app" crossorigin>
+
 {{/* APlayer CSS 异步加载，避免阻塞首次渲染 */}}
 <link rel="preload" href="/lib/aplayer/APlayer.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="/lib/aplayer/APlayer.min.css"></noscript>
 
 {{/* 小说阅读器用 JSZip 解压 EPUB（自写 reader 不依赖 epub.js）
-     本地加载避免 CDN 延迟，defer 确保不阻塞渲染 */}}
-<script src="/lib/jszip.min.js" defer></script>
+     本地加载，按需注入（仅 reader 触发），其余页面不拉 97KB */}}
+<script>
+window.__loadJsZip = function() {
+  if (window.__jszipReady) return window.__jszipReady;
+  window.__jszipReady = new Promise(function(resolve, reject) {
+    if (typeof JSZip !== 'undefined') { resolve(); return; }
+    var s = document.createElement('script');
+    s.src = '/lib/jszip.min.js';
+    s.onload = function() { resolve(); };
+    s.onerror = function() { window.__jszipReady = null; reject(new Error('JSZip load failed')); };
+    document.head.appendChild(s);
+  });
+  return window.__jszipReady;
+};
+</script>
+
+{{/* 搜索脚本全局加载（defer），仅定义 window.__initSearch()，不自动执行。
+     确保 Swup 导航到搜索页时函数可用 */}}
+{{- $searchOpts := dict "minify" hugo.IsProduction "JSXFactory" "createElement" -}}
+{{- $searchScript := resources.Get "ts/search.tsx" | js.Build $searchOpts -}}
+<script src="{{ $searchScript.RelPermalink }}" defer></script>
+
+{{/* 用户上传曲目模块：jsmediatags 按需注入（仅上传时拉 53KB），
+     模块自启动等待 window.aplayerInstance 后恢复/注入入口 */}}
+{{- $musicOpts := dict "minify" hugo.IsProduction -}}
+{{- $musicScript := resources.Get "ts/music-uploads.ts" | js.Build $musicOpts -}}
+<script src="{{ $musicScript.RelPermalink }}" defer></script>
+
+{{/* ──── Mermaid 图表支持（按需加载，不被 Swup body swap 影响）────
+       不再每页全局拉 CDN 脚本（全站仅个别文章用到图表，省掉加载动画期间的 jsdelivr 连接）。
+       只有页面含 .mermaid 时，window.__runMermaid() 才注入 CDN 脚本；
+       Promise 缓存在 window 上，跨 Swup 只加载一次。页面级初始化由
+       Swup page:view 钩子触发；initMermaidPage 本身即可重入。 */}}
+{{- $mermaidCfg := .Site.Params.article.mermaid | default dict -}}
+{{- $mermaidJsConfig := dict
+    "transparentBackground" ($mermaidCfg.transparentBackground | default false)
+    "lightTheme"            ($mermaidCfg.lightTheme | default "default")
+    "darkTheme"             ($mermaidCfg.darkTheme | default "dark")
+    "lightThemeVariables"   ($mermaidCfg.lightThemeVariables | default dict)
+    "darkThemeVariables"    ($mermaidCfg.darkThemeVariables | default dict)
+    "securityLevel"         ($mermaidCfg.securityLevel | default "strict")
+    "look"                  ($mermaidCfg.look | default "classic")
+    "htmlLabels"            (not (eq ($mermaidCfg.htmlLabels | default true) false))
+-}}
+{{- with $mermaidCfg.maxTextSize }}{{ $mermaidJsConfig = merge $mermaidJsConfig (dict "maxTextSize" .) }}{{ end -}}
+{{- with $mermaidCfg.maxEdges }}{{ $mermaidJsConfig = merge $mermaidJsConfig (dict "maxEdges" .) }}{{ end -}}
+{{- with $mermaidCfg.fontSize }}{{ $mermaidJsConfig = merge $mermaidJsConfig (dict "fontSize" .) }}{{ end -}}
+{{- with $mermaidCfg.fontFamily }}{{ $mermaidJsConfig = merge $mermaidJsConfig (dict "fontFamily" .) }}{{ end -}}
+{{- with $mermaidCfg.curve }}{{ $mermaidJsConfig = merge $mermaidJsConfig (dict "curve" .) }}{{ end -}}
+{{- with $mermaidCfg.logLevel }}{{ $mermaidJsConfig = merge $mermaidJsConfig (dict "logLevel" .) }}{{ end -}}
+{{- $mermaidBuild := dict "minify" hugo.IsProduction "format" "esm" -}}
+{{- $mermaidModule := resources.Get "ts/mermaid.ts" | js.Build $mermaidBuild -}}
+<script>
+window.__mermaidConfig = {{ $mermaidJsConfig | jsonify | safeJS }};
+window.__mermaidModuleUrl = '{{ $mermaidModule.RelPermalink }}';
+// 按需注入 mermaid 库：仅当页面含 .mermaid 图表时才加载 CDN 脚本。
+// Promise 缓存在 window 上，跨 Swup 导航只加载一次；失败则清空以便下次重试。
+window.__mermaidScriptSrc = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+window.__loadMermaidLib = function() {
+  if (window.__mermaidLibPromise) return window.__mermaidLibPromise;
+  window.__mermaidLibPromise = new Promise(function(resolve, reject) {
+    if (typeof mermaid !== 'undefined') { resolve(); return; }
+    var s = document.createElement('script');
+    s.src = window.__mermaidScriptSrc;
+    s.defer = true;
+    s.onload = function() { resolve(); };
+    s.onerror = function() { window.__mermaidLibPromise = null; reject(new Error('mermaid load failed')); };
+    document.head.appendChild(s);
+  });
+  return window.__mermaidLibPromise;
+};
+window.__runMermaid = async function() {
+  var els = document.querySelectorAll('.mermaid');
+  if (!els.length) return;
+  try {
+    await window.__loadMermaidLib();
+    if (typeof mermaid === 'undefined') return;
+    var mod = await import(window.__mermaidModuleUrl);
+    await mod.initMermaidPage(window.__mermaidConfig);
+  } catch(e) {
+    console.error('Mermaid init failed:', e);
+  }
+};
+</script>
 
 {{/* 在 page-loader 动画播放期间，用浏览器空闲带宽预加载首页/列表页的文章卡片图片。
      放在 head 顶部，让浏览器一解析到这里就开始拉图，与 1.5s 动画并行。
@@ -271,8 +447,13 @@ article.main-article.has-image .article-time svg {
   var pageLoader = document.getElementById('page-loader');
   var displayTime = 1500;  // 固定显示 1.5 秒
 
-  if (!window.__pageLoaderShown) {
+  // sessionStorage 持久化标记，避免搜索等全页跳转时重复播放动画
+  var loaderKey = '__pageLoaderShown';
+  var alreadyShown = sessionStorage.getItem(loaderKey) === '1';
+
+  if (!window.__pageLoaderShown && !alreadyShown) {
     window.__pageLoaderShown = true;
+    sessionStorage.setItem(loaderKey, '1');
 
     // 固定显示时间
     setTimeout(function() {
@@ -290,7 +471,13 @@ article.main-article.has-image .article-time svg {
       }
     };
   } else {
-    pageLoader.style.display = 'none';
+    // 已在本会话中播过动画，直接隐藏
+    window.__pageLoaderShown = true;
+    if (pageLoader) {
+      pageLoader.style.display = 'none';
+      pageLoader.classList.add('hidden');
+    }
+    document.body.classList.add('loaded');
   }
 
   window.setupArticleStagger = function() {

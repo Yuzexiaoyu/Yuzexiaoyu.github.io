@@ -10,7 +10,7 @@ favicon        = "image/avatar.jpg"
     since = 2026
 
 [sidebar]
-    subtitle = "分享技术，记录生活"
+    subtitle = ""
     avatar   = "image/avatar.gif"
 
 [article]
@@ -19,6 +19,14 @@ favicon        = "image/avatar.jpg"
 [article.license]
   enabled = true
   default = "转载请注明出处"
+
+[article.mermaid]
+  transparentBackground = false
+  lightTheme          = "default"
+  darkTheme           = "dark"
+  securityLevel       = "strict"
+  look                = "classic"
+  htmlLabels          = true
 
 [[widgets.homepage]]
     type = "search"

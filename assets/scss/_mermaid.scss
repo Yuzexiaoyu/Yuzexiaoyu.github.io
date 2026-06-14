@@ -1,0 +1,77 @@
+// 17. Mermaid：Expand 按钮 + Close 按钮统一样式
+//    参照代码块 .copyCodeButton：默认隐藏，hover 显示
+
+// ========== Expand 按钮（图表右上角）==========
+.mermaid-toolbar {
+    button {
+        background: var(--card-background);
+        border: none;
+        box-shadow: var(--shadow-l2);
+        border-radius: var(--tag-border-radius);
+        padding: 8px 16px;
+        color: var(--card-text-color-main);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: normal;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+
+        &:hover {
+            background: var(--card-background);
+            color: var(--card-text-color-main);
+            transform: none;
+        }
+    }
+}
+
+.mermaid-wrapper:hover .mermaid-toolbar button {
+    opacity: 1;
+}
+
+// ========== 为图表预留 Expand 按钮空间，防止遮挡 ==========
+.mermaid-wrapper .mermaid {
+    padding-top: 50px; // 按钮高度(~35px) + top偏移(12px) + 余量(3px)
+}
+
+// ========== Close 按钮（Modal 右上角，与 Expand 同款）==========
+.mermaid-modal-close {
+    position: absolute;
+    top: var(--card-padding);
+    right: var(--card-padding);
+    z-index: 10;
+
+    background: var(--card-background);
+    border: none;
+    box-shadow: var(--shadow-l2);
+    border-radius: var(--tag-border-radius);
+    padding: 8px 16px;
+    color: var(--card-text-color-main);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: normal;
+
+    &:hover {
+        background: var(--card-background);
+        color: var(--card-text-color-main);
+    }
+}
+
+// ========== Modal body 占满全屏（无 header）==========
+.mermaid-modal-body {
+    flex: 1;
+}
+
+// ========== 图表全屏铺满，无边距 ==========
+.mermaid-modal-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 0;
+    background: var(--body-background);
+
+    [data-scheme="dark"] & {
+        background: var(--body-background);
+    }
+}

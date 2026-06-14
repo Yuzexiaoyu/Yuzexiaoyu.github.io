@@ -27,6 +27,47 @@ document.addEventListener('click', function(e) {
   }
 }, true);
 
+// 拦截搜索表单提交，走 Swup 导航避免全页刷新
+document.addEventListener('submit', function(e) {
+  var form = e.target.closest('.search-form.widget');
+  if (!form) return;
+  e.preventDefault();
+  var input = form.querySelector('input[name="keyword"]');
+  var keyword = input ? input.value.trim() : '';
+  var action = form.getAttribute('action');
+  var url = keyword ? action + '?keyword=' + encodeURIComponent(keyword) : action;
+
+  function go() {
+    if (typeof swup !== 'undefined' && swup) {
+      swup.navigate(url);
+    } else {
+      window.location.href = url;
+    }
+  }
+
+  if (swupReady) {
+    go();
+  } else {
+    // Swup 还没就绪 → 等待（最多 3 秒，超时走原生导航）
+    var waited = false;
+    var check = setInterval(function() {
+      if (waited) return;
+      if (typeof swup !== 'undefined' && swup) {
+        waited = true;
+        clearInterval(check);
+        go();
+      }
+    }, 50);
+    setTimeout(function() {
+      if (!waited) {
+        waited = true;
+        clearInterval(check);
+        window.location.href = url;
+      }
+    }, 3000);
+  }
+}, true);
+
 // 目录折叠按钮：在每个有子 ol 的 H2 li 上注入一个三角按钮。
 // 点击按钮切换 .is-manual-open（持久）。
 // 自动展开（is-manual-open / active-class / 后代 active-class）的逻辑在 _toc.scss 里。
@@ -129,11 +170,12 @@ var swup;
 // Phase 3: 小说封面（image 资源）
 // Phase 4: 小说 EPUB（fetch 资源，按顺序逐个，避免占满带宽）
 
-function __prefetchLink(url, asType) {
+function __prefetchLink(url, asType, crossOrigin) {
   return new Promise(function(res) {
     var link = document.createElement('link');
     link.rel = 'prefetch';
     if (asType) link.as = asType;
+    if (crossOrigin) link.crossOrigin = crossOrigin;
     link.addEventListener('load', res, { once: true });
     link.addEventListener('error', res, { once: true });
     link.href = url;
@@ -198,10 +240,10 @@ async function runNovelPreloadChain(data) {
     await Promise.all(data.novelCovers.map(function(url) { return __prefetchLink(url, 'image'); }));
   }
 
-  // Phase 4: 小说 EPUB（大文件，按顺序）
+  // Phase 4: 小说 EPUB（大文件，按顺序；as=fetch + crossorigin 匹配后续实际 fetch()）
   if (data.novelEpubs && data.novelEpubs.length) {
     for (var i = 0; i < data.novelEpubs.length; i++) {
-      await __prefetchLink(data.novelEpubs[i]);
+      await __prefetchLink(data.novelEpubs[i], 'fetch', 'anonymous');
     }
   }
 }
@@ -229,6 +271,112 @@ function revealBookshelf() {
   var shelf = document.querySelector('.novel-bookshelf');
   if (shelf) shelf.classList.add('is-revealed');
 }
+
+// ========== 书架公告弹窗 ==========
+// 在角色 cut-in 动画结束后弹出，每会话只显示一次
+window.__showBookshelfNotice = function() {
+  if (!document.querySelector('.novel-bookshelf')) return;
+  if (sessionStorage.getItem('bookshelf-notice-shown')) return;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'bookshelf-notice-overlay';
+
+  var dialog = document.createElement('div');
+  dialog.className = 'bookshelf-notice-overlay__dialog';
+
+  var body = document.createElement('div');
+  body.className = 'bookshelf-notice-overlay__body';
+  body.innerHTML = '<p>本系列EPUB电子书为了方便阅读，删去了转载信息，在此总结并声明：制作凝聚了众多贡献者的心血与辛勤劳动。原作者为長月達平（长月达平），插画主要由大塚真一郎担任，部分短篇集插画由枫月诚、イセ川ヤスタカ负责，原案设计为大冢真一郎，IF线合集插画由おわり等人提供。翻译工作由众多译者共同完成，包括林卡、海洋雪、小兖生、小海、团子、魔理沙、hhh0578、黄盈琪、cui64340962、加速猪、-南宫雨落-、空空、零の幻影、某中途弃坑的翻译组、L君、jkasdearth、许国煌、Iti-Tan、菲泡露、Knaxord、莓怠惰、不愿透露姓名的翻译组、阿琳ww、夜姬汐月、瀟藭樖、蝎等。校对与润色工作由团子、91、千云、Y2、Alzy0、everterran8、零の幻影、雨宮優子、蝎等人完成。图源提供者包括浅景清浦、真妹控、比企谷丿八幡、no3body、Mega、轻之国度录入组、Andromeda（爱丽丝•莉泽）、月灵幻翼、喵子等。录入工作由初音﹏、清扬1155、唯一妹聚、殉回仙梦、kid、香草录入组（雷姆酱、极光、初音酱、皓月星空、家千名、逗你玩hey、zhang960303、A.Jeanne d\'Arc）、Mega、轻之国度录入组、月灵幻翼、工具喵等人承担。EPUB制作与美工由叶落逝枫、Utokia、暗夜忧伤的回忆、开后宫的九月º、殉回仙梦、路羽曜、三伏天的闷、devil、蝎等人负责。修改工作由时银虚白完成，出资与整理由逗你玩hey负责，协力工作由no3body提供，监督工作由Alzy0和devil担任，这些来自轻之国度、天使动漫、百度贴吧、虚空文学旅团等平台的贡献者们，以无私奉献的精神为读者带来了优质的阅读体验，仅供个人学习交流使用，请尊重他们的辛勤劳动。</p>';
+
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'bookshelf-notice-overlay__close';
+  closeBtn.innerHTML = '✕';
+  closeBtn.setAttribute('aria-label', '关闭');
+
+  dialog.appendChild(closeBtn);
+  dialog.appendChild(body);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  // 等书架内容显现后再弹出公告
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      overlay.classList.add('is-visible');
+      sessionStorage.setItem('bookshelf-notice-shown', '1');
+    });
+  });
+
+  function closeNotice() {
+    if (overlay.classList.contains('is-closing')) return;
+    overlay.classList.add('is-closing');
+    overlay.classList.remove('is-visible');
+    setTimeout(function() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }, 400);
+  }
+
+  closeBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    closeNotice();
+  });
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeNotice();
+  });
+
+  document.addEventListener('keydown', function onEsc(e) {
+    if (e.key === 'Escape') {
+      closeNotice();
+      document.removeEventListener('keydown', onEsc);
+    }
+  });
+};
+
+window.__renderShelfProgress = function() {
+  var shelf = document.querySelector('.novel-bookshelf');
+  if (!shelf) return;
+  var st;
+  try { st = JSON.parse(localStorage.getItem('novel-reader-state') || '{}'); } catch (e) { st = {}; }
+  var prog = st.progress || {};
+  var last = st.lastVolKey;
+  shelf.querySelectorAll('.book-card').forEach(function(card) {
+    var key = card.getAttribute('data-vol');
+    var wrap = card.querySelector('.book-cover-wrap');
+    // 幂等：先清掉旧节点/标记
+    var oldBar = card.querySelector('.book-progress');
+    if (oldBar) oldBar.remove();
+    var oldBadge = wrap && wrap.querySelector('.book-progress-badge');
+    if (oldBadge) oldBadge.remove();
+    card.classList.remove('is-reading');
+    if (!wrap) return;
+
+    // 续读高亮：即使停在第 0 页也标记"上次在读"
+    if (key && key === last) card.classList.add('is-reading');
+
+    var pr = prog[key];
+    var pct = (pr && pr.t) ? (pr.t <= 1 ? 100 : Math.max(0, Math.min(100, (pr.p / (pr.t - 1)) * 100))) : 0;
+
+    // 进度条放在封面下方、卷名上方；始终插入占位以保证卡片等高、卷名对齐
+    var bar = document.createElement('div');
+    bar.className = 'book-progress';
+    if (pct > 0) {
+      // 仅"翻过至少一页"才显示进度与角标；刚打开(0%)只占位、不可见
+      var done = pct >= 99.5;
+      var fill = document.createElement('div');
+      fill.className = 'book-progress-fill';
+      fill.style.width = pct.toFixed(1) + '%';
+      bar.appendChild(fill);
+
+      var badge = document.createElement('span');
+      badge.className = 'book-progress-badge' + (done ? ' is-done' : '');
+      badge.textContent = done ? '✓' : Math.round(pct) + '%';
+      wrap.appendChild(badge);
+    } else {
+      bar.classList.add('is-empty');
+    }
+    wrap.insertAdjacentElement('afterend', bar);
+  });
+};
 
 window.__playBookshelfIntro = function() {
   if (!document.querySelector('.novel-bookshelf')) return;
@@ -323,6 +471,12 @@ function startBookshelfIntro(anims) {
     setTimeout(rm, 600);
     // 显示书架内容（与 overlay 淡出交叉淡入）
     revealBookshelf();
+    // 弹出公告（等书架可见后再弹出）
+    setTimeout(function() {
+      if (typeof window.__showBookshelfNotice === 'function') {
+        window.__showBookshelfNotice();
+      }
+    }, 400);
   }
 
   function onKeydown() { finish(); }
@@ -364,6 +518,9 @@ window.addEventListener('load', function() {
   // 直接打开/刷新 /novel/ 时也播放进入动画
   if (document.querySelector('.novel-bookshelf') && typeof window.__playBookshelfIntro === 'function') {
     window.__playBookshelfIntro();
+  }
+  if (document.querySelector('.novel-bookshelf') && window.__renderShelfProgress) {
+    window.__renderShelfProgress();
   }
 
   if (typeof Swup === 'undefined') return;
@@ -444,11 +601,30 @@ window.addEventListener('load', function() {
     if (document.querySelector('.novel-bookshelf') && typeof window.__playBookshelfIntro === 'function') {
       window.__playBookshelfIntro();
     }
+    if (document.querySelector('.novel-bookshelf') && window.__renderShelfProgress) {
+      window.__renderShelfProgress();
+    }
+
+    // Swup 切到搜索页 → 初始化搜索
+    if (document.querySelector('.template-search') && typeof window.__initSearch === 'function') {
+      window.__initSearch();
+    }
+
+    // Swup 切到新页面后重新执行 Mermaid 图表渲染（图表元素在 body 中，
+    // 每次 Swup 导航都是新的 <pre class="mermaid">，需要重新 run）
+    if (typeof window.__runMermaid === 'function') {
+      window.__runMermaid();
+    }
 
     setTimeout(loadGiscus, 300);
   });
 
   setTimeout(loadGiscus, 300);
+
+  // Mermaid 图表初始渲染（首次加载时 page:view 可能尚未触发）
+  if (typeof window.__runMermaid === 'function') {
+    window.__runMermaid();
+  }
 });
 
 function cleanupGiscus() {

@@ -1,0 +1,104 @@
+// 左侧边栏头部重排
+// 仅调整元素的大小与位置：头像由「站名上方」移到「站名左侧」，横向居中对齐
+// 头像改为圆角方框
+
+.sidebar header {
+  flex-direction: row;
+  align-items: center;
+  gap: 30px;
+
+  .site-meta {
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .site-name {
+    font-size: 1.8rem;
+    line-height: 1.25;
+  }
+
+  .site-description {
+    font-size: 1.05rem;
+    line-height: 1.3;
+  }
+}
+
+// 头像圆角方框
+.site-avatar .site-logo {
+  border-radius: 14px !important;
+}
+
+$sidebar-shift-down: 13rem;
+
+.left-sidebar {
+  --sidebar-avatar-size: 68px;
+  padding-top: calc(var(--main-top-padding) + #{$sidebar-shift-down}) !important;
+  transform: translateX(-1.5rem);
+
+  // 让头像、标题、菜单、社交图标等整体居中
+  align-items: center;
+
+  @media (min-width: 1920px) {
+    --sidebar-avatar-size: 76px;
+  }
+}
+
+// 菜单项文字居中
+ol#main-menu.menu > li {
+  text-align: center;
+
+  // 居中后，原竖杠（li::after）固定在 li 最左边，离居中的图标很远。
+  // 隐藏它，改用锚定到图标链接的 a::before，保证竖杠始终贴近图标。
+  &::after {
+    display: none !important;
+  }
+}
+
+ol#main-menu.menu > li > a {
+  justify-content: center;
+  text-align: center;
+}
+
+// 竖杠与图标的间距（竖杠右边缘到图标左边缘），改这里即可调整
+$bar-icon-gap: 20px;
+
+ol#main-menu.menu > li > a::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(-1 * (#{$bar-icon-gap} + 2px));  // 2px 为竖杠自身宽度
+  transform: translateY(-50%);
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0);
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: background 0.15s cubic-bezier(0.2, 0, 0.2, 1),
+              height 0.15s cubic-bezier(0.2, 0, 0.2, 1),
+              opacity 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+// 悬停
+ol#main-menu.menu > li:hover > a::before {
+  background: rgba(255, 255, 255, 0.25);
+  height: 16px;
+  opacity: 1;
+}
+
+// 选中
+ol#main-menu.menu > li.current > a::before,
+ol#main-menu.menu > li.active > a::before {
+  background: rgba(255, 255, 255, 0.4);
+  height: 20px;
+  opacity: 1;
+}
+
+// 选中 + 悬停
+ol#main-menu.menu > li.current:hover > a::before,
+ol#main-menu.menu > li.active:hover > a::before {
+  background: rgba(255, 255, 255, 0.55);
+  height: 24px;
+}

@@ -330,6 +330,33 @@
   }
 }
 
+// ========== 当前卷阅读进度条 ==========
+.reader-progress {
+  position: relative;
+  flex-shrink: 0;
+  height: 4px;
+  background: var(--reader-progress-bg);
+
+  .reader-progress-fill {
+    height: 100%;
+    width: 0;
+    background: var(--reader-accent);
+    transition: width 0.25s ease;
+  }
+
+  .reader-progress-text {
+    position: absolute;
+    right: 10px;
+    top: 6px;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--reader-text-secondary);
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
 // ========== 迷你播放器 ==========
 .reader-mini-player {
   display: flex;
@@ -476,10 +503,10 @@
 
   .mini-vol-bar-outer {
     max-width: 0;
-    overflow: visible;
+    overflow: hidden;
     display: flex;
     align-items: center;
-    transition: max-width 0.22s ease, padding 0.22s ease, opacity 0.15s ease;
+    transition: max-width 0.22s ease, padding 0.22s ease, opacity 0.22s ease;
     opacity: 0;
   }
 
@@ -655,6 +682,17 @@
     text-decoration: none;
   }
   a:hover { text-decoration: underline; }
+
+  // 注释标记（注）
+  a.cyu {
+    color: var(--reader-accent);
+    cursor: pointer;
+    font-weight: 600;
+  }
+  a.cyu:hover {
+    text-decoration: underline;
+    filter: brightness(1.2);
+  }
 
   // 行内 code / pre 之类
   code, pre {

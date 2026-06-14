@@ -77,6 +77,12 @@ class StackColorScheme {
     }
 
     private bindMatchMedia() {
+        // SPA-safe: a new StackColorScheme is constructed on every Swup
+        // navigation, but the MediaQueryList survives navigation. Binding here
+        // each time would accumulate 'change' listeners (and pin every past
+        // instance), so bind only once for the page's lifetime.
+        if ((window as any).__stackMatchMediaBound) return;
+        (window as any).__stackMatchMediaBound = true;
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             if (e.matches) {
                 this.systemPreferScheme = 'dark';

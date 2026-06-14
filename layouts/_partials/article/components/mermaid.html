@@ -1,0 +1,9 @@
+{{- if .Store.Get "hasMermaid" -}}
+{{/* 全屏 Modal：仅保留右上角 Close 按钮，无顶部菜单栏 */}}
+<div class="mermaid-modal" id="mermaid-modal">
+    <button class="mermaid-modal-close" id="mermaid-modal-close" title="Close (Esc)">Close</button>
+    <div class="mermaid-modal-body" id="mermaid-modal-body">
+        <div class="mermaid-modal-content" id="mermaid-modal-content"></div>
+    </div>
+</div>
+{{- end -}}

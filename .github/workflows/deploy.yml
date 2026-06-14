@@ -48,6 +48,7 @@ jobs:
           aws s3 sync public/ s3://$BUCKET/ \
             --endpoint-url $ENDPOINT \
             --acl public-read \
+            --cache-control "public, max-age=3600" \
             --exclude "*" \
             --include "*.jpg" --include "*.jpeg" --include "*.png" \
             --include "*.gif" --include "*.webp" --include "*.svg" \
@@ -74,33 +75,29 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
 
-      # ✅ 删除云端媒体文件
+      # ✅ 删除云端媒体文件（保留本地，与 R2 上传的文件类型一一对应）
       - name: Delete media files from GitHub
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # 需要删除的媒体扩展名（与上方 R2 上传的 include 完全对齐）
+          MEDIA_EXTS="jpg jpeg png gif webp svg bmp ico mp3 wav ogg m4a mp4 webm mov avi pdf zip epub"
+
           # 删除 content/post/ 下的所有媒体文件
-          git rm -r --cached "content/post/**/*.jpg" 2>/dev/null || true
-          git rm -r --cached "content/post/**/*.jpeg" 2>/dev/null || true
-          git rm -r --cached "content/post/**/*.png" 2>/dev/null || true
-          git rm -r --cached "content/post/**/*.gif" 2>/dev/null || true
-          git rm -r --cached "content/post/**/*.mp4" 2>/dev/null || true
-          git rm -r --cached "content/post/**/*.mp3" 2>/dev/null || true
-          git rm -r --cached "content/post/**/*.pdf" 2>/dev/null || true
+          for ext in $MEDIA_EXTS; do
+            git rm -r --cached "content/post/**/*.$ext" 2>/dev/null || true
+          done
 
           # 删除 static/music/ 下的所有媒体文件
-          git rm -r --cached "static/music/*.jpg" 2>/dev/null || true
-          git rm -r --cached "static/music/*.jpeg" 2>/dev/null || true
-          git rm -r --cached "static/music/*.png" 2>/dev/null || true
-          git rm -r --cached "static/music/*.gif" 2>/dev/null || true
-          git rm -r --cached "static/music/*.mp4" 2>/dev/null || true
-          git rm -r --cached "static/music/*.mp3" 2>/dev/null || true
-          git rm -r --cached "static/music/*.pdf" 2>/dev/null || true
+          for ext in $MEDIA_EXTS; do
+            git rm -r --cached "static/music/*.$ext" 2>/dev/null || true
+          done
 
-          # 删除 static/novel/ 下的小说 EPUB 与封面
+          # 删除 static/novel/ 下的 EPUB、封面、书架动画
           git rm -r --cached "static/novel/*.epub" 2>/dev/null || true
           git rm -r --cached "static/novel/covers/*" 2>/dev/null || true
+          git rm -r --cached "static/novel/animations/*.mp4" 2>/dev/null || true
 
           # 提交并推送
           git commit -m "chore: 删除云端媒体文件（保留本地）" || echo "No media files to delete"

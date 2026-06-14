@@ -15,9 +15,15 @@
 <div class="novel-bookshelf">
 
   <header class="bookshelf-header">
+    <a href="/" class="toolbar-btn reader-home-btn bookshelf-back-btn" title="返回首页">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+    </a>
     <div class="bookshelf-header-inner">
       <h1 class="bookshelf-title">从零开始的异世界生活</h1>
-      <p class="bookshelf-subtitle">Re:Zero − Starting Life in Another World</p>
+      <p class="bookshelf-subtitle">Re:Life in a different world from zero</p>
       <p class="bookshelf-meta">共 {{ len $allVolumes }} 卷 · 长月达平</p>
     </div>
   </header>
@@ -33,7 +39,7 @@
         {{- range .volumes }}
         {{- $coverExt := "jpg" }}
         {{- $coverPath := printf "/novel/covers/%s.jpg" .key }}
-        <a href="/novel/reader/#vol={{ .key }}" class="book-card" title="{{ .label }}">
+        <a href="/novel/reader/#vol={{ .key }}" class="book-card" data-vol="{{ .key }}" title="{{ .label }}">
           <div class="book-cover-wrap">
             <img
               src="{{ $coverPath }}"

@@ -50,7 +50,19 @@ function computeOffsets(headers: NodeListOf<Element>) {
     return sectionsOffsets;
 }
 
+// Teardown for the previous setupScrollspy run. Swup re-runs Stack.init() on
+// every navigation, and window/ResizeObserver listeners survive the body swap,
+// so we must remove the old ones before wiring up new ones — otherwise they
+// accumulate (one set per navigation) and each leaked scroll closure also pins
+// the previous article's DOM, which is the progressive post-navigation lag.
+let teardownPrevious: (() => void) | null = null;
+
 function setupScrollspy() {
+    if (teardownPrevious) {
+        teardownPrevious();
+        teardownPrevious = null;
+    }
+
     let headers = document.querySelectorAll(headersQuery);
     if (!headers) {
         console.warn("No header matched query", headers);
@@ -74,8 +86,10 @@ function setupScrollspy() {
     // We need to avoid scrolling when the user is actively interacting with the ToC. Otherwise, if the user clicks on a link in the ToC,
     // we would scroll their view, which is not optimal usability-wise.
     let tocHovered: boolean = false;
-    scrollableNavigation.addEventListener("mouseenter", debounced(() => tocHovered = true));
-    scrollableNavigation.addEventListener("mouseleave", debounced(() => tocHovered = false));
+    const onMouseEnter = debounced(() => tocHovered = true);
+    const onMouseLeave = debounced(() => tocHovered = false);
+    scrollableNavigation.addEventListener("mouseenter", onMouseEnter);
+    scrollableNavigation.addEventListener("mouseleave", onMouseLeave);
 
     let activeSectionLink: Element;
 
@@ -119,22 +133,34 @@ function setupScrollspy() {
         }
     }
 
-    window.addEventListener("scroll", debounced(scrollHandler));
-    
+    const onScroll = debounced(scrollHandler);
+    window.addEventListener("scroll", onScroll);
+
     // Resizing may cause the offset values to change: recompute them.
     function resizeHandler() {
         sectionsOffsets = computeOffsets(headers);
         scrollHandler();
     }
 
+    const onResize = debounced(resizeHandler);
+    window.addEventListener("resize", onResize);
+
     // Use ResizeObserver to detect changes in the size of .article-content
+    let resizeObserver: ResizeObserver | null = null;
     const articleContent = document.querySelector(".article-content");
     if (articleContent) {
-        const resizeObserver = new ResizeObserver(debounced(resizeHandler));
+        resizeObserver = new ResizeObserver(debounced(resizeHandler));
         resizeObserver.observe(articleContent);
     }
 
-    window.addEventListener("resize", debounced(resizeHandler));
+    // Record how to unwind everything this run added; called on the next nav.
+    teardownPrevious = () => {
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onResize);
+        scrollableNavigation!.removeEventListener("mouseenter", onMouseEnter);
+        scrollableNavigation!.removeEventListener("mouseleave", onMouseLeave);
+        resizeObserver?.disconnect();
+    };
 }
 
 export { setupScrollspy };

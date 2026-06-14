@@ -1,8 +1,8 @@
 <!-- 播放器容器 -->
 <div id="aplayer"></div>
 
-<!-- 加载 APlayer 脚本 -->
-<script src="/lib/aplayer/APlayer.min.js"></script>
+<!-- APlayer 脚本（defer 异步加载，initPlayer 轮询等库就绪） -->
+<script src="/lib/aplayer/APlayer.min.js" defer></script>
 
 <script>
 (function() {
@@ -10,7 +10,12 @@
   
   function initPlayer() {
     if (window.aplayerInstance) return;
-    
+    // APlayer.min.js 已加 defer，轮询等库就绪
+    if (typeof APlayer === 'undefined') {
+      setTimeout(initPlayer, 50);
+      return;
+    }
+
     var ap = new APlayer({
       container: document.getElementById('aplayer'),
       mini: false,
@@ -90,10 +95,7 @@
     window.aplayerInstance = ap;
   }
   
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    initPlayer();
-  } else {
-    document.addEventListener('DOMContentLoaded', initPlayer);
-  }
+  // defer 加载 APlayer.min.js，轮询等库就绪
+  initPlayer();
 })();
 </script>
