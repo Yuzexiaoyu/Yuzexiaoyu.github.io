@@ -184,6 +184,47 @@ function __prefetchLink(url, asType, crossOrigin) {
   });
 }
 
+// 随机定好"下次书架入场要播的那一个动画"，存到 window.__nextBookshelfAnim。
+// 预热和播放都读这个变量，保证预热的 URL == 播放的 URL（缓存才命中）。
+// 已定且对应预热 video 仍在 → 不重复改选（避免预热白费）。
+function __pickNextBookshelfAnim() {
+  var anims = window.__bookshelfAnims || [];
+  if (!anims.length) return null;
+  if (!window.__nextBookshelfAnim) {
+    window.__nextBookshelfAnim = anims[Math.floor(Math.random() * anims.length)];
+  }
+  return window.__nextBookshelfAnim;
+}
+
+// 用隐藏 <video preload="auto"> 预热，使其发出与真正播放一致的 Range 媒体请求，
+// 进同一媒体缓存。预热元素挂在 window.__warmVideoEl 常驻，播放时直接复用同 URL。
+function __warmVideo(url) {
+  return new Promise(function(res) {
+    try {
+      // 已为同一 URL 预热过 → 直接复用
+      if (window.__warmVideoEl && window.__warmVideoEl.src && window.__warmVideoEl.src.indexOf(url) !== -1) {
+        return res();
+      }
+      var v = document.createElement('video');
+      v.muted = true;
+      v.setAttribute('muted', '');
+      v.setAttribute('playsinline', '');
+      v.preload = 'auto';
+      // 屏外隐藏，不影响布局、不参与渲染
+      v.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;';
+      v.addEventListener('canplaythrough', function () { res(); }, { once: true });
+      v.addEventListener('loadeddata', function () { res(); }, { once: true });
+      v.addEventListener('error', function () { res(); }, { once: true });
+      v.src = url;
+      // 挂在 <html> 下而非 <body>，防止 Swup 切页（containers:['body']）时销毁预热元素、中断下载
+      document.documentElement.appendChild(v);
+      window.__warmVideoEl = v;
+      // 兜底：最长 10s 不阻塞后续 phase
+      setTimeout(res, 10000);
+    } catch (e) { res(); }
+  });
+}
+
 function __waitSwup(maxMs) {
   // 给 Swup 一个上限的等待窗口；若到时还没准备好，phase 2 走原生 prefetch 兜底
   var deadline = Date.now() + (maxMs || 3000);
@@ -236,13 +277,18 @@ async function runNovelPreloadChain(data) {
   window.__novelPreloadStarted = true;
 
   // Phase 3: 书架入场动画（mp4）—— 最高优先级。
-  // 切到 /novel/ 时随机抽 1 个全屏 cut-in 播放，书架内容要等它播完才显现；
-  // 过去零预加载 → 切页当刻才现下载，表现为"卡一下"。这里把全部动画提前预热，
-  // 任意随机结果都命中缓存。URL 取自 window.__bookshelfAnims（线上已被改写到 R2，
-  // 与实际播放请求同源同址，缓存才命中）。并行预热，越早齐越好。
-  var anims = window.__bookshelfAnims || [];
-  if (anims.length) {
-    await Promise.all(anims.map(function(url) { return __prefetchLink(url, 'video'); }));
+  // 切到 /novel/ 时随机抽 1 个全屏 cut-in 播放，书架内容要等它播完才显现。
+  //
+  // ⚠️ 不能用 <link rel=prefetch as=video> 预热：<video> 播放走的是 Range 媒体请求，
+  // 与 prefetch 的完整请求缓存键/destination 不一致，浏览器不复用 → 点击时仍重新下载
+  // （正是"已预加载却重新加载"的根因）。改用隐藏 <video preload=auto> 预热：它发出的
+  // 请求与真正播放完全相同 → 进同一媒体缓存 → 播放必命中。
+  //
+  // 且动画每次随机播 1 个：在这里就随机定好"下次要播的那一个"（存 window.__nextBookshelfAnim），
+  // 只预热它（~2MB），播放时复用同一 URL → 必命中。无需预热全部 11 个（22MB）。
+  __pickNextBookshelfAnim();
+  if (window.__nextBookshelfAnim) {
+    await __warmVideo(window.__nextBookshelfAnim);
   }
 
   // Phase 4: 小说封面（image，可并行）
@@ -430,19 +476,46 @@ function startBookshelfIntro(anims) {
     }
   } catch (e) {}
 
-  var src = anims[Math.floor(Math.random() * anims.length)];
+  // 优先播放预加载阶段预热好的那一个（同一 <video> 元素、已缓冲数据）。
+  // 没有预热结果时才即时随机兜底。
+  var src = window.__nextBookshelfAnim || anims[Math.floor(Math.random() * anims.length)];
+
+  // 尝试复用预热过的 <video> 元素 —— 它已经在后台用 preload=auto 下载了数据，
+  // 直接搬进遮罩即可，无需创建新元素（新元素同一 URL 也可能不走缓存）。
+  var video;
+  var reusedWarm = false;
+  if (window.__warmVideoEl && window.__warmVideoEl.src && window.__warmVideoEl.src.indexOf(src) !== -1) {
+    video = window.__warmVideoEl;
+    // 从隐藏位取下，恢复为全屏样式
+    if (video.parentNode) video.parentNode.removeChild(video);
+    video.style.cssText = '';
+    video.className = 'bookshelf-intro__video';
+    video.muted = false;
+    reusedWarm = true;
+  } else {
+    // 兜底：预热没跑完 / URL 不匹配 → 新建 video 现场加载
+    video = document.createElement('video');
+    video.className = 'bookshelf-intro__video';
+    video.src = src;
+  }
+  window.__nextBookshelfAnim = null;
+  window.__warmVideoEl = null;
+
+  // 为"下一次"立即重新随机 + 预热，保持每次随机播放且下次秒开
+  if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
+    var nextUrl = __pickNextBookshelfAnim();
+    if (nextUrl) __warmVideo(nextUrl);
+  }
 
   var overlay = document.createElement('div');
   overlay.id = 'bookshelf-intro';
   overlay.className = 'bookshelf-intro';
 
-  var video = document.createElement('video');
-  video.className = 'bookshelf-intro__video';
-  video.src = src;
   video.setAttribute('playsinline', '');
   video.playsInline = true;
   video.preload = 'auto';
-  video.muted = false;
+  // 如果复用预热元素且它已经有足够数据，跳过等待直接从当前位置播
+  // 否则走 canplay 事件等待
 
   overlay.appendChild(video);
   document.body.appendChild(overlay);
