@@ -230,17 +230,27 @@ async function runPreloadChain() {
   }
 }
 
-// 小说资源预加载链（Phase 3 & 4）
+// 小说资源预加载链（Phase 3/4/5）
 async function runNovelPreloadChain(data) {
   if (window.__novelPreloadStarted) return;
   window.__novelPreloadStarted = true;
 
-  // Phase 3: 小说封面（image，可并行）
+  // Phase 3: 书架入场动画（mp4）—— 最高优先级。
+  // 切到 /novel/ 时随机抽 1 个全屏 cut-in 播放，书架内容要等它播完才显现；
+  // 过去零预加载 → 切页当刻才现下载，表现为"卡一下"。这里把全部动画提前预热，
+  // 任意随机结果都命中缓存。URL 取自 window.__bookshelfAnims（线上已被改写到 R2，
+  // 与实际播放请求同源同址，缓存才命中）。并行预热，越早齐越好。
+  var anims = window.__bookshelfAnims || [];
+  if (anims.length) {
+    await Promise.all(anims.map(function(url) { return __prefetchLink(url, 'video'); }));
+  }
+
+  // Phase 4: 小说封面（image，可并行）
   if (data.novelCovers && data.novelCovers.length) {
     await Promise.all(data.novelCovers.map(function(url) { return __prefetchLink(url, 'image'); }));
   }
 
-  // Phase 4: 小说 EPUB（大文件，按顺序；as=fetch + crossorigin 匹配后续实际 fetch()）
+  // Phase 5: 小说 EPUB（大文件，按顺序；as=fetch + crossorigin 匹配后续实际 fetch()）
   if (data.novelEpubs && data.novelEpubs.length) {
     for (var i = 0; i < data.novelEpubs.length; i++) {
       await __prefetchLink(data.novelEpubs[i], 'fetch', 'anonymous');
