@@ -9,12 +9,14 @@
         }
     }
 
-    // 折叠：H2 下的 H3 列表默认隐藏，三种情况展开：
+    // 折叠：每个有子列表的项（H2/H3/H4…）下的子列表默认隐藏，三种情况展开：
     //   1) 用户点击三角按钮 → 手动展开（持久 .is-manual-open）
-    //   2) 该 H2 被 scrollspy 标为 active-class（滚动当前指针在该 H2 顶部）
-    //   3) 该 H2 的后代（H3）被 scrollspy 标为 active-class（滚动当前指针在该 H2 下的子节）
+    //   2) 该项被 scrollspy 标为 active-class（滚动当前指针在该项顶部）
+    //   3) 该项的后代被 scrollspy 标为 active-class（滚动当前指针在该项下的子节）
     // 手动状态独立于自动状态：scroll 离开后自动收起，但手动开过的会留着。
-    #TableOfContents > ol > li {
+    // 用后代选择器（而非 > ol > li）使任意层级的项都套用同一套折叠逻辑；
+    // > ol 子组合器保证每条规则只作用于该项自己的直接子列表，逐层级联。
+    #TableOfContents li {
         position: relative;
 
         > ol {
@@ -28,7 +30,7 @@
         }
     }
 
-    // H2 行左侧的折叠按钮，由 JS 在 li 上有子 ol 时注入
+    // 行左侧的折叠按钮，由 JS 在任意层级有子 ol 的 li 上注入
     .toc-toggle {
         position: absolute;
         left: -1.4em;
@@ -66,9 +68,9 @@
     }
 
     // 展开时（任意理由）三角顺时针 90° 变下指 + 主题蓝
-    #TableOfContents > ol > li.is-manual-open > .toc-toggle::before,
-    #TableOfContents > ol > li.active-class > .toc-toggle::before,
-    #TableOfContents > ol > li:has(.active-class) > .toc-toggle::before {
+    #TableOfContents li.is-manual-open > .toc-toggle::before,
+    #TableOfContents li.active-class > .toc-toggle::before,
+    #TableOfContents li:has(.active-class) > .toc-toggle::before {
         transform: rotate(90deg);
         border-left-color: #58a6ff;
     }

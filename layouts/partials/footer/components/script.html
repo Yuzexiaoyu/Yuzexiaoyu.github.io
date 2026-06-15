@@ -68,11 +68,11 @@ document.addEventListener('submit', function(e) {
   }
 }, true);
 
-// 目录折叠按钮：在每个有子 ol 的 H2 li 上注入一个三角按钮。
+// 目录折叠按钮：在每个有子 ol 的 li 上注入一个三角按钮（任意层级 H2/H3/H4…）。
 // 点击按钮切换 .is-manual-open（持久）。
 // 自动展开（is-manual-open / active-class / 后代 active-class）的逻辑在 _toc.scss 里。
 function setupTocToggles() {
-  document.querySelectorAll('#TableOfContents > ol > li').forEach(function(li) {
+  document.querySelectorAll('#TableOfContents li').forEach(function(li) {
     if (!li.querySelector(':scope > ol')) return;
     if (li.querySelector(':scope > .toc-toggle')) return;
     var btn = document.createElement('button');
@@ -83,7 +83,8 @@ function setupTocToggles() {
   });
 }
 
-// 滚动到其他 H2 后，自动清掉手动展开——但只清"用户在浏览这一段期间点开的"。
+// 滚动到其他小节后，自动清掉手动展开——但只清"用户在浏览这一段期间点开的"。
+// 任意层级（H2/H3/H4…）的项各自独立处理。
 // 关键：data-toc-manual-during-visit 标记由点击 handler 在 li 当前 active 时打上。
 // 在别处 active 时点开的 li 不打这个标记，所以滚动不会清；
 // 直到滚到该 li → active 触发本函数把 manual 也算进 "during-visit" → 再滚走时清。
@@ -97,7 +98,7 @@ function setupTocAutoCollapse() {
   }
 
   function syncState() {
-    toc.querySelectorAll(':scope > ol > li').forEach(function(li) {
+    toc.querySelectorAll('li').forEach(function(li) {
       var hasActive = isLiActive(li);
       var hasManual = li.classList.contains('is-manual-open');
       var duringVisit = li.dataset.tocManualDuringVisit === '1';
