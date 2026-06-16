@@ -53,9 +53,12 @@ int length;
 ```
 链式存储结构对某些串操作有一定方便之处，但总体来说，不如顺序存储结构灵活  
 所以我们一般用定长顺序存储结构
-### 初始化
+### 初始化（将原生字符串写入串）
+void InitString(SString* S,char * str)
+{
+s -> length = strlen(str)
 
-
+}
 
 
 
