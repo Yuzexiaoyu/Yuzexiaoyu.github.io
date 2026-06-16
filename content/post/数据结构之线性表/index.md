@@ -4,7 +4,7 @@ date: 2026-03-31
 lastmod: 2026-05-16
 weight: 1
 description: 顺序表和链表的实现与运用。
-image: lighthouse.jpg
+image: lighthouse.webp
 comments: true
 ---
 线性表是数据结构的第一块基石，所有复杂数据结构都建立在它的基础之上。

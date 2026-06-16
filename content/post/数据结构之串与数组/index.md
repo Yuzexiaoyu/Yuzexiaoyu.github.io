@@ -4,7 +4,7 @@ date: 2026-06-15
 lastmod: 2026-06-15
 weight: 3
 description: 串与数组的实现与运用。
-image: milkyway.jpg
+image: milkyway.webp
 comments: true
 ---
 ## 串  

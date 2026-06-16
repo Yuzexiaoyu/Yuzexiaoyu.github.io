@@ -4,7 +4,7 @@ date: 2026-05-16
 lastmod: 2026-05-16
 weight: 2
 description: 栈和队列的实现与运用。
-image: fire.jpg
+image: fire.webp
 comments: true
 ---
 栈和队列是两种重要的线性结构，它们是操作受限的线性表。

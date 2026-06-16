@@ -4,7 +4,7 @@ date: 2026-03-30
 lastmod: 2026-06-13
 weight: 50
 description: Markdown 语法和 HTML 元素格式。
-image: star.jpg
+image: star.webp
 comments: true
 ---
 
