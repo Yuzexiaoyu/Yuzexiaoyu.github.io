@@ -30,12 +30,18 @@ jobs:
 
       - name: Restore media files from git history
         run: |
-          # 若当前 checkout 缺少媒体文件（上次 CI 已删），从父提交恢复
-          # 确保 Hugo 构建和 s3 sync --delete 每次都有完整媒体清单
+          # 若当前 checkout 缺少媒体文件（上次 CI 已删），从 git 历史恢复
+          # 搜索最近 10 个提交，找到第一个包含媒体文件的并检出
           if [ ! -f static/novel/01.epub ]; then
-            git checkout HEAD~1 -- content/post/ static/music/ static/novel/ 2>/dev/null || \
-            git checkout HEAD~2 -- content/post/ static/music/ static/novel/ 2>/dev/null || \
-            echo "Media not found in history (first deploy, should be in HEAD)"
+            REF=$(git log --all --pretty=format:%H -10 | while read h; do
+              git ls-tree "$h" -- static/novel/01.epub 2>/dev/null | grep -q . && echo "$h" && break
+            done)
+            if [ -n "$REF" ]; then
+              git checkout "$REF" -- content/post/ static/music/ static/novel/
+              echo "Restored media from $REF"
+            else
+              echo "Media not found in recent history (first deploy?)"
+            fi
           fi
 
       - name: Setup Hugo
