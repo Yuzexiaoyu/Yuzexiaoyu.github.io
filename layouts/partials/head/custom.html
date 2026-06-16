@@ -92,6 +92,21 @@ html.is-mobile-blocked #mobile-block {
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://giscus.app" crossorigin>
 
+{{/* ════ 关键部件优先加载（驱动交互的 JS 提前预热）════
+     style.css 已是渲染阻塞资源 = 浏览器自动给最高优先级，无需额外处理。
+     问题在 main.js（主题核心）/ Swup（SPA 导航）/ index.umd（Swup 插件）原本只在
+     body 末尾 defer，下载靠后且优先级低，又被下面 300KB 头像的 high 预载抢了带宽，
+     于是页面"滞后"。这里在 head 顶部用 high 预热，浏览器立即与 1.5s 进场动画并行拉取；
+     footer 的 <script defer> 命中缓存秒执行，执行时机/顺序完全不变（零风险）。
+     main.ts 经 Hugo 处理后的指纹与 footer 完全一致（Hugo 同构建内去重，不会重复构建）。
+     三者均与站点同源（GitHub Pages，非 R2），复用已建连接，且 as=script 无 crossorigin
+     才能与 footer 的普通 <script src> 匹配命中，不会二次下载。 */}}
+{{- $mainOpts := dict "minify" hugo.IsProduction -}}
+{{- $mainScript := resources.Get "ts/main.ts" | js.Build $mainOpts | fingerprint -}}
+<link rel="preload" as="script" href="{{ $mainScript.RelPermalink }}" fetchpriority="high">
+<link rel="preload" as="script" href="/lib/Swup.umd.js" fetchpriority="high">
+<link rel="preload" as="script" href="/lib/index.umd.js" fetchpriority="high">
+
 {{/* APlayer CSS 异步加载，避免阻塞首次渲染 */}}
 <link rel="preload" href="/lib/aplayer/APlayer.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="/lib/aplayer/APlayer.min.css"></noscript>
@@ -202,12 +217,14 @@ window.__runMermaid = async function() {
     {{- end -}}
   {{- end -}}
 {{- end -}}
+{{/* 头像 300KB，且被 1.5s 进场动画遮挡，无需 high 抢占关键 JS/CSS 带宽。
+     去掉 fetchpriority 后预载为 Low，让位给上面 high 的核心脚本，动画期间从容加载完。 */}}
 {{- if $avatarUrl }}
-<link rel="preload" as="image" href="{{ $avatarUrl }}" fetchpriority="high">
+<link rel="preload" as="image" href="{{ $avatarUrl }}">
 {{- end }}
 
 {{/* 文章卡片图：仅列表页（书架页不显示文章卡片，跳过以免和开场视频抢带宽）
-     只有前 2 张卡片图设置 high 优先级，其余使用默认优先级避免带宽竞争 */}}
+     全部用默认优先级预载，不再用 high 抢占关键 JS/CSS（卡片在动画结束后才进入视口）。 */}}
 {{- $cardUrls := slice -}}
 {{- if and $isList (ne .Layout "novel-bookshelf") -}}
   {{- range first 8 .Site.RegularPages -}}
@@ -217,12 +234,8 @@ window.__runMermaid = async function() {
     {{- end -}}
   {{- end -}}
 {{- end -}}
-{{- range $idx, $url := $cardUrls }}
-  {{- if lt $idx 2 }}
-<link rel="preload" as="image" href="{{ $url }}" fetchpriority="high">
-  {{- else }}
-<link rel="preload" as="image" href="{{ $url }}">
-  {{- end }}
+{{- range $cardUrls }}
+<link rel="preload" as="image" href="{{ . }}">
 {{- end }}
 
 {{/* JS 级联用的 URL 列表：novelCovers / novelEpubs 是后续 phase。
