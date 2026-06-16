@@ -13,19 +13,13 @@
 
 {{- $js := `
 var swupReady = false;
-document.addEventListener('click', function(e) {
-  if (swupReady) return;
-  var link = e.target.closest('a[href]:not([target="_blank"]):not([rel="external"]):not([data-no-swup])');
-  if (link && link.origin === window.location.origin) {
-    e.preventDefault();
-    var checkSwup = setInterval(function() {
-      if (swupReady) {
-        clearInterval(checkSwup);
-        swup.navigate(link.href);
-      }
-    }, 50);
-  }
-}, true);
+// 首屏链接失效修复：Swup 未就绪时绝不拦截点击，直接放行浏览器原生导航，
+// 保证链接在任何时刻都能点。
+// 旧实现在这里无条件 e.preventDefault() 后轮询 swupReady，而 swupReady 只在
+// window load 里置位——load 要等首屏所有子资源（含 300KB 头像、全部预载图）下载完，
+// 于是首屏点击被 preventDefault 拦下、却又等不到 swup.navigate，表现为"点了没反应"。
+// 现在改为：未就绪 → 不拦截（原生整页跳转，仅损失一次 SPA 过场）；
+// 就绪后由 Swup 自身的 link:click 委托接管无刷新导航。无需再手动早期拦截。
 
 // 拦截搜索表单提交，走 Swup 导航避免全页刷新
 document.addEventListener('submit', function(e) {
@@ -677,7 +671,11 @@ function startBookshelfIntro(anims) {
   maxTimer = setTimeout(finish, 15000);
 }
 
-window.addEventListener('load', function() {
+// Swup 初始化提前到 DOMContentLoaded：原来挂在 window load，要等首屏所有图片
+// （含 300KB 头像）下载完才建实例，期间导航只能走原生整页刷新，丢失 SPA 过场。
+// main.ts / Swup.umd.js / index.umd.js 均为 defer 脚本，规范保证在 DOMContentLoaded
+// 前执行完毕，故此时 Swup / SwupPreloadPlugin 必然已就绪，可安全提前。
+document.addEventListener('DOMContentLoaded', function() {
   document.body.classList.add('loaded');
 
   // 直接打开/刷新 /novel/ 时也播放进入动画
