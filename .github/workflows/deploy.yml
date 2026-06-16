@@ -57,7 +57,7 @@ jobs:
             --include "*.mp4" --include "*.webm" --include "*.mov" --include "*.avi" \
             --include "*.pdf" --include "*.zip" \
             --include "*.epub" \
-            --delete || echo "R2 upload failed (continuing...)"
+            || echo "R2 upload failed (continuing...)"
 
       - name: Replace media links
         env:
