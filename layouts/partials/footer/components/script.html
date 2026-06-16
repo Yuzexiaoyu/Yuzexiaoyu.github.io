@@ -260,32 +260,38 @@ function __pickNextBookshelfAnim() {
   return window.__nextBookshelfAnim;
 }
 
-// 用隐藏 <video preload="auto"> 预热，使其发出与真正播放一致的 Range 媒体请求，
-// 进同一媒体缓存。预热元素挂在 window.__warmVideoEl 常驻，播放时直接复用同 URL。
+// 把整段 cut-in mp4 用 fetch 抓进内存（Blob），播放时走 object URL → 零网络、零 Range
+// 请求，必定瞬开不卡顿。
+// 旧方案用隐藏 <video preload=auto> 预热：离屏/隐藏的媒体会被浏览器限流，常常只缓冲到
+// loadeddata（首帧）就停，"预加载完"也未必真备好数据；播放时再现场拉流 → 首播卡顿。
+// CORS 已在 EPUB 预取（__prefetchEpub）验证可用（同 R2 源），故这里同样用 fetch。
+window.__warmVideoBlobMap = window.__warmVideoBlobMap || {}; // 原始 URL -> object URL
 function __warmVideo(url) {
   return new Promise(function(res) {
-    try {
-      // 已为同一 URL 预热过 → 直接复用
-      if (window.__warmVideoEl && window.__warmVideoEl.src && window.__warmVideoEl.src.indexOf(url) !== -1) {
-        return res();
-      }
-      var v = document.createElement('video');
-      v.muted = true;
-      v.setAttribute('muted', '');
-      v.setAttribute('playsinline', '');
-      v.preload = 'auto';
-      // 屏外隐藏，不影响布局、不参与渲染
-      v.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;';
-      v.addEventListener('canplaythrough', function () { res(); }, { once: true });
-      v.addEventListener('loadeddata', function () { res(); }, { once: true });
-      v.addEventListener('error', function () { res(); }, { once: true });
-      v.src = url;
-      // 挂在 <html> 下而非 <body>，防止 Swup 切页（containers:['body']）时销毁预热元素、中断下载
-      document.documentElement.appendChild(v);
-      window.__warmVideoEl = v;
-      // 兜底：最长 10s 不阻塞后续 phase
-      setTimeout(res, 10000);
-    } catch (e) { res(); }
+    if (!url) return res();
+    if (window.__warmVideoBlobMap[url]) return res(); // 已预热同一支
+    var settled = false;
+    function done() { if (!settled) { settled = true; res(); } }
+    fetch(url, { mode: 'cors', credentials: 'omit' })
+      .then(function(r) { return (r && r.ok) ? r.blob() : null; })
+      .then(function(blob) {
+        if (blob) {
+          // 只保留当前这支，释放其它未消费的预热，避免内存堆积。
+          // 正在播放的那支会在 startBookshelfIntro 里从 map 删除（取走所有权），
+          // 不会被这里误 revoke。
+          Object.keys(window.__warmVideoBlobMap).forEach(function(k) {
+            if (k !== url) {
+              try { URL.revokeObjectURL(window.__warmVideoBlobMap[k]); } catch (e) {}
+              delete window.__warmVideoBlobMap[k];
+            }
+          });
+          window.__warmVideoBlobMap[url] = URL.createObjectURL(blob);
+        }
+        done();
+      })
+      .catch(done);
+    // 兜底：最长 20s 不阻塞后续 phase（covers / epub）
+    setTimeout(done, 20000);
   });
 }
 
@@ -542,7 +548,7 @@ function startBookshelfIntro(anims) {
   if (window.__bookshelfIntroActive) return;
   window.__bookshelfIntroActive = true;
 
-  // 进入动画期间暂停 BGM（仅当原本在播放），动画结束/跳过后在 finish() 里恢复
+  // 进入动画期间暂停 BGM + 星空画布，把 GPU/主线程让给全屏 cut-in
   var resumeAudio = false;
   try {
     var ap = window.aplayerInstance;
@@ -551,31 +557,40 @@ function startBookshelfIntro(anims) {
       ap.pause();
     }
   } catch (e) {}
+  // 冻结 warp-speed 粒子画布（350 颗粒 rAF 循环，切书架时会飙到 speed=40，
+  // 与全屏视频硬解竞争 GPU 合成器 → 白屏/卡顿）
+  if (typeof window.setWarpSpeed === 'function') window.setWarpSpeed(0);
 
-  // 优先播放预加载阶段预热好的那一个（同一 <video> 元素、已缓冲数据）。
-  // 没有预热结果时才即时随机兜底。
   var src = window.__nextBookshelfAnim || anims[Math.floor(Math.random() * anims.length)];
 
-  // 尝试复用预热过的 <video> 元素 —— 它已经在后台用 preload=auto 下载了数据，
-  // 直接搬进遮罩即可，无需创建新元素（新元素同一 URL 也可能不走缓存）。
-  var video;
-  var reusedWarm = false;
-  if (window.__warmVideoEl && window.__warmVideoEl.src && window.__warmVideoEl.src.indexOf(src) !== -1) {
-    video = window.__warmVideoEl;
-    // 从隐藏位取下，恢复为全屏样式
-    if (video.parentNode) video.parentNode.removeChild(video);
-    video.style.cssText = '';
-    video.className = 'bookshelf-intro__video';
-    video.muted = false;
-    reusedWarm = true;
+  // 优先走 Blob URL：__warmVideo() 已通过 fetch 把整段 mp4 抓进内存，
+  // object URL 创建 <video> 瞬间可播，零网络、零 Range 请求。
+  var video = document.createElement('video');
+  video.className = 'bookshelf-intro__video';
+  var blobUrl = window.__warmVideoBlobMap && window.__warmVideoBlobMap[src];
+  if (blobUrl) {
+    video.src = blobUrl;
+    // 取走所有权：标记已消费，避免 warm 或 finish 重复 revoke
+    window.__warmVideoBlobMap[src] = null;
   } else {
-    // 兜底：预热没跑完 / URL 不匹配 → 新建 video 现场加载
-    video = document.createElement('video');
-    video.className = 'bookshelf-intro__video';
     video.src = src;
   }
+
+  // 释放上一轮未用到的旧预热（取走了 src 之后的其他残余 — __warmVideo 里只保留最新那支）
+  if (window.__warmVideoBlobMap) {
+    Object.keys(window.__warmVideoBlobMap).forEach(function(k) {
+      if (window.__warmVideoBlobMap[k]) {
+        try { URL.revokeObjectURL(window.__warmVideoBlobMap[k]); } catch (e) {}
+        delete window.__warmVideoBlobMap[k];
+      }
+    });
+  }
+  // 清理旧 DOM 预热元素（如果还在，从旧方案残留）
+  if (window.__warmVideoEl) {
+    try { if (window.__warmVideoEl.parentNode) window.__warmVideoEl.parentNode.removeChild(window.__warmVideoEl); } catch (e) {}
+    window.__warmVideoEl = null;
+  }
   window.__nextBookshelfAnim = null;
-  window.__warmVideoEl = null;
 
   // 为"下一次"立即重新随机 + 预热，保持每次随机播放且下次秒开
   if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
@@ -590,8 +605,6 @@ function startBookshelfIntro(anims) {
   video.setAttribute('playsinline', '');
   video.playsInline = true;
   video.preload = 'auto';
-  // 如果复用预热元素且它已经有足够数据，跳过等待直接从当前位置播
-  // 否则走 canplay 事件等待
 
   overlay.appendChild(video);
   document.body.appendChild(overlay);
@@ -614,6 +627,13 @@ function startBookshelfIntro(anims) {
     if (resumeAudio) {
       resumeAudio = false;
       try { if (window.aplayerInstance) window.aplayerInstance.play(); } catch (e) {}
+    }
+    // 恢复星空粒子画布速度（进场时冻结为 0 避免争 GPU）
+    if (typeof window.setWarpSpeedSlow === 'function') window.setWarpSpeedSlow();
+    // 释放 Blob URL 内存（播完不再需要）
+    if (blobUrl) {
+      try { URL.revokeObjectURL(blobUrl); } catch (e) {}
+      blobUrl = null;
     }
     cleanup();
     try { video.pause(); } catch (e) {}
