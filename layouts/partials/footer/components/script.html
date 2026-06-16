@@ -520,10 +520,17 @@ window.__playBookshelfIntro = function() {
     return;
   }
 
-  // 直接打开/刷新 /novel/ 时，先等全局 page-loader 收起，避免叠加
+  // 直接打开/刷新 /novel/ 时，先等全局 page-loader 收起，避免叠加。
+  // 书架模板 CSS 里 #page-loader { display:none!important }，而 l.style.display
+  // 只读内联样式，检测不到 CSS 隐藏 → 旧实现误判为"还在显示"→ 白等 3 秒。
+  // 加上 getComputedStyle 补判 CSS 级别的隐藏。
   function loaderHidden() {
     var l = document.getElementById('page-loader');
-    return !l || l.classList.contains('hidden') || l.style.display === 'none';
+    if (!l) return true;
+    if (l.classList.contains('hidden')) return true;
+    if (l.style.display === 'none') return true;
+    try { if (getComputedStyle(l).display === 'none') return true; } catch(e) {}
+    return false;
   }
   if (!loaderHidden()) {
     var waited = 0;
@@ -690,6 +697,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   swup = new Swup({
     containers: ['body'],
+    animationSelector: 'body',   // 抑制 "[swup] No elements found" 警告；animationDuration=0 已关闭动画
     animationDuration: 0,
     plugins: [
       new SwupPreloadPlugin({
