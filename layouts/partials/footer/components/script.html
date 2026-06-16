@@ -285,7 +285,8 @@ function __warmVideo(url) {
       v.src = url;
       document.documentElement.appendChild(v);
       window.__warmVideoEl = v;
-      setTimeout(res, 10000);
+      // canplaythrough 在离屏元素上可能被浏览器限流迟迟不触发，20s 兜底
+      setTimeout(res, 20000);
     } catch (e) { res(); }
   });
 }
@@ -583,11 +584,9 @@ function startBookshelfIntro(anims) {
   window.__nextBookshelfAnim = null;
   window.__warmVideoEl = null;
 
-  // 为"下一次"立即重新随机 + 预热，保持每次随机播放且下次秒开
-  if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
-    var nextUrl = __pickNextBookshelfAnim();
-    if (nextUrl) __warmVideo(nextUrl);
-  }
+  // 下一次的预热挪到 finish() 里，在当前视频播完后再启动，避免与当前视频的
+  // 缓冲 Range 请求 + 书架封面图加载三方抢 R2 CDN 带宽，导致播放中卡顿。
+  // 这里只提前随机好 URL，预热动作延后。
 
   var overlay = document.createElement('div');
   overlay.id = 'bookshelf-intro';
@@ -642,6 +641,21 @@ function startBookshelfIntro(anims) {
         window.__showBookshelfNotice();
       }
     }, 400);
+
+    // 预热下一次的入场动画。在当前视频播完、overlay 淡出后再启动，避免与当前
+    // 视频的缓冲 Range 请求 + 封面图加载三方抢 R2 CDN 带宽。
+    // 用 requestIdleCallback 等到封面图加载完、浏览器空闲时再开始下载。
+    if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
+      var scheduleWarm = function() {
+        var nextUrl = __pickNextBookshelfAnim();
+        if (nextUrl) __warmVideo(nextUrl);
+      };
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(scheduleWarm, { timeout: 8000 });
+      } else {
+        setTimeout(scheduleWarm, 3000);
+      }
+    }
   }
 
   function onKeydown() { finish(); }
