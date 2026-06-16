@@ -1,6 +1,6 @@
 mainSections   = ["post"]
 rssFullContent = true
-favicon        = "image/avatar.jpg"
+favicon        = "image/avatar.webp"
 
 [params.search]
   enable = true
@@ -11,7 +11,7 @@ favicon        = "image/avatar.jpg"
 
 [sidebar]
     subtitle = ""
-    avatar   = "image/avatar.gif"
+    avatar   = "image/avatar.webp"
 
 [article]
   math = false
