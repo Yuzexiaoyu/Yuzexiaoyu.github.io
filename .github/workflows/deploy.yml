@@ -28,22 +28,6 @@ jobs:
       - name: Install dependencies
         run: pip install beautifulsoup4
 
-      - name: Restore media files from git history
-        run: |
-          # 若当前 checkout 缺少媒体文件（上次 CI 已删），从 git 历史恢复
-          # 搜索最近 10 个提交，找到第一个包含媒体文件的并检出
-          if [ ! -f static/novel/01.epub ]; then
-            REF=$(git log --all --pretty=format:%H -10 | while read h; do
-              git ls-tree "$h" -- static/novel/01.epub 2>/dev/null | grep -q . && echo "$h" && break
-            done)
-            if [ -n "$REF" ]; then
-              git checkout "$REF" -- content/post/ static/music/ static/novel/
-              echo "Restored media from $REF"
-            else
-              echo "Media not found in recent history (first deploy?)"
-            fi
-          fi
-
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
@@ -92,31 +76,3 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-
-      # ✅ 删除云端媒体文件（保留本地，与 R2 上传的文件类型一一对应）
-      - name: Delete media files from GitHub
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # 需要删除的媒体扩展名（与上方 R2 上传的 include 完全对齐）
-          MEDIA_EXTS="jpg jpeg png gif webp svg bmp ico mp3 wav ogg m4a mp4 webm mov avi pdf zip epub"
-
-          # 删除 content/post/ 下的所有媒体文件
-          for ext in $MEDIA_EXTS; do
-            git rm -r --cached "content/post/**/*.$ext" 2>/dev/null || true
-          done
-
-          # 删除 static/music/ 下的所有媒体文件
-          for ext in $MEDIA_EXTS; do
-            git rm -r --cached "static/music/*.$ext" 2>/dev/null || true
-          done
-
-          # 删除 static/novel/ 下的 EPUB、封面、书架动画
-          git rm -r --cached "static/novel/*.epub" 2>/dev/null || true
-          git rm -r --cached "static/novel/covers/*" 2>/dev/null || true
-          git rm -r --cached "static/novel/animations/*.mp4" 2>/dev/null || true
-
-          # 提交并推送
-          git commit -m "chore: 删除云端媒体文件（保留本地）" || echo "No media files to delete"
-          git push origin master
