@@ -28,6 +28,16 @@ jobs:
       - name: Install dependencies
         run: pip install beautifulsoup4
 
+      - name: Restore media files from git history
+        run: |
+          # 若当前 checkout 缺少媒体文件（上次 CI 已删），从父提交恢复
+          # 确保 Hugo 构建和 s3 sync --delete 每次都有完整媒体清单
+          if [ ! -f static/novel/01.epub ]; then
+            git checkout HEAD~1 -- content/post/ static/music/ static/novel/ 2>/dev/null || \
+            git checkout HEAD~2 -- content/post/ static/music/ static/novel/ 2>/dev/null || \
+            echo "Media not found in history (first deploy, should be in HEAD)"
+          fi
+
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
@@ -57,6 +67,7 @@ jobs:
             --include "*.mp4" --include "*.webm" --include "*.mov" --include "*.avi" \
             --include "*.pdf" --include "*.zip" \
             --include "*.epub" \
+            --delete \
             || echo "R2 upload failed (continuing...)"
 
       - name: Replace media links
