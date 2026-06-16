@@ -365,7 +365,7 @@ async function runNovelPreloadChain(data) {
   // Phase 4: 小说封面（new Image() → 绕过 ORB，图片缓存与页面 <img> 互通）
   // 并发 8：CDN 走 Cloudflare HTTP/2，57 张图复用单连接多 stream，无 HTTP/1.1 连接惩罚。
   // 限并发不是为限连接数，而是压平冷边缘同时 miss → 同时回源 R2 的突发（503 根因）。
-  // 8 在「尽快腾空闲窗口给 Phase 5 epub」与「回源不触发限流」间平衡；勿冲全并发。
+  // 8 在「尽快腾空闲窗口给 Phase 5 mp3」与「回源不触发限流」间平衡；勿冲全并发。
   if (data.novelCovers && data.novelCovers.length) {
     var coverTasks = data.novelCovers.map(function(url) {
       return function() { return __preloadImage(url); };
@@ -373,12 +373,9 @@ async function runNovelPreloadChain(data) {
     await __pool(coverTasks, 8);
   }
 
-  // Phase 5: 小说 EPUB（fetch() 预取，串行 —— 大文件 2-7MB，串行避免带宽争抢）
-  if (data.novelEpubs && data.novelEpubs.length) {
-    var epubTasks = data.novelEpubs.map(function(url) {
-      return function() { return __prefetchEpub(url); };
-    });
-    await __pool(epubTasks, 1);
+  // 预加载链全部完成，启用音频 metadata 预加载（仅拉头部几 KB）
+  if (typeof window.__enableAudioPreload === 'function') {
+    window.__enableAudioPreload();
   }
 }
 

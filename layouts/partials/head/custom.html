@@ -238,7 +238,7 @@ window.__runMermaid = async function() {
 <link rel="preload" as="image" href="{{ . }}">
 {{- end }}
 
-{{/* JS 级联用的 URL 列表：novelCovers / novelEpubs 是后续 phase。
+{{/* JS 级联用的 URL 列表：novelCovers / mp3Urls 是后续 phase。
      Phase 1 (头像+卡片图) 已通过 <link rel="preload"> 启动，无需 JS 重复加载。 */}}
 
 {{- $novelCoverUrls := slice -}}
@@ -248,15 +248,8 @@ window.__runMermaid = async function() {
   {{- end -}}
 {{- end -}}
 
-{{- $novelEpubUrls := slice -}}
-{{- $mainVols := (index .Site.Data.novels.shelves 0).volumes -}}
-{{- range first 5 $mainVols -}}
-  {{- $novelEpubUrls = $novelEpubUrls | append (printf "/novel/%s.epub" .key) -}}
-{{- end -}}
-
 {{- $preloadData := dict
   "novelCovers" $novelCoverUrls
-  "novelEpubs" $novelEpubUrls
 -}}
 <script>
 window.__preloadData = {{ $preloadData | jsonify | safeJS }};

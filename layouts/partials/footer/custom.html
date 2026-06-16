@@ -22,25 +22,20 @@
       autoplay: false,
       loop: 'all',
       order: 'list',
-      preload: 'metadata',
+      preload: 'none',
       volume: 0.7,
       mutex: true,
       lrcType: 0,
       audio: [
+        {{- range $i, $track := .Site.Data.music.playlist }}
         {
-          name: 'กาลครั้งนึง',
-          artist: '',
-          url: '/music/กาลครั้งนึง.mp3',
-          cover: '/music/กาลครั้งนึง.jpg',
-          theme: '#4FC3F7'
-        },
-        {
-          name: 'So Cynical (Badum)',
-          artist: '',
-          url: '/music/So Cynical (Badum).mp3',
-          cover: '/music/So Cynical (Badum).jpg',
-          theme: '#4FC3F7'
-        }
+          name: '{{ $track.name }}',
+          artist: '{{ $track.artist }}',
+          url: '{{ $track.url }}',
+          cover: '{{ $track.cover }}',
+          theme: '{{ $track.theme }}'
+        }{{ if ne (add $i 1) (len $.Site.Data.music.playlist) }},{{ end }}
+        {{- end }}
       ]
     });
     
@@ -95,7 +90,19 @@
     window.aplayerInstance = ap;
   }
   
-  // defer 加载 APlayer.min.js，轮询等库就绪
+  // 立即初始化播放器 UI（封面图等立即加载），但音频预加载先关闭。
+  // 等预加载链全部完成后由 __enableAudioPreload 切换到 metadata，
+  // 避免与封面图预加载抢带宽。
   initPlayer();
+
+  var __audioPreloadEnabled = false;
+  window.__enableAudioPreload = function() {
+    if (__audioPreloadEnabled) return;
+    __audioPreloadEnabled = true;
+    var ap = window.aplayerInstance;
+    if (!ap || !ap.audio) return;
+    ap.audio.preload = 'metadata';
+    try { ap.audio.load(); } catch(e) {}
+  };
 })();
 </script>
