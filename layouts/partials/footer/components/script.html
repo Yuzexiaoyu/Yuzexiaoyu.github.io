@@ -315,8 +315,10 @@ async function runPreloadChain() {
   // 子资源预取），Swup 内部去重。不用 <link rel=prefetch as=document> 兜底 —— 它会创建
   // 第二个独立 HTTP 请求，不与 swup.preload() 共享去重，在 Chromium 还触发 NoState
   // Prefetch 子资源风暴。Swup 未就绪则跳过，让 SwupPreloadPlugin hover 预取自然接管。
+  // 含书架 /novel/：把书架 HTML 也 swup.preload() 进缓存（仅 HTML 文本，~20KB，不拉子资源），
+  // 点击时命中缓存 → content:replace 几乎立即完成 → 书架在 early 遮罩背后已就绪。
   var sidebarLinks = Array.from(document.querySelectorAll('#main-menu a[href]'))
-    .filter(function(a) { return a.origin === location.origin && !a.target && a.pathname !== '/novel/'; })
+    .filter(function(a) { return a.origin === location.origin && !a.target; })
     .map(function(a) { return a.href; });
   if (sidebarLinks.length) {
     var swupReady = await __waitSwup(3000);
@@ -509,12 +511,21 @@ window.__renderShelfProgress = function() {
   });
 };
 
-window.__playBookshelfIntro = function() {
-  if (!document.querySelector('.novel-bookshelf')) return;
+window.__playBookshelfIntro = function(opts) {
+  var early = opts && opts.early;
+  // early：由 visit:start 在点击瞬间触发，此时书架 HTML 还没 swap 进来，
+  // 不能用 .novel-bookshelf 存在性判断；SPA 导航也没有 page-loader，直接起。
+  if (!early && !document.querySelector('.novel-bookshelf')) return;
   if (window.__bookshelfIntroActive) return;
+  if (window.__bookshelfIntroConsumed) return;
   var anims = window.__bookshelfAnims || [];
   if (!anims.length) {
     revealBookshelf();
+    return;
+  }
+
+  if (early) {
+    startBookshelfIntro(anims);
     return;
   }
 
@@ -547,6 +558,7 @@ window.__playBookshelfIntro = function() {
 function startBookshelfIntro(anims) {
   if (window.__bookshelfIntroActive) return;
   window.__bookshelfIntroActive = true;
+  window.__bookshelfIntroConsumed = true;   // 本次导航已起入场动画，page:view 不再重复触发
 
   // 进入动画期间暂停 BGM + 星空画布，把 GPU/主线程让给全屏 cut-in
   var resumeAudio = false;
@@ -573,6 +585,7 @@ function startBookshelfIntro(anims) {
     video.style.cssText = '';
     video.className = 'bookshelf-intro__video';
     video.muted = false;
+    try { video.currentTime = 0; } catch (e) {}   // 预热可能已 coax 播过，复位到首帧
   } else {
     video = document.createElement('video');
     video.className = 'bookshelf-intro__video';
@@ -594,7 +607,10 @@ function startBookshelfIntro(anims) {
   video.preload = 'auto';
 
   overlay.appendChild(video);
-  document.body.appendChild(overlay);
+  // 挂到 documentElement 而非 body：Swup containers:['body'] 在 content:replace 时会清空
+  // body 内容，early 遮罩(在 HTML swap 前创建)挂 body 上会被冲掉；挂 documentElement
+  // (与 warp canvas、warm video 同层)才能跨 swap 存活。direct-load 路径同样安全。
+  document.documentElement.appendChild(overlay);
 
   requestAnimationFrame(function() { overlay.classList.add('is-visible'); });
 
@@ -627,6 +643,9 @@ function startBookshelfIntro(anims) {
       removed = true;
       window.__bookshelfIntroActive = false;
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      // 兜底补显：early 路径下 finish() 可能早于书架 HTML 到达，那次 revealBookshelf() 落空；
+      // 此处幂等再补一次，确保书架不会停在 opacity:0。HTML 仍未到则由 page:view 兜底。
+      revealBookshelf();
     }
     overlay.addEventListener('transitionend', rm, { once: true });
     setTimeout(rm, 600);
@@ -674,11 +693,9 @@ function startBookshelfIntro(anims) {
     }
   }
 
-  if (video.readyState >= 2) {
-    tryPlay();
-  } else {
-    video.addEventListener('canplay', tryPlay, { once: true });
-  }
+  // 立即起播：play() 会在数据到位即开始，遮罩纯色底盖住首帧等待；不再因离屏预热被浏览器
+  // 降级到 metadata(readyState<2)而空等 canplay。仍由下方 3.5s failTimer 兜底。
+  tryPlay();
 
   // 加载不出来兜底：3.5s 还没法播就收起，绝不卡住用户
   failTimer = setTimeout(function() {
@@ -725,10 +742,17 @@ document.addEventListener('DOMContentLoaded', function() {
     return defaultHandler(visit, _args);
   });
 
-  swup.hooks.on('visit:start', function() {
+  swup.hooks.on('visit:start', function(visit) {
     document.body.classList.remove('loaded');
+    window.__bookshelfIntroConsumed = false;   // 每次导航重置：防 page:view 二次触发，又不卡死后续导航
 
-    if (typeof window.setWarpSpeed === 'function') {
+    // 目标是书架 → 点击瞬间就盖出 cut-in 遮罩，把 HTML 加载 + 视频缓冲藏到动画背后，
+    // 不再先空跃迁等 HTML 回来才在 page:view 里起动画（那段往返正是"跃迁干等"）。
+    var toPath = '';
+    try { toPath = ((visit && visit.to && visit.to.url) || '').split('?')[0].split('#')[0]; } catch (e) {}
+    if (/^\/novel\/?$/.test(toPath) && typeof window.__playBookshelfIntro === 'function') {
+      window.__playBookshelfIntro({ early: true });
+    } else if (typeof window.setWarpSpeed === 'function') {
       window.setWarpSpeed(40);
     }
   });
@@ -778,12 +802,17 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // Swup 切到书架 → 播放进入动画
-    if (document.querySelector('.novel-bookshelf') && typeof window.__playBookshelfIntro === 'function') {
-      window.__playBookshelfIntro();
-    }
-    if (document.querySelector('.novel-bookshelf') && window.__renderShelfProgress) {
-      window.__renderShelfProgress();
+    // Swup 切到书架。入场动画一般已由 visit:start 的 early 触发盖在最前；这里兜底：
+    //   · 没被 early 起过 → 正常起；
+    //   · early 起过且还在播 → 不动，等它 finish() 自己 revealBookshelf；
+    //   · early 起过但已播完(视频极短/出错，早于 HTML 到达) → 此刻补显书架。
+    if (document.querySelector('.novel-bookshelf')) {
+      if (!window.__bookshelfIntroConsumed) {
+        if (typeof window.__playBookshelfIntro === 'function') window.__playBookshelfIntro();
+      } else if (!window.__bookshelfIntroActive) {
+        revealBookshelf();
+      }
+      if (window.__renderShelfProgress) window.__renderShelfProgress();
     }
 
     // Swup 切到搜索页 → 初始化搜索
