@@ -594,6 +594,37 @@ function startBookshelfIntro(anims) {
   window.__nextBookshelfAnim = null;
   window.__warmVideoEl = null;
 
+  // 视频未完全加载（readyState < 4）→ 跳过动画，直接进书架
+  if (video.readyState < 4) {
+    window.__bookshelfIntroActive = false;
+    // 恢复 BGM（仅当进入动画前在播放）
+    if (resumeAudio) {
+      resumeAudio = false;
+      try { if (window.aplayerInstance) window.aplayerInstance.play(); } catch (e) {}
+    }
+    // 恢复星空粒子画布速度
+    if (typeof window.setWarpSpeedSlow === 'function') window.setWarpSpeedSlow();
+    revealBookshelf();
+    setTimeout(function() {
+      if (typeof window.__showBookshelfNotice === 'function') {
+        window.__showBookshelfNotice();
+      }
+    }, 400);
+    // 预热下一次的入场动画
+    if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
+      var scheduleSkipWarm = function() {
+        var nextUrl = __pickNextBookshelfAnim();
+        if (nextUrl) __warmVideo(nextUrl);
+      };
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(scheduleSkipWarm, { timeout: 8000 });
+      } else {
+        setTimeout(scheduleSkipWarm, 3000);
+      }
+    }
+    return;
+  }
+
   // 下一次的预热挪到 finish() 里，在当前视频播完后再启动，避免与当前视频的
   // 缓冲 Range 请求 + 书架封面图加载三方抢 R2 CDN 带宽，导致播放中卡顿。
   // 这里只提前随机好 URL，预热动作延后。
