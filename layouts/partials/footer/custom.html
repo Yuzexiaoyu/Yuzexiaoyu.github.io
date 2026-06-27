@@ -60,24 +60,36 @@
       listOl.style.maxHeight = 'none';
     }
     
+    var isListVisible = false;
+    function hideList() {
+      list.classList.remove('show');
+      list.classList.add('aplayer-list-hide');
+      isListVisible = false;
+    }
+    function showList() {
+      list.classList.add('show');
+      list.classList.remove('aplayer-list-hide');
+      isListVisible = true;
+    }
+
+    // 点击歌单内歌曲 → 切歌 + 收起列表（与迷你播放器行为一致）
+    list.addEventListener('click', function(e) {
+      var li = e.target.closest('li');
+      if (li) hideList();
+    });
+
     var listBtn = document.querySelector('.aplayer-icon-lrc');
     if (listBtn && list) {
       var newBtn = listBtn.cloneNode(true);
       listBtn.parentNode.replaceChild(newBtn, listBtn);
-      
-      var isListVisible = false;
+
       newBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        
         if (isListVisible) {
-          list.classList.remove('show');
-          list.classList.add('aplayer-list-hide');
-          isListVisible = false;
+          hideList();
         } else {
-          list.classList.add('show');
-          list.classList.remove('aplayer-list-hide');
-          isListVisible = true;
+          showList();
         }
       });
     }

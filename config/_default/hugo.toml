@@ -8,7 +8,7 @@ canonifyURLs = true
 relativeURLs = false
 
 [pagination]
-    pagerSize = 5
+    pagerSize = 4
 
 [permalinks]
     post = "/p/:slug/"

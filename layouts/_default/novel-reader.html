@@ -1293,8 +1293,11 @@ window.__initNovelReader = function() {
     function updateVolDrag(e) {
       var rect = volBarWrap.getBoundingClientRect();
       var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      volFill.style.width = (pct * 100) + '%';
-      volThumb.style.left = (pct * 100) + '%';
+      var padRight = 10;
+      var trackW = rect.width - padRight;
+      var thumbLeft = pct * trackW;
+      volFill.style.width = thumbLeft + 'px';
+      volThumb.style.left = thumbLeft + 'px';
       return pct;
     }
     volBarWrap.addEventListener('mousedown', function(e) {
@@ -1426,6 +1429,7 @@ window.__initNovelReader = function() {
         item.addEventListener('click', function(e) {
           e.stopPropagation();
           ap.list.switch(i);
+          ap.play();
           plPopup.style.display = 'none';
           setTimeout(function() {
             barPlayed.style.width = '0%';

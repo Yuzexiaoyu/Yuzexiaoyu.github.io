@@ -503,15 +503,14 @@
 
   .mini-vol-bar-outer {
     max-width: 0;
-    overflow: hidden;
     display: flex;
     align-items: center;
-    transition: max-width 0.22s ease, padding 0.22s ease, opacity 0.22s ease;
+    transition: max-width 0.22s ease, opacity 0.22s ease;
     opacity: 0;
   }
 
   &.expanded .mini-vol-bar-outer {
-    max-width: 80px;
+    max-width: 86px;
     opacity: 1;
   }
 
@@ -550,12 +549,11 @@
   .mini-vol-thumb {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
     width: 12px;
     height: 12px;
     border-radius: 50%;
     background: var(--reader-accent);
-    margin-left: -6px;
   }
 }
 

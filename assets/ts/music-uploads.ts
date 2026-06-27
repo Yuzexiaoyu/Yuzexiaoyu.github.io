@@ -869,7 +869,6 @@ async function renderPanel(ap: any): Promise<void> {
       item.innerHTML =
         '<img class="mu-item-cover" alt="">' +
         '<div class="mu-item-meta"><div class="mu-item-name"></div><div class="mu-item-sub"></div></div>' +
-        '<button class="mu-item-btn mu-item-cover-btn" type="button" title="更换封面">封面</button>' +
         '<button class="mu-item-btn mu-item-del" type="button" title="删除">删除</button>';
       (item.querySelector(".mu-item-cover") as HTMLImageElement).src =
         audio.cover || DEFAULT_COVER;
@@ -884,9 +883,6 @@ async function renderPanel(ap: any): Promise<void> {
         "click",
         () => removeTrack(ap, audio)
       );
-      (
-        item.querySelector(".mu-item-cover-btn") as HTMLElement
-      ).addEventListener("click", () => changeCover(ap, audio));
       list.appendChild(item);
     });
   }
