@@ -183,6 +183,7 @@ async function swapContent(
 function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
   if (state.swapping) return;
 
+  lastNavTime = Date.now();
   state.swapping = true;
   state.lastPathname = url;
 
@@ -200,15 +201,20 @@ function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
 /*  Wheel handler                                                      */
 /* ------------------------------------------------------------------ */
 
+let lastNavTime = 0;
+const NAV_COOLDOWN = 300; // ms — 防止 momentum scroll 触发二次翻页
+
 function handleWheel(e: WheelEvent): void {
   if (window.location.pathname !== state.lastPathname) {
     state.swapping = false;
     state.lastPathname = window.location.pathname;
+    lastNavTime = Date.now();
     prefetchAdjacent();
     return;
   }
 
   if (state.swapping) return;
+  if (Date.now() - lastNavTime < NAV_COOLDOWN) return;
   if (!isPaginatedListPage()) return;
   if (Math.abs(e.deltaY) < MIN_DELTA) return;
 
