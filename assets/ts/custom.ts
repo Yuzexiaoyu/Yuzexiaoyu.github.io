@@ -23,18 +23,6 @@ const state: NavState = {
 /** In-memory cache for prefetched page HTML (string = resolved, Promise = in-flight). */
 const pageCache: Record<string, string | Promise<string>> = {};
 
-/** Track in-flight prefetch requests so stale ones can be aborted. */
-let prefetchAborts: AbortController[] = [];
-
-function cancelStalePrefetches(): void {
-  prefetchAborts.forEach(c => c.abort());
-  prefetchAborts = [];
-  // 清理被中止后留在缓存里的拒绝 Promise，避免 swapContent await 到抛异常
-  Object.keys(pageCache).forEach(url => {
-    if (typeof pageCache[url] !== 'string') delete pageCache[url];
-  });
-}
-
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -93,20 +81,16 @@ function prefetch(url: string): void {
     }
     return;
   }
-  // 兜底：AbortController 可被 cancelStalePrefetches 取消
-  const ctrl = new AbortController();
-  prefetchAborts.push(ctrl);
-  const p = fetch(url, { signal: ctrl.signal })
+  // 兜底：自己发起 fetch
+  const p = fetch(url)
     .then(r => { if (!r.ok) throw new Error(''); return r.text(); })
     .then(t => { pageCache[url] = t; return t; })
-    .catch(() => { delete pageCache[url]; })
-    .finally(() => { prefetchAborts = prefetchAborts.filter(c => c !== ctrl); });
+    .catch(() => { delete pageCache[url]; });
   pageCache[url] = p;
 }
 
 function prefetchAdjacent(): void {
   if (!isPaginatedListPage()) return;
-  cancelStalePrefetches();
   const next = getPageUrl('next');
   if (next) prefetch(next);
   const prev = getPageUrl('prev');
@@ -151,10 +135,11 @@ async function swapContent(
     html = await resp.text();
   }
 
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-
-  const newList = doc.querySelector('section.article-list, section.article-list--compact');
-  const newPag = doc.querySelector('nav.pagination');
+  // 轻量解析，比 DOMParser.parseFromString 省去完整 Document 开销
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  const newList = temp.querySelector('section.article-list, section.article-list--compact');
+  const newPag = temp.querySelector('nav.pagination');
 
   if (!newList) throw new Error('No article list in fetched page');
 
