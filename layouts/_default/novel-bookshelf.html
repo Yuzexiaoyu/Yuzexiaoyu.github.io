@@ -45,6 +45,7 @@
               src="{{ $coverPath }}"
               alt="{{ .label }}"
               loading="lazy"
+              decoding="async"
               onerror="this.style.display='none';this.parentElement.classList.add('no-cover');this.parentElement.setAttribute('data-label','{{ .label }}');">
             <div class="book-shine"></div>
           </div>

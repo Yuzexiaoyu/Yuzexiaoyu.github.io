@@ -15,7 +15,7 @@
         {{ if $image }}
         <div class="article-image">
             {{/* 前8张文章图已在 head 中预加载，不使用 lazy 避免冲突 */}}
-            <img src="{{ $image.Permalink }}" width="{{ $image.Width }}" height="{{ $image.Height }}" alt="{{ .Title }}">
+            <img src="{{ $image.Permalink }}" width="{{ $image.Width }}" height="{{ $image.Height }}" decoding="async" alt="{{ .Title }}">
         </div>
         {{ end }}
     </a>

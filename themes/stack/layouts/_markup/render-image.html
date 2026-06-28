@@ -9,6 +9,7 @@
 	{{ with $image.Width }}width="{{ . }}"{{ end }}
 	{{ with $image.Height }}height="{{ . }}"{{ end }}
 	loading="lazy"
+	decoding="async"
 	{{ with $alt }}
 		alt="{{ . }}"
 	{{ end }}
@@ -17,7 +18,7 @@
         data-title-escaped="{{ . | htmlEscape }}"
     {{ end }}
 	{{ if $galleryImage }}
-		class="gallery-image" 
+		class="gallery-image"
 		data-flex-grow="{{ div (mul $image.Width 100) $image.Height }}"
 		data-flex-basis="{{ div (mul $image.Width 240) $image.Height }}px"
 	{{ end }}
