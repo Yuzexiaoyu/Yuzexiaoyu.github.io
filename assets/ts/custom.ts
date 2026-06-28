@@ -16,21 +16,23 @@
 /* ------------------------------------------------------------------ */
 
 interface NavState {
-  swapping: boolean;   // prevents concurrent fetch+swap calls
+  swapping: boolean;
   lastPathname: string;
-  prefetchedNext: string | null;
-  prefetchedPrev: string | null;
 }
 
 const state: NavState = {
   swapping: false,
   lastPathname: window.location.pathname,
-  prefetchedNext: null,
-  prefetchedPrev: null,
 };
 
-/** In-memory cache for prefetched page HTML, bypasses HTTP cache headers. */
+/** In-memory cache for prefetched page HTML (resolved). */
 const pageCache: Record<string, string> = {};
+
+/** In-flight prefetch promises — reused by swapContent to avoid duplicate requests. */
+const pagePromises: Record<string, Promise<string>> = {};
+
+/** Pending navigation direction while a swap is in progress. */
+let pendingDirection: 'prev' | 'next' | null = null;
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -80,6 +82,45 @@ function getPageUrl(direction: 'prev' | 'next'): string | null {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Prefetch                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Start prefetching a URL's HTML. Returns the fetch promise (reused
+ * across multiple callers to avoid duplicate network requests). */
+function prefetchPage(url: string): Promise<string> {
+  if (pageCache[url]) return Promise.resolve(pageCache[url]!);
+  if (pagePromises[url]) return pagePromises[url]!;
+
+  const p = fetch(url)
+    .then(resp => {
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return resp.text();
+    })
+    .then(html => {
+      pageCache[url] = html;
+      delete pagePromises[url];
+      return html;
+    })
+    .catch(err => {
+      delete pagePromises[url];
+      throw err;
+    });
+
+  pagePromises[url] = p;
+  return p;
+}
+
+/** Prefetch next and previous pages immediately. */
+function prefetchAdjacent(): void {
+  if (!isPaginatedListPage()) return;
+  const nextUrl = getPageUrl('next');
+  if (nextUrl) prefetchPage(nextUrl);
+  const prevUrl = getPageUrl('prev');
+  if (prevUrl) prefetchPage(prevUrl);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Content swap                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -95,19 +136,11 @@ async function swapContent(
   url: string,
   historyMode: 'push' | 'replace' = 'replace'
 ): Promise<void> {
-  // Use in-memory cache if prefetched, otherwise fetch
-  let html: string;
-  if (pageCache[url]) {
-    html = pageCache[url]!;
-    delete pageCache[url];
-  } else {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    html = await resp.text();
-  }
-  // Reset prefetch bookmarks — we're on a new page now
-  state.prefetchedNext = null;
-  state.prefetchedPrev = null;
+  // Reuse in-flight prefetch or hit the resolved cache
+  const html = await prefetchPage(url);
+  // Remove from cache after consumption (will be re-fetched if needed again)
+  delete pageCache[url];
+
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   // ── Extract new content ──────────────────────────────────────────
@@ -151,8 +184,8 @@ async function swapContent(
   // ── Scroll to top of new content ─────────────────────────────────
   window.scrollTo(0, 0);
 
-  // ── Prefetch adjacent pages (idle) ───────────────────────────────
-  schedulePrefetchAdjacent();
+  // ── Immediately prefetch adjacent pages for the next scroll ──────
+  prefetchAdjacent();
 }
 
 /* ------------------------------------------------------------------ */
@@ -160,11 +193,18 @@ async function swapContent(
 /* ------------------------------------------------------------------ */
 
 /**
- * Shared entry point for both wheel and click navigation.
- * @param historyMode  "replace" for wheel scroll, "push" for clicks.
- */
+ * Process a pending navigation direction (set while swapping).
+ * Called after the current swap completes. */
+function processPending(): void {
+  if (!pendingDirection) return;
+  const dir = pendingDirection;
+  pendingDirection = null;
+  const url = getPageUrl(dir);
+  if (url) navigateToUrl(url, 'replace');
+}
+
 function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
-  if (state.swapping) return; // prevent concurrent fetch+swap
+  if (state.swapping) return;
 
   state.swapping = true;
   state.lastPathname = url;
@@ -176,6 +216,8 @@ function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
     })
     .finally(() => {
       state.swapping = false;
+      // Process any scroll that arrived during the swap
+      processPending();
     });
 }
 
@@ -184,15 +226,14 @@ function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
 /* ------------------------------------------------------------------ */
 
 function handleWheel(e: WheelEvent): void {
-  // ── Pathname change detection ──────────────────────────────────
+  // ── Pathname change detection (Swup navigated to a new page) ────
   if (window.location.pathname !== state.lastPathname) {
     state.swapping = false;
     state.lastPathname = window.location.pathname;
+    pendingDirection = null;
+    prefetchAdjacent();
     return;
   }
-
-  // ── Concurrent-swap guard ──────────────────────────────────────
-  if (state.swapping) return;
 
   // ── Relevance guard ────────────────────────────────────────────
   if (!isPaginatedListPage()) return;
@@ -217,7 +258,14 @@ function handleWheel(e: WheelEvent): void {
 
   // ── Navigate ───────────────────────────────────────────────────
   e.preventDefault();
-  navigateToUrl(url, 'replace'); // wheel = continuous scroll, no history entry
+
+  if (state.swapping) {
+    // Queue this direction — processed when current swap finishes
+    pendingDirection = direction;
+    return;
+  }
+
+  navigateToUrl(url, 'replace');
 }
 
 /* ------------------------------------------------------------------ */
@@ -278,35 +326,6 @@ function isAtTop(): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Prefetch adjacent pages (post-navigation)                           */
-/* ------------------------------------------------------------------ */
-
-/**
- * Prefetch next/prev page HTML into an in-memory cache (pageCache).
- * On the next navigation, swapContent reads from pageCache directly —
- * zero network latency, independent of HTTP cache headers. */
-function schedulePrefetchAdjacent(): void {
-  if (!isPaginatedListPage()) return;
-  const nextUrl = getPageUrl('next');
-  if (nextUrl && !pageCache[nextUrl] && nextUrl !== state.prefetchedNext) {
-    state.prefetchedNext = nextUrl;
-    fetch(nextUrl)
-      .then(r => r.text())
-      .then(t => { pageCache[nextUrl] = t; })
-      .catch(() => {});
-  }
-  const prevUrl = getPageUrl('prev');
-  if (prevUrl && !pageCache[prevUrl] && prevUrl !== state.prefetchedPrev) {
-    state.prefetchedPrev = prevUrl;
-    fetch(prevUrl)
-      .then(r => r.text())
-      .then(t => { pageCache[prevUrl] = t; })
-      .catch(() => {});
-  }
-}
-
-
-/* ------------------------------------------------------------------ */
 /*  Initialisation                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -317,5 +336,5 @@ document.addEventListener('wheel', handleWheel, { passive: false });
 // so Swup never sees a stale URL and never skips navigation.
 document.addEventListener('click', handlePaginationClick, true);
 
-// Prefetch adjacent pages on initial load, not just after navigation
-schedulePrefetchAdjacent();
+// Prefetch adjacent pages immediately on load
+prefetchAdjacent();
