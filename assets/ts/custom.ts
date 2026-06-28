@@ -18,11 +18,15 @@
 interface NavState {
   swapping: boolean;   // prevents concurrent fetch+swap calls
   lastPathname: string;
+  prefetchedNext: string | null;
+  prefetchedPrev: string | null;
 }
 
 const state: NavState = {
   swapping: false,
   lastPathname: window.location.pathname,
+  prefetchedNext: null,
+  prefetchedPrev: null,
 };
 
 /* ------------------------------------------------------------------ */
@@ -90,6 +94,9 @@ async function swapContent(
 ): Promise<void> {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  // Reset prefetch bookmarks — we're on a new page now
+  state.prefetchedNext = null;
+  state.prefetchedPrev = null;
   const html = await resp.text();
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
@@ -133,6 +140,9 @@ async function swapContent(
 
   // ── Scroll to top of new content ─────────────────────────────────
   window.scrollTo(0, 0);
+
+  // ── Prefetch adjacent pages (idle) ───────────────────────────────
+  schedulePrefetchAdjacent();
 }
 
 /* ------------------------------------------------------------------ */
@@ -258,6 +268,28 @@ function isAtTop(): boolean {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Prefetch adjacent pages (post-navigation)                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * After each page swap, prefetch the next/prev page HTML in idle time.
+ * When the user scrolls again, the fetch hits the browser cache. */
+function schedulePrefetchAdjacent(): void {
+  if (!isPaginatedListPage()) return;
+  const nextUrl = getPageUrl('next');
+  if (nextUrl && nextUrl !== state.prefetchedNext) {
+    state.prefetchedNext = nextUrl;
+    fetch(nextUrl, { priority: 'low' }).catch(() => {});
+  }
+  const prevUrl = getPageUrl('prev');
+  if (prevUrl && prevUrl !== state.prefetchedPrev) {
+    state.prefetchedPrev = prevUrl;
+    fetch(prevUrl, { priority: 'low' }).catch(() => {});
+  }
+}
+
+
+/* ------------------------------------------------------------------ */
 /*  Initialisation                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -267,3 +299,6 @@ document.addEventListener('wheel', handleWheel, { passive: false });
 // Pagination clicks: capture phase fires before Swup's bubble handler,
 // so Swup never sees a stale URL and never skips navigation.
 document.addEventListener('click', handlePaginationClick, true);
+
+// Prefetch adjacent pages on initial load, not just after navigation
+schedulePrefetchAdjacent();
