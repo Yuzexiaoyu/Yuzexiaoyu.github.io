@@ -114,6 +114,8 @@
     var ap = window.aplayerInstance;
     if (!ap || !ap.audio) return;
     ap.audio.preload = 'metadata';
+    // 若正在播放则不 load()，否则会重置 audio 元素打断播放
+    if (!ap.audio.paused) return;
     try { ap.audio.load(); } catch(e) {}
   };
 })();
