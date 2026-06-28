@@ -29,6 +29,10 @@ let prefetchAborts: AbortController[] = [];
 function cancelStalePrefetches(): void {
   prefetchAborts.forEach(c => c.abort());
   prefetchAborts = [];
+  // 清理被中止后留在缓存里的拒绝 Promise，避免 swapContent await 到抛异常
+  Object.keys(pageCache).forEach(url => {
+    if (typeof pageCache[url] !== 'string') delete pageCache[url];
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -117,24 +121,34 @@ async function swapContent(
   url: string,
   historyMode: 'push' | 'replace' = 'replace'
 ): Promise<void> {
-  let html: string;
+  let html: string | undefined;
   // 先看 pageCache（custom.ts 已认领的）
   const cached = pageCache[url];
   if (cached) {
     delete pageCache[url];
-    html = (typeof cached === 'string') ? cached : await cached;
-  } else {
+    try {
+      html = (typeof cached === 'string') ? cached : await cached;
+    } catch {
+      // Promise 被中止或失败 → 走冷 fetch
+    }
+  }
+  if (!html) {
     // 再看 head inline 脚本的结果（custom.ts 还没跑时走这里）
     const early = (window as any).__pageCache || {};
     const earlyVal = early[url];
     if (earlyVal !== undefined) {
       delete early[url];
-      html = (typeof earlyVal === 'string') ? earlyVal : await earlyVal;
-    } else {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      html = await resp.text();
+      try {
+        html = (typeof earlyVal === 'string') ? earlyVal : await earlyVal;
+      } catch {
+        // Promise 失败 → 走冷 fetch
+      }
     }
+  }
+  if (!html) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    html = await resp.text();
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
