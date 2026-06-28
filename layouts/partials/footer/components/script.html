@@ -801,6 +801,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   swup.hooks.on('page:view', function() {
+    if (typeof window.__prefetchAdjacent === 'function') window.__prefetchAdjacent();
+
     var pageLoader = document.getElementById('page-loader');
     if (pageLoader) {
       pageLoader.style.display = 'none';

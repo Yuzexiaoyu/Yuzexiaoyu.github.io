@@ -336,5 +336,8 @@ document.addEventListener('wheel', handleWheel, { passive: false });
 // so Swup never sees a stale URL and never skips navigation.
 document.addEventListener('click', handlePaginationClick, true);
 
+// Expose for Swup page:view hook (script.html) to call after body swap
+(window as any).__prefetchAdjacent = prefetchAdjacent;
+
 // Prefetch adjacent pages immediately on load
 prefetchAdjacent();

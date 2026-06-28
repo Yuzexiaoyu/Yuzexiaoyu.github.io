@@ -92,6 +92,12 @@ html.is-mobile-blocked #mobile-block {
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://giscus.app" crossorigin>
 
+{{- /* ␌ 分页预取：列表页在 head 中提前下载相邻页 HTML，比 JS prefetch 更早启动 */}}
+{{- if not .IsPage -}}
+  {{- with .Paginator.Next }}<link rel="prefetch" as="document" href="{{ .URL | absURL }}">{{ end -}}
+  {{- with .Paginator.Prev }}<link rel="prefetch" as="document" href="{{ .URL | absURL }}">{{ end -}}
+{{- end }}
+
 {{/* ════ 关键部件优先加载（驱动交互的 JS 提前预热）════
      style.css 已是渲染阻塞资源 = 浏览器自动给最高优先级，无需额外处理。
      问题在 main.js（主题核心）/ Swup（SPA 导航）/ index.umd（Swup 插件）原本只在
