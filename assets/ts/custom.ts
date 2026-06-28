@@ -92,23 +92,31 @@ function prefetchPage(url: string): Promise<string> {
   if (pageCache[url]) return Promise.resolve(pageCache[url]!);
   if (pagePromises[url]) return pagePromises[url]!;
 
-  const p = fetch(url)
-    .then(resp => {
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      return resp.text();
-    })
-    .then(html => {
-      pageCache[url] = html;
-      delete pagePromises[url];
-      return html;
-    })
-    .catch(err => {
-      delete pagePromises[url];
-      throw err;
-    });
+  // Adopt promise started by head inline script
+  const headFetches = (window as any).__headFetch || {};
+  if (headFetches[url]) {
+    pagePromises[url] = headFetches[url];
+    delete headFetches[url];
+  } else {
+    const p = fetch(url)
+      .then(resp => {
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.text();
+      })
+      .catch(err => {
+        delete pagePromises[url];
+        throw err;
+      });
 
-  pagePromises[url] = p;
-  return p;
+    pagePromises[url] = p;
+  }
+
+  // Always chain cache storage + cleanup
+  return pagePromises[url]!.then(html => {
+    pageCache[url] = html;
+    delete pagePromises[url];
+    return html;
+  });
 }
 
 /** Prefetch next and previous pages immediately. */
