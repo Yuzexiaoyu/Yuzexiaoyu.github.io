@@ -92,19 +92,16 @@ html.is-mobile-blocked #mobile-block {
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://giscus.app" crossorigin>
 
-{{- /* ␌ 分页预取：head 中 inline fetch 启动最早，Promise 存 window 供 prefetchPage 复用 */}}
-{{- if not .IsPage -}}
+{{- /* ␌ 分页预取：head 中立即执行，不等任何 defer。URL 由 Hugo build-time 注入 */}}
+{{- if not .IsPage }}
+{{- with .Paginator.Next }}
 <script>
 (function(){
-  if (!window.__headFetch) window.__headFetch = {};
-  {{- with .Paginator.Next }}
-  window.__headFetch['{{ .URL }}'] = fetch('{{ .URL }}').then(function(r){return r.text();});
-  {{- end }}
-  {{- with .Paginator.Prev }}
-  window.__headFetch['{{ .URL }}'] = fetch('{{ .URL }}').then(function(r){return r.text();});
-  {{- end }}
+  if (!window.__pageCache) window.__pageCache = {};
+  window.__pageCache['{{ .URL }}'] = fetch('{{ .URL }}').then(function(r){return r.text();});
 })();
 </script>
+{{- end }}
 {{- end }}
 
 {{/* ════ 关键部件优先加载（驱动交互的 JS 提前预热）════

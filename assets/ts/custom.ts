@@ -3,12 +3,7 @@
  * Boundary-triggered: scroll past bottom → next page, past top → previous page.
  *
  * Uses fetch + manual DOM replacement (article list + pagination only).
- * Leaves the sidebar and all other page chrome untouched — no Swup hook,
- * no body swap, no CSS animation replay.
- *
- * This module is side-effect-only — it registers a document-level wheel
- * listener at load time. Since custom.ts is loaded as a <script defer>,
- * the listener survives all Swup body swaps without re-initialization.
+ * In-memory pageCache eliminates network round-trips after the first prefetch.
  */
 
 /* ------------------------------------------------------------------ */
@@ -25,31 +20,21 @@ const state: NavState = {
   lastPathname: window.location.pathname,
 };
 
-/** In-memory cache for prefetched page HTML (resolved). */
-const pageCache: Record<string, string> = {};
-
-/** In-flight prefetch promises — reused by swapContent to avoid duplicate requests. */
-const pagePromises: Record<string, Promise<string>> = {};
-
-/** Pending navigation direction while a swap is in progress. */
-let pendingDirection: 'prev' | 'next' | null = null;
+/** In-memory cache for prefetched page HTML (string = resolved, Promise = in-flight). */
+const pageCache: Record<string, string | Promise<string>> = {};
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Minimum wheel delta (px) to trigger navigation — filters trackpad settling */
 const MIN_DELTA = 40;
-/** Tolerance for "at bottom" check (accounts for sub-pixel rounding) */
 const BOTTOM_THRESHOLD = 5;
-/** Tolerance for "at top" check */
 const TOP_THRESHOLD = 5;
 
 /* ------------------------------------------------------------------ */
 /*  Detection                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Returns true only when the current page is a paginated list page. */
 function isPaginatedListPage(): boolean {
   if (!document.querySelector('nav.pagination')) return false;
   if (
@@ -65,7 +50,6 @@ function isPaginatedListPage(): boolean {
 /*  URL helpers                                                        */
 /* ------------------------------------------------------------------ */
 
-/** Returns the prev/next page pathname, or null when unavailable. */
 function getPageUrl(direction: 'prev' | 'next'): string | null {
   const label = direction === 'prev' ? 'Previous page' : 'Next page';
   const link = document.querySelector(
@@ -85,79 +69,70 @@ function getPageUrl(direction: 'prev' | 'next'): string | null {
 /*  Prefetch                                                           */
 /* ------------------------------------------------------------------ */
 
-/**
- * Start prefetching a URL's HTML. Returns the fetch promise (reused
- * across multiple callers to avoid duplicate network requests). */
-function prefetchPage(url: string): Promise<string> {
-  if (pageCache[url]) return Promise.resolve(pageCache[url]!);
-  if (pagePromises[url]) return pagePromises[url]!;
-
-  // Adopt promise started by head inline script
-  const headFetches = (window as any).__headFetch || {};
-  if (headFetches[url]) {
-    pagePromises[url] = headFetches[url];
-    delete headFetches[url];
-  } else {
-    const p = fetch(url)
-      .then(resp => {
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return resp.text();
-      })
-      .catch(err => {
-        delete pagePromises[url];
-        throw err;
-      });
-
-    pagePromises[url] = p;
+function prefetch(url: string): void {
+  if (pageCache[url]) return;
+  // 认领 head inline 脚本提前启动的 Promise 或已完成的字符串
+  const early = (window as any).__pageCache || {};
+  if (early[url] !== undefined) {
+    pageCache[url] = early[url]; // string or Promise
+    delete early[url];
+    // 如果是 Promise，链上 resolve 后覆写为字符串
+    if (typeof pageCache[url] !== 'string') {
+      (pageCache[url] as Promise<string>).then(t => { pageCache[url] = t; });
+    }
+    return;
   }
-
-  // Always chain cache storage + cleanup
-  return pagePromises[url]!.then(html => {
-    pageCache[url] = html;
-    delete pagePromises[url];
-    return html;
-  });
+  // 兜底：自己发起 fetch
+  const p = fetch(url)
+    .then(r => { if (!r.ok) throw new Error(''); return r.text(); })
+    .then(t => { pageCache[url] = t; return t; })
+    .catch(() => { delete pageCache[url]; });
+  pageCache[url] = p;
 }
 
-/** Prefetch next and previous pages immediately. */
 function prefetchAdjacent(): void {
   if (!isPaginatedListPage()) return;
-  const nextUrl = getPageUrl('next');
-  if (nextUrl) prefetchPage(nextUrl);
-  const prevUrl = getPageUrl('prev');
-  if (prevUrl) prefetchPage(prevUrl);
+  const next = getPageUrl('next');
+  if (next) prefetch(next);
+  const prev = getPageUrl('prev');
+  if (prev) prefetch(prev);
 }
 
 /* ------------------------------------------------------------------ */
 /*  Content swap                                                       */
 /* ------------------------------------------------------------------ */
 
-/**
- * Fetches the target page, extracts the article list + pagination,
- * swaps them into the current DOM, and updates the URL.
- *
- * @param url          Target page pathname.
- * @param historyMode  "replace" for wheel (continuous scroll — back exits
- *                     the list); "push" for clicks (intentional navigation).
- */
 async function swapContent(
   url: string,
   historyMode: 'push' | 'replace' = 'replace'
 ): Promise<void> {
-  // Reuse in-flight prefetch or hit the resolved cache
-  const html = await prefetchPage(url);
-  // Remove from cache after consumption (will be re-fetched if needed again)
-  delete pageCache[url];
+  let html: string;
+  // 先看 pageCache（custom.ts 已认领的）
+  const cached = pageCache[url];
+  if (cached) {
+    delete pageCache[url];
+    html = (typeof cached === 'string') ? cached : await cached;
+  } else {
+    // 再看 head inline 脚本的结果（custom.ts 还没跑时走这里）
+    const early = (window as any).__pageCache || {};
+    const earlyVal = early[url];
+    if (earlyVal !== undefined) {
+      delete early[url];
+      html = (typeof earlyVal === 'string') ? earlyVal : await earlyVal;
+    } else {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      html = await resp.text();
+    }
+  }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
-  // ── Extract new content ──────────────────────────────────────────
   const newList = doc.querySelector('section.article-list, section.article-list--compact');
   const newPag = doc.querySelector('nav.pagination');
 
   if (!newList) throw new Error('No article list in fetched page');
 
-  // ── Replace article list ─────────────────────────────────────────
   const oldList = document.querySelector('section.article-list, section.article-list--compact');
   if (oldList) {
     oldList.replaceWith(newList);
@@ -166,7 +141,6 @@ async function swapContent(
     if (mainEl) mainEl.appendChild(newList);
   }
 
-  // ── Replace pagination ───────────────────────────────────────────
   const oldPag = document.querySelector('nav.pagination');
   if (oldPag && newPag) {
     oldPag.replaceWith(newPag);
@@ -177,39 +151,24 @@ async function swapContent(
     oldPag.remove();
   }
 
-  // ── Update URL ───────────────────────────────────────────────────
   if (historyMode === 'push') {
     history.pushState({}, '', url);
   } else {
     history.replaceState({}, '', url);
   }
 
-  // ── Re-init code copy buttons / color scheme on new content ─────
   if ((window as any).Stack && typeof (window as any).Stack.init === 'function') {
     (window as any).Stack.init();
   }
 
-  // ── Scroll to top of new content ─────────────────────────────────
   window.scrollTo(0, 0);
 
-  // ── Immediately prefetch adjacent pages for the next scroll ──────
   prefetchAdjacent();
 }
 
 /* ------------------------------------------------------------------ */
 /*  Navigation                                                         */
 /* ------------------------------------------------------------------ */
-
-/**
- * Process a pending navigation direction (set while swapping).
- * Called after the current swap completes. */
-function processPending(): void {
-  if (!pendingDirection) return;
-  const dir = pendingDirection;
-  pendingDirection = null;
-  const url = getPageUrl(dir);
-  if (url) navigateToUrl(url, 'replace');
-}
 
 function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
   if (state.swapping) return;
@@ -224,8 +183,6 @@ function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
     })
     .finally(() => {
       state.swapping = false;
-      // Process any scroll that arrived during the swap
-      processPending();
     });
 }
 
@@ -234,22 +191,17 @@ function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
 /* ------------------------------------------------------------------ */
 
 function handleWheel(e: WheelEvent): void {
-  // ── Pathname change detection (Swup navigated to a new page) ────
   if (window.location.pathname !== state.lastPathname) {
     state.swapping = false;
     state.lastPathname = window.location.pathname;
-    pendingDirection = null;
     prefetchAdjacent();
     return;
   }
 
-  // ── Relevance guard ────────────────────────────────────────────
+  if (state.swapping) return;
   if (!isPaginatedListPage()) return;
-
-  // ── Delta threshold ────────────────────────────────────────────
   if (Math.abs(e.deltaY) < MIN_DELTA) return;
 
-  // ── Boundary check ─────────────────────────────────────────────
   let direction: 'prev' | 'next' | null = null;
 
   if (e.deltaY > 0 && isAtBottom()) {
@@ -260,19 +212,10 @@ function handleWheel(e: WheelEvent): void {
 
   if (!direction) return;
 
-  // ── Resolve URL ────────────────────────────────────────────────
   const url = getPageUrl(direction);
   if (!url) return;
 
-  // ── Navigate ───────────────────────────────────────────────────
   e.preventDefault();
-
-  if (state.swapping) {
-    // Queue this direction — processed when current swap finishes
-    pendingDirection = direction;
-    return;
-  }
-
   navigateToUrl(url, 'replace');
 }
 
@@ -280,12 +223,6 @@ function handleWheel(e: WheelEvent): void {
 /*  Click handler for pagination links                                 */
 /* ------------------------------------------------------------------ */
 
-/**
- * Capture-phase click handler on document.
- * Intercepts clicks on pagination number buttons BEFORE Swup's
- * bubble-phase handler sees them, so Swup's stale internal URL
- * never causes a skipped navigation.
- */
 function handlePaginationClick(e: MouseEvent): void {
   if (!isPaginatedListPage()) return;
 
@@ -293,7 +230,6 @@ function handlePaginationClick(e: MouseEvent): void {
   const link = target.closest('nav.pagination a.page-link') as HTMLAnchorElement | null;
   if (!link) return;
 
-  // Skip disabled (prev/next at boundaries) and current-page button
   if (
     link.classList.contains('disabled') ||
     link.classList.contains('current') ||
@@ -312,12 +248,11 @@ function handlePaginationClick(e: MouseEvent): void {
     url = href;
   }
 
-  // Block Swup from seeing this event
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
 
-  navigateToUrl(url, 'push'); // click = intentional, add to history
+  navigateToUrl(url, 'push');
 }
 
 /* ------------------------------------------------------------------ */
@@ -337,15 +272,10 @@ function isAtTop(): boolean {
 /*  Initialisation                                                     */
 /* ------------------------------------------------------------------ */
 
-// Wheel: passive:false so we can preventDefault at page boundaries
 document.addEventListener('wheel', handleWheel, { passive: false });
-
-// Pagination clicks: capture phase fires before Swup's bubble handler,
-// so Swup never sees a stale URL and never skips navigation.
 document.addEventListener('click', handlePaginationClick, true);
 
-// Expose for Swup page:view hook (script.html) to call after body swap
+// Expose for Swup page:view hook
 (window as any).__prefetchAdjacent = prefetchAdjacent;
 
-// Prefetch adjacent pages immediately on load
 prefetchAdjacent();
