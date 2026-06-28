@@ -23,6 +23,14 @@ const state: NavState = {
 /** In-memory cache for prefetched page HTML (string = resolved, Promise = in-flight). */
 const pageCache: Record<string, string | Promise<string>> = {};
 
+/** Track in-flight prefetch requests so stale ones can be aborted. */
+let prefetchAborts: AbortController[] = [];
+
+function cancelStalePrefetches(): void {
+  prefetchAborts.forEach(c => c.abort());
+  prefetchAborts = [];
+}
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -74,24 +82,27 @@ function prefetch(url: string): void {
   // 认领 head inline 脚本提前启动的 Promise 或已完成的字符串
   const early = (window as any).__pageCache || {};
   if (early[url] !== undefined) {
-    pageCache[url] = early[url]; // string or Promise
+    pageCache[url] = early[url];
     delete early[url];
-    // 如果是 Promise，链上 resolve 后覆写为字符串
     if (typeof pageCache[url] !== 'string') {
-      (pageCache[url] as Promise<string>).then(t => { pageCache[url] = t; });
+      (pageCache[url] as Promise<string>).then(t => { pageCache[url] = t; }).catch(() => { delete pageCache[url]; });
     }
     return;
   }
-  // 兜底：自己发起 fetch
-  const p = fetch(url)
+  // 兜底：AbortController 可被 cancelStalePrefetches 取消
+  const ctrl = new AbortController();
+  prefetchAborts.push(ctrl);
+  const p = fetch(url, { signal: ctrl.signal })
     .then(r => { if (!r.ok) throw new Error(''); return r.text(); })
     .then(t => { pageCache[url] = t; return t; })
-    .catch(() => { delete pageCache[url]; });
+    .catch(() => { delete pageCache[url]; })
+    .finally(() => { prefetchAborts = prefetchAborts.filter(c => c !== ctrl); });
   pageCache[url] = p;
 }
 
 function prefetchAdjacent(): void {
   if (!isPaginatedListPage()) return;
+  cancelStalePrefetches();
   const next = getPageUrl('next');
   if (next) prefetch(next);
   const prev = getPageUrl('prev');
