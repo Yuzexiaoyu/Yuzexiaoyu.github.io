@@ -29,6 +29,9 @@ const state: NavState = {
   prefetchedPrev: null,
 };
 
+/** In-memory cache for prefetched page HTML, bypasses HTTP cache headers. */
+const pageCache: Record<string, string> = {};
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -92,12 +95,19 @@ async function swapContent(
   url: string,
   historyMode: 'push' | 'replace' = 'replace'
 ): Promise<void> {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  // Use in-memory cache if prefetched, otherwise fetch
+  let html: string;
+  if (pageCache[url]) {
+    html = pageCache[url]!;
+    delete pageCache[url];
+  } else {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    html = await resp.text();
+  }
   // Reset prefetch bookmarks — we're on a new page now
   state.prefetchedNext = null;
   state.prefetchedPrev = null;
-  const html = await resp.text();
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   // ── Extract new content ──────────────────────────────────────────
@@ -272,19 +282,26 @@ function isAtTop(): boolean {
 /* ------------------------------------------------------------------ */
 
 /**
- * After each page swap, prefetch the next/prev page HTML in idle time.
- * When the user scrolls again, the fetch hits the browser cache. */
+ * Prefetch next/prev page HTML into an in-memory cache (pageCache).
+ * On the next navigation, swapContent reads from pageCache directly —
+ * zero network latency, independent of HTTP cache headers. */
 function schedulePrefetchAdjacent(): void {
   if (!isPaginatedListPage()) return;
   const nextUrl = getPageUrl('next');
-  if (nextUrl && nextUrl !== state.prefetchedNext) {
+  if (nextUrl && !pageCache[nextUrl] && nextUrl !== state.prefetchedNext) {
     state.prefetchedNext = nextUrl;
-    fetch(nextUrl, { priority: 'low' }).catch(() => {});
+    fetch(nextUrl)
+      .then(r => r.text())
+      .then(t => { pageCache[nextUrl] = t; })
+      .catch(() => {});
   }
   const prevUrl = getPageUrl('prev');
-  if (prevUrl && prevUrl !== state.prefetchedPrev) {
+  if (prevUrl && !pageCache[prevUrl] && prevUrl !== state.prefetchedPrev) {
     state.prefetchedPrev = prevUrl;
-    fetch(prevUrl, { priority: 'low' }).catch(() => {});
+    fetch(prevUrl)
+      .then(r => r.text())
+      .then(t => { pageCache[prevUrl] = t; })
+      .catch(() => {});
   }
 }
 
