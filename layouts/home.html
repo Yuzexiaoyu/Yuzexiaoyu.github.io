@@ -1,0 +1,39 @@
+{{ define "main" }}
+    {{- $pages := partial "helper/pages.html" . -}}
+    {{- $pageSize := .Site.Params.pagination.pagerSize | default 4 -}}
+    {{- $totalPages := math.Ceil (div (len $pages) (float $pageSize)) -}}
+
+    {{- range $pageNum := seq (int $totalPages) }}
+        {{- $start := mul (sub $pageNum 1) $pageSize -}}
+        {{- $end := mul $pageNum $pageSize -}}
+        {{- $subset := first $end $pages | after $start -}}
+        <section class="article-list" data-page="{{ $pageNum }}"{{ if ne $pageNum 1 }} style="display:none"{{ end }}>
+            {{ range $subset }}
+                {{ partial "article-list/default" . }}
+            {{ end }}
+        </section>
+    {{- end }}
+
+    {{- /* 本地分页导航 */ -}}
+    {{- if gt (int $totalPages) 1 -}}
+    <nav class="pagination" role="navigation" aria-label="pagination" id="local-pagination">
+        <a class="page-link disabled" aria-label="Previous page" aria-disabled="true" data-dir="prev">
+            {{ partial "helper/icon" "chevron-left" }}
+        </a>
+        {{- range $pageNum := seq (int $totalPages) }}
+        <a class="page-link{{ if eq $pageNum 1 }} current{{ end }}" data-goto="{{ $pageNum }}" aria-label="Page {{ $pageNum }}">
+            {{ $pageNum }}
+        </a>
+        {{- end }}
+        <a class="page-link{{ if eq (int $totalPages) 1 }} disabled{{ end }}" aria-label="Next page" data-dir="next">
+            {{ partial "helper/icon" "chevron-right" }}
+        </a>
+    </nav>
+    {{- end -}}
+
+    {{- partial "footer/footer" . -}}
+{{ end }}
+
+{{ define "right-sidebar" }}
+    {{ partial "sidebar/right.html" (dict "Context" . "Scope" "homepage") }}
+{{ end }}

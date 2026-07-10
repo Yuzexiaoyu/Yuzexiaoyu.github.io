@@ -92,17 +92,7 @@ html.is-mobile-blocked #mobile-block {
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://giscus.app" crossorigin>
 
-{{- /* ␌ 分页预取：head 中立即执行，不等任何 defer。URL 由 Hugo build-time 注入 */}}
-{{- if not .IsPage }}
-{{- with .Paginator.Next }}
-<script>
-(function(){
-  if (!window.__pageCache) window.__pageCache = {};
-  window.__pageCache['{{ .URL }}'] = fetch('{{ .URL }}').then(function(r){return r.text();});
-})();
-</script>
-{{- end }}
-{{- end }}
+{{- /* 分页已改为纯本地切换，无需网络预取 */ -}}
 
 {{/* ════ 关键部件优先加载（驱动交互的 JS 提前预热）════
      style.css 已是渲染阻塞资源 = 浏览器自动给最高优先级，无需额外处理。

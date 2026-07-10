@@ -1,27 +1,7 @@
 /**
  * Scroll-wheel page navigation for paginated list pages.
- * Boundary-triggered: scroll past bottom → next page, past top → previous page.
- *
- * Uses fetch + manual DOM replacement (article list + pagination only).
- * In-memory pageCache eliminates network round-trips after the first prefetch.
+ * 纯本地分页：所有文章在构建时已渲染到 HTML 中，翻页仅切换 display，零网络请求。
  */
-
-/* ------------------------------------------------------------------ */
-/*  State                                                              */
-/* ------------------------------------------------------------------ */
-
-interface NavState {
-  swapping: boolean;
-  lastPathname: string;
-}
-
-const state: NavState = {
-  swapping: false,
-  lastPathname: window.location.pathname,
-};
-
-/** In-memory cache for prefetched page HTML (string = resolved, Promise = in-flight). */
-const pageCache: Record<string, string | Promise<string>> = {};
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -30,245 +10,132 @@ const pageCache: Record<string, string | Promise<string>> = {};
 const MIN_DELTA = 40;
 const BOTTOM_THRESHOLD = 5;
 const TOP_THRESHOLD = 5;
+const NAV_COOLDOWN = 300;
+
+/* ------------------------------------------------------------------ */
+/*  State                                                              */
+/* ------------------------------------------------------------------ */
+
+let currentPage = 1;
+let lastNavTime = 0;
 
 /* ------------------------------------------------------------------ */
 /*  Detection                                                          */
 /* ------------------------------------------------------------------ */
 
-function isPaginatedListPage(): boolean {
-  if (!document.querySelector('nav.pagination')) return false;
-  if (
-    !document.querySelector('section.article-list') &&
-    !document.querySelector('section.article-list--compact')
-  )
-    return false;
-  if (document.querySelector('#novel-reader-root')) return false;
-  return true;
+function isLocalPagination(): boolean {
+  return !!document.querySelector('#local-pagination');
+}
+
+function getAllPageSections(): HTMLElement[] {
+  return Array.from(document.querySelectorAll('section.article-list[data-page]'));
+}
+
+function getTotalPages(): number {
+  return getAllPageSections().length;
 }
 
 /* ------------------------------------------------------------------ */
-/*  URL helpers                                                        */
+/*  Page switching (pure local, no fetch)                              */
 /* ------------------------------------------------------------------ */
 
-function getPageUrl(direction: 'prev' | 'next'): string | null {
-  const label = direction === 'prev' ? 'Previous page' : 'Next page';
-  const link = document.querySelector(
-    `nav.pagination a[aria-label="${label}"]:not(.disabled):not([aria-disabled="true"])`
-  ) as HTMLAnchorElement | null;
+function showPage(pageNum: number): void {
+  const sections = getAllPageSections();
+  const total = sections.length;
+  if (pageNum < 1 || pageNum > total) return;
 
-  if (!link) return null;
+  currentPage = pageNum;
 
-  try {
-    return new URL(link.href).pathname;
-  } catch {
-    return link.getAttribute('href');
-  }
-}
+  // 切换 section 显示
+  sections.forEach((el) => {
+    const p = parseInt(el.dataset.page || '0', 10);
+    el.style.display = p === pageNum ? '' : 'none';
+  });
 
-/* ------------------------------------------------------------------ */
-/*  Prefetch                                                           */
-/* ------------------------------------------------------------------ */
-
-function prefetch(url: string): void {
-  if (pageCache[url]) return;
-  // 认领 head inline 脚本提前启动的 Promise 或已完成的字符串
-  const early = (window as any).__pageCache || {};
-  if (early[url] !== undefined) {
-    pageCache[url] = early[url];
-    delete early[url];
-    if (typeof pageCache[url] !== 'string') {
-      (pageCache[url] as Promise<string>).then(t => { pageCache[url] = t; }).catch(() => { delete pageCache[url]; });
-    }
-    return;
-  }
-  // 兜底：自己发起 fetch
-  const p = fetch(url)
-    .then(r => { if (!r.ok) throw new Error(''); return r.text(); })
-    .then(t => { pageCache[url] = t; return t; })
-    .catch(() => { delete pageCache[url]; });
-  pageCache[url] = p;
-}
-
-function prefetchAdjacent(): void {
-  if (!isPaginatedListPage()) return;
-  const next = getPageUrl('next');
-  if (next) prefetch(next);
-  const prev = getPageUrl('prev');
-  if (prev) prefetch(prev);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Content swap                                                       */
-/* ------------------------------------------------------------------ */
-
-async function swapContent(
-  url: string,
-  historyMode: 'push' | 'replace' = 'replace'
-): Promise<void> {
-  let html: string | undefined;
-  // 先看 pageCache（custom.ts 已认领的）
-  const cached = pageCache[url];
-  if (cached) {
-    delete pageCache[url];
-    try {
-      html = (typeof cached === 'string') ? cached : await cached;
-    } catch {
-      // Promise 被中止或失败 → 走冷 fetch
-    }
-  }
-  if (!html) {
-    // 再看 head inline 脚本的结果（custom.ts 还没跑时走这里）
-    const early = (window as any).__pageCache || {};
-    const earlyVal = early[url];
-    if (earlyVal !== undefined) {
-      delete early[url];
-      try {
-        html = (typeof earlyVal === 'string') ? earlyVal : await earlyVal;
-      } catch {
-        // Promise 失败 → 走冷 fetch
+  // 更新分页导航状态
+  const nav = document.querySelector('#local-pagination');
+  if (nav) {
+    // 页码按钮
+    nav.querySelectorAll('a[data-goto]').forEach((a) => {
+      const num = parseInt((a as HTMLElement).dataset.goto || '0', 10);
+      a.classList.toggle('current', num === pageNum);
+      if (num === pageNum) {
+        a.setAttribute('aria-current', 'page');
+      } else {
+        a.removeAttribute('aria-current');
       }
+    });
+
+    // 前后按钮
+    const prev = nav.querySelector('a[data-dir="prev"]');
+    const next = nav.querySelector('a[data-dir="next"]');
+    if (prev) {
+      prev.classList.toggle('disabled', pageNum <= 1);
+      if (pageNum <= 1) prev.setAttribute('aria-disabled', 'true');
+      else prev.removeAttribute('aria-disabled');
     }
-  }
-  if (!html) {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    html = await resp.text();
-  }
-
-  // 轻量解析，比 DOMParser.parseFromString 省去完整 Document 开销
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  const newList = temp.querySelector('section.article-list, section.article-list--compact');
-  const newPag = temp.querySelector('nav.pagination');
-
-  if (!newList) throw new Error('No article list in fetched page');
-
-  const oldList = document.querySelector('section.article-list, section.article-list--compact');
-  if (oldList) {
-    oldList.replaceWith(newList);
-  } else {
-    const mainEl = document.querySelector('main.main');
-    if (mainEl) mainEl.appendChild(newList);
-  }
-
-  const oldPag = document.querySelector('nav.pagination');
-  if (oldPag && newPag) {
-    oldPag.replaceWith(newPag);
-  } else if (newPag && !oldPag) {
-    const mainEl = document.querySelector('main.main');
-    if (mainEl) mainEl.appendChild(newPag);
-  } else if (!newPag && oldPag) {
-    oldPag.remove();
-  }
-
-  if (historyMode === 'push') {
-    history.pushState({}, '', url);
-  } else {
-    history.replaceState({}, '', url);
-  }
-
-  if ((window as any).Stack && typeof (window as any).Stack.init === 'function') {
-    (window as any).Stack.init();
+    if (next) {
+      next.classList.toggle('disabled', pageNum >= total);
+      if (pageNum >= total) next.setAttribute('aria-disabled', 'true');
+      else next.removeAttribute('aria-disabled');
+    }
   }
 
   window.scrollTo(0, 0);
-
-  prefetchAdjacent();
-}
-
-/* ------------------------------------------------------------------ */
-/*  Navigation                                                         */
-/* ------------------------------------------------------------------ */
-
-function navigateToUrl(url: string, historyMode: 'push' | 'replace'): void {
-  if (state.swapping) return;
-
-  lastNavTime = Date.now();
-  state.swapping = true;
-  state.lastPathname = url;
-
-  swapContent(url, historyMode)
-    .catch((err) => {
-      console.error('Navigation failed, falling back:', err);
-      window.location.href = url;
-    })
-    .finally(() => {
-      state.swapping = false;
-    });
 }
 
 /* ------------------------------------------------------------------ */
 /*  Wheel handler                                                      */
 /* ------------------------------------------------------------------ */
 
-let lastNavTime = 0;
-const NAV_COOLDOWN = 300; // ms — 防止 momentum scroll 触发二次翻页
-
 function handleWheel(e: WheelEvent): void {
-  if (window.location.pathname !== state.lastPathname) {
-    state.swapping = false;
-    state.lastPathname = window.location.pathname;
-    lastNavTime = Date.now();
-    prefetchAdjacent();
-    return;
-  }
-
-  if (state.swapping) return;
+  if (!isLocalPagination()) return;
   if (Date.now() - lastNavTime < NAV_COOLDOWN) return;
-  if (!isPaginatedListPage()) return;
   if (Math.abs(e.deltaY) < MIN_DELTA) return;
 
-  let direction: 'prev' | 'next' | null = null;
+  const total = getTotalPages();
+  let target: number | null = null;
 
-  if (e.deltaY > 0 && isAtBottom()) {
-    direction = 'next';
-  } else if (e.deltaY < 0 && isAtTop()) {
-    direction = 'prev';
+  if (e.deltaY > 0 && isAtBottom() && currentPage < total) {
+    target = currentPage + 1;
+  } else if (e.deltaY < 0 && isAtTop() && currentPage > 1) {
+    target = currentPage - 1;
   }
 
-  if (!direction) return;
-
-  const url = getPageUrl(direction);
-  if (!url) return;
+  if (target === null) return;
 
   e.preventDefault();
-  navigateToUrl(url, 'replace');
+  lastNavTime = Date.now();
+  showPage(target);
 }
 
 /* ------------------------------------------------------------------ */
-/*  Click handler for pagination links                                 */
+/*  Click handler for pagination                                       */
 /* ------------------------------------------------------------------ */
 
 function handlePaginationClick(e: MouseEvent): void {
-  if (!isPaginatedListPage()) return;
+  if (!isLocalPagination()) return;
 
   const target = e.target as HTMLElement;
-  const link = target.closest('nav.pagination a.page-link') as HTMLAnchorElement | null;
+  const link = target.closest('#local-pagination a') as HTMLElement | null;
   if (!link) return;
-
-  if (
-    link.classList.contains('disabled') ||
-    link.classList.contains('current') ||
-    link.hasAttribute('aria-disabled') ||
-    link.hasAttribute('aria-current')
-  )
-    return;
-
-  const href = link.getAttribute('href');
-  if (!href) return;
-
-  let url: string;
-  try {
-    url = new URL(href).pathname;
-  } catch {
-    url = href;
-  }
+  if (link.classList.contains('disabled') || link.classList.contains('current')) return;
 
   e.preventDefault();
   e.stopPropagation();
-  e.stopImmediatePropagation();
 
-  navigateToUrl(url, 'push');
+  const goto = link.dataset.goto;
+  const dir = link.dataset.dir;
+
+  if (goto) {
+    showPage(parseInt(goto, 10));
+  } else if (dir === 'prev') {
+    showPage(currentPage - 1);
+  } else if (dir === 'next') {
+    showPage(currentPage + 1);
+  }
+
+  lastNavTime = Date.now();
 }
 
 /* ------------------------------------------------------------------ */
@@ -291,7 +158,10 @@ function isAtTop(): boolean {
 document.addEventListener('wheel', handleWheel, { passive: false });
 document.addEventListener('click', handlePaginationClick, true);
 
-// Expose for Swup page:view hook
-(window as any).__prefetchAdjacent = prefetchAdjacent;
-
-prefetchAdjacent();
+// Expose for Swup page:view hook (重新初始化当前页状态)
+(window as any).__prefetchAdjacent = function() {
+  if (isLocalPagination()) {
+    currentPage = 1;
+    showPage(1);
+  }
+};
