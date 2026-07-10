@@ -49,5 +49,10 @@
 // 17. Mermaid Expand 按钮（参照代码块 Copy 按钮样式）
 @import "mermaid";
 
-// 18. 滚轮翻页（fetch+replace 模式，无需额外样式）
+// 18. 滚轮翻页（纯本地分页，序号即时切换无过渡）
 // @import "wheel-navigation"; // 保留文件以备后用
+
+// 本地分页按钮：去掉 transition，避免翻页时序号闪烁/滞后
+#local-pagination .page-link {
+    transition: none !important;
+}

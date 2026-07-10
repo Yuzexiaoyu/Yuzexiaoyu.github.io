@@ -57,7 +57,9 @@ function showPage(pageNum: number): void {
   if (nav) {
     // 页码按钮
     nav.querySelectorAll('a[data-goto]').forEach((a) => {
-      const num = parseInt((a as HTMLElement).dataset.goto || '0', 10);
+      const el = a as HTMLElement;
+      const num = parseInt(el.dataset.goto || '0', 10);
+      el.style.transition = 'none';
       a.classList.toggle('current', num === pageNum);
       if (num === pageNum) {
         a.setAttribute('aria-current', 'page');
