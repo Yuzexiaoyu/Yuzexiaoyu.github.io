@@ -1,22 +1,33 @@
 // 左侧边栏头部重排
-// 仅调整元素的大小与位置：头像由「站名上方」移到「站名左侧」，横向居中对齐
+// 宽度足够时头像在站名左侧；放不下时整体上下排列，站名始终保持一行
 // 头像改为圆角方框
 
-.sidebar header {
+.left-sidebar header,
+.left-sidebar.compact header {
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 30px;
+  justify-content: center;
+  width: 100%;
+  gap: 12px;
 
   .site-meta {
-    align-items: flex-start;
+    flex: 0 0 auto;
+    align-items: center;
     justify-content: center;
     gap: 4px;
     min-width: 0;
   }
 
   .site-name {
-    font-size: 1.8rem;
+    font-size: clamp(1.6rem, 1.15vw, 1.8rem);
     line-height: 1.25;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  @media (max-width: 767px) {
+    flex-direction: column;
   }
 
   .site-description {
@@ -42,6 +53,13 @@ $sidebar-shift-down: 13rem;
 
   @media (min-width: 1920px) {
     --sidebar-avatar-size: 76px;
+  }
+
+  @media (max-width: 767px) {
+    max-width: none !important;
+    margin-left: 0 !important;
+    padding-top: var(--main-top-padding) !important;
+    transform: none;
   }
 }
 

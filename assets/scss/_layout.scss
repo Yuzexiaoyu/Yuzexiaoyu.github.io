@@ -110,4 +110,14 @@ div[class*="col-span"]:nth-child(2) {
   }
 }
 
-// 三栏布局配置
+// 手机恢复单栏，让完整站名和正文各自拥有可用宽度。
+@media (max-width: 767px) {
+  .container.main-container,
+  .container.main-container.flex,
+  .container.main-container.flex.on-phone--column,
+  .container.main-container.flex.on-phone--column.extended {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}

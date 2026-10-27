@@ -921,7 +921,8 @@ function loadGiscus() {
   canvas.id = 'warp-canvas';
   canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;';
   document.documentElement.insertBefore(canvas, document.body);
-  var ctx = canvas.getContext('2d');
+  // 黑色背景保持不透明，避免暗部清理时混入透明区域的源颜色。
+  var ctx = canvas.getContext('2d', { alpha: false });
   var width, height;
   var particles = [];
   var particleCount = 350;
@@ -929,18 +930,22 @@ function loadGiscus() {
   var normalSpeed = 5;
   var targetSpeed = 5;
   var holdTimer = null;
+  var fadeFrame = 0;
 
-  function Particle() {
+  function Particle(index) {
     this.x = Math.random() * width - width/2;
     this.y = Math.random() * height - height/2;
-    this.z = Math.random() * width * 1.5;
+    // 分层随机分布：保留自然错落，同时避免初始深度成团。
+    this.z = 1 + (index + Math.random()) / particleCount * (width * 1.5 - 1);
     this.pz = this.z;
   }
   
   Particle.prototype.update = function(speed) {
     this.z -= speed;
     if(this.z < 1) {
-      this.z = width * 1.5;
+      // 保留越界余量，防止同一帧回收的粒子被对齐成一波。
+      var depth = width * 1.5 - 1;
+      this.z = 1 + ((this.z - 1) % depth + depth) % depth;
       this.x = Math.random() * width - width/2;
       this.y = Math.random() * height - height/2;
       this.pz = this.z;
@@ -963,8 +968,34 @@ function loadGiscus() {
   };
 
   function resize() {
+    var oldWidth = width;
+    var oldHeight = height;
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
+    // 调整窗口后继续保持深度间距，避免等待下一轮回收时忽疏忽密。
+    if (oldWidth && oldHeight) {
+      var depthScale = (width * 1.5 - 1) / (oldWidth * 1.5 - 1);
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        p.x *= width / oldWidth;
+        p.y *= height / oldHeight;
+        p.z = 1 + (p.z - 1) * depthScale;
+        p.pz = p.z;
+      }
+    }
+  }
+
+  function fadeBackground() {
+    ctx.fillStyle = 'rgba(0,0,0,0.13)';
+    ctx.fillRect(0,0,width,height);
+    // GPU 的 8 位颜色舍入会让 RGB=1~3 不再衰减；每 8 帧清理一级暗部。
+    // 正常拖尾仍由上面的 0.13 衰减控制，避免直接清屏改变穿梭效果。
+    if (++fadeFrame % 8 === 0) {
+      ctx.globalCompositeOperation = 'color-burn';
+      ctx.fillStyle = 'rgb(254,254,254)';
+      ctx.fillRect(0,0,width,height);
+      ctx.globalCompositeOperation = 'source-over';
+    }
   }
 
   function animate() {
@@ -975,8 +1006,7 @@ function loadGiscus() {
       currentSpeed = targetSpeed;
     }
 
-    ctx.fillStyle = 'rgba(0,0,0,0.13)';
-    ctx.fillRect(0,0,width,height);
+    fadeBackground();
     for(var i=0;i<particles.length;i++) {
       particles[i].update(currentSpeed);
       particles[i].draw();
@@ -1002,7 +1032,7 @@ function loadGiscus() {
     resize();
     particles = [];
     for(var i=0;i<particleCount;i++) {
-      particles.push(new Particle());
+      particles.push(new Particle(i));
     }
     animate();
     window.__warpBg = true;
