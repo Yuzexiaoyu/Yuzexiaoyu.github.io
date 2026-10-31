@@ -35,6 +35,16 @@ let _panzoom: any = null;
 // once via dynamic import, so module-level vars survive page swaps):
 let _io: IntersectionObserver | null = null;     // current lazy-render observer
 let _appliedScheme: Scheme | null = null;        // theme currently on the diagrams
+let mobileModalVersion = 0;
+if (document.documentElement.dataset.ui === 'mobile') {
+    (window as any).__destroyMobileMermaid = () => {
+        mobileModalVersion++;
+        _io?.disconnect(); _io = null;
+        _pzInstance?.dispose(); _pzInstance = null;
+        document.getElementById('mermaid-modal')?.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+}
 
 const PANZOOM_CDN = 'https://cdn.jsdelivr.net/npm/panzoom@9.4.3/+esm';
 
@@ -142,6 +152,7 @@ function setupModal(elements: NodeListOf<HTMLElement>) {
     };
 
     const closeModal = () => {
+        if (document.documentElement.dataset.ui === 'mobile') mobileModalVersion++;
         const m = document.getElementById('mermaid-modal');
         if (m) m.classList.remove('active');
         document.body.style.overflow = '';
@@ -152,6 +163,8 @@ function setupModal(elements: NodeListOf<HTMLElement>) {
     };
 
     const openModal = async (idx: number) => {
+        const mobile = document.documentElement.dataset.ui === 'mobile';
+        const version = mobile ? ++mobileModalVersion : 0;
         // Dynamic element lookup — safe for Swup re-init (DOM is replaced)
         const els = document.querySelectorAll('.mermaid');
         const svg = els[idx]?.querySelector('svg');
@@ -180,8 +193,15 @@ function setupModal(elements: NodeListOf<HTMLElement>) {
         m.classList.add('active');
         document.body.style.overflow = 'hidden';
 
-        const pz = await loadPanzoom();
+        let pz;
+        try { pz = await loadPanzoom(); }
+        catch (error) {
+            if (!mobile) throw error;
+            wrapper.classList.add('ready');
+            return;
+        }
         setTimeout(() => {
+            if (mobile && (version !== mobileModalVersion || !wrapper.isConnected)) return;
             _pzInstance = pz(wrapper, { maxZoom: 10, minZoom: 0.05, bounds: false });
             fitToScreen();
             wrapper.classList.add('ready');
@@ -265,6 +285,7 @@ export async function initMermaidPage(config: MermaidConfig) {
     let flushing = false;
 
     const renderOne = async (el: HTMLElement) => {
+        if (document.documentElement.dataset.ui === 'mobile' && !el.isConnected) return;
         if (rendered.has(el)) return;
         rendered.add(el);
         const i = Array.prototype.indexOf.call(elements, el);

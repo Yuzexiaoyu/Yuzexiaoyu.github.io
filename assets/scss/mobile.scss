@@ -1,0 +1,11 @@
+// All imports compile under this root. Desktop viewport width never enables this layer.
+html[data-ui="mobile"] {
+  --m-page-gutter: 16px;
+  --m-bottom-obstruction: 0px;
+  --m-header-height: 64px;
+  @import "mobile/shell";
+  @import "mobile/content";
+  @import "mobile/player";
+  @import "mobile/bookshelf";
+  @import "mobile/reader";
+}

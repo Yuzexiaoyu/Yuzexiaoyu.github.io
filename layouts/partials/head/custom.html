@@ -1,22 +1,19 @@
 {{/* ════════════════════════════════════════════════════════════════
-     移动端访问拦截（同步执行，渲染前拦截，无内容闪现）
+     设备模式（同步执行；生产开关关闭时保留原拦截）
      - 纯 User-Agent 判断：桌面拉窄窗口不会被误伤
      - 含 iPadOS 13+ 伪装桌面 Safari 的补判，平板一并拦截
-     - 命中后给 <html> 加 is-mobile-blocked，显示全屏黑底提示
+     - 开关开启：html[data-ui="mobile"]；关闭：is-mobile-blocked
      ════════════════════════════════════════════════════════════════ */}}
-<script>
-(function () {
-  var ua = navigator.userAgent || "";
-  // 常见移动 / 平板 UA
-  var mobileRE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk|Kindle|PlayBook|BB10|Windows Phone/i;
-  var isMobile = mobileRE.test(ua);
-  // iPadOS 13+ 把自己伪装成桌面 Mac Safari：用触点数 + Mac 平台补判
-  var isIPadOS = /Macintosh/.test(ua) && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
-  if (isMobile || isIPadOS) {
-    document.documentElement.className += " is-mobile-blocked";
-  }
-})();
-</script>
+{{- $mobileEnabled := .Site.Params.mobile.enabled | default false -}}
+{{- $mobileConfig := resources.FromString "mobile-config.js" (printf "window.__mobileEnabled=%t;" $mobileEnabled) -}}
+<script src="{{ $mobileConfig.RelPermalink }}"></script>
+<script src="{{ "js/mobile-mode.js" | relURL }}"></script>
+{{- if $mobileEnabled -}}
+  {{- $mobileCSS := resources.Get "scss/mobile.scss" | css.Sass | minify | fingerprint -}}
+  <link rel="stylesheet" href="{{ $mobileCSS.RelPermalink }}">
+  {{- $mobileJS := resources.Get "ts/mobile.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
+  <script src="{{ $mobileJS.RelPermalink }}" defer></script>
+{{- end -}}
 <style>
 html.is-mobile-blocked,
 html.is-mobile-blocked body {
@@ -122,8 +119,11 @@ window.__loadJsZip = function() {
     if (typeof JSZip !== 'undefined') { resolve(); return; }
     var s = document.createElement('script');
     s.src = '/lib/jszip.min.js';
-    s.onload = function() { resolve(); };
-    s.onerror = function() { window.__jszipReady = null; reject(new Error('JSZip load failed')); };
+    var timer = window.__isMobileUI && window.__isMobileUI() ? setTimeout(function() {
+      window.__jszipReady = null; s.remove(); reject(new Error('JSZip load timeout'));
+    }, 10000) : null;
+    s.onload = function() { if (timer) clearTimeout(timer); resolve(); };
+    s.onerror = function() { if (timer) clearTimeout(timer); window.__jszipReady = null; reject(new Error('JSZip load failed')); };
     document.head.appendChild(s);
   });
   return window.__jszipReady;
@@ -453,7 +453,13 @@ article.main-article.has-image .article-time svg {
 <script>
 (function() {
   var pageLoader = document.getElementById('page-loader');
-  var displayTime = 1500;  // 固定显示 1.5 秒
+  // The legacy block div above starts body early. Do not create its class attribute before
+  // the real body tag is parsed: that would discard the reader/search page class on reload.
+  if (window.__isMobileUI && window.__isMobileUI()) {
+    window.setupArticleStagger = function() {};
+    return;
+  }
+  var displayTime = 1500;
 
   // sessionStorage 持久化标记，避免搜索等全页跳转时重复播放动画
   var loaderKey = '__pageLoaderShown';

@@ -87,7 +87,14 @@ function txStore(
   store: string,
   mode: IDBTransactionMode
 ): Promise<IDBObjectStore> {
-  return openDB().then((db) => db.transaction(store, mode).objectStore(store));
+  return openDB().then((db) => {
+    const tx = db.transaction(store, mode);
+    if (document.documentElement.dataset.ui === 'mobile') {
+      tx.addEventListener('complete', () => db.close(), {once:true});
+      tx.addEventListener('abort', () => db.close(), {once:true});
+    }
+    return tx.objectStore(store);
+  });
 }
 
 function dbGetAll(): Promise<UploadRecord[]> {
@@ -121,8 +128,8 @@ function dbWrite(
       new Promise<void>((resolve, reject) => {
         const tx = db.transaction(store, "readwrite");
         fn(tx.objectStore(store));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.oncomplete = () => { if (document.documentElement.dataset.ui === 'mobile') db.close(); resolve(); };
+        tx.onerror = () => { if (document.documentElement.dataset.ui === 'mobile') db.close(); reject(tx.error); };
       })
   );
 }
@@ -504,10 +511,25 @@ function pickFiles(accept: string, multiple: boolean): Promise<File[]> {
     input.multiple = multiple;
     input.style.position = "fixed";
     input.style.left = "-9999px";
+    let settled = false;
+    const finish = (files: File[]) => {
+      if (settled) return;
+      settled = true;
+      input.remove();
+      window.removeEventListener('focus', onReturn);
+      window.removeEventListener('pagehide', onCancel);
+      resolve(files);
+    };
+    const onCancel = () => finish([]);
+    const onReturn = () => window.setTimeout(() => {
+      if (!input.files?.length) finish([]);
+    }, 500);
+    input.addEventListener('cancel', onCancel, { once: true });
+    window.addEventListener('focus', onReturn, { once: true });
+    window.addEventListener('pagehide', onCancel, { once: true });
     input.addEventListener("change", () => {
       const files = input.files ? Array.prototype.slice.call(input.files) : [];
-      input.remove();
-      resolve(files as File[]);
+      finish(files as File[]);
     });
     document.body.appendChild(input);
     input.click();
@@ -519,6 +541,14 @@ function isAudioFile(file: File): boolean {
 }
 
 async function handleUpload(ap: any): Promise<void> {
+  try {
+    await handleUploadImpl(ap);
+  } catch (e) {
+    toast('读取本地音乐存储失败，请检查浏览器存储权限后重试');
+  }
+}
+
+async function handleUploadImpl(ap: any): Promise<void> {
   if (!ap || !ap.list) {
     toast("播放器尚未就绪");
     return;
@@ -628,6 +658,11 @@ async function removeTrack(ap: any, audio: any): Promise<void> {
 }
 
 async function changeCover(ap: any, audio: any): Promise<void> {
+  try { await changeCoverImpl(ap, audio); }
+  catch (error) { toast('读取本地封面存储失败，请检查浏览器存储权限后重试'); }
+}
+
+async function changeCoverImpl(ap: any, audio: any): Promise<void> {
   const files = await pickFiles("image/*", false);
   if (!files.length) return;
   const img = files[0];
@@ -679,7 +714,9 @@ async function changeCover(ap: any, audio: any): Promise<void> {
 }
 
 async function clearUploads(ap: any): Promise<void> {
-  const recs = await dbGetAll();
+  let recs: UploadRecord[];
+  try { recs = await dbGetAll(); }
+  catch (error) { toast('读取本地音乐存储失败，已有曲目已保留'); return; }
   for (let i = 0; i < recs.length; i++) {
     const idx = ap.list.audios.findIndex(
       (a: any) => a.__uploadId === recs[i].id
@@ -805,6 +842,15 @@ function ensurePanel(): HTMLElement {
   }
   const overlay = document.createElement("div");
   overlay.className = "mu-overlay";
+  overlay.addEventListener('keydown', (e) => {
+    if (document.documentElement.dataset.ui !== 'mobile') return;
+    if (e.key === 'Escape') { closePanel(); return; }
+    if (e.key !== 'Tab') return;
+    const items = Array.from(overlay.querySelectorAll<HTMLElement>('button,input,a[href]')).filter(el => el.getClientRects().length && !el.hasAttribute('disabled'));
+    const first = items[0], last = items[items.length-1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+  });
   overlay.style.display = "none";
   overlay.innerHTML =
     '<div class="mu-panel">' +
@@ -854,7 +900,9 @@ function ensurePanel(): HTMLElement {
 
 async function renderPanel(ap: any): Promise<void> {
   if (!panelEl || panelEl.style.display === "none") return;
-  const info = await storageInfo();
+  let info: Awaited<ReturnType<typeof storageInfo>> | null = null;
+  try { info = await storageInfo(); } catch (error) { /* Keep the builtin playlist usable. */ }
+  if (!panelEl || panelEl.style.display === 'none') return;
   const audios: any[] = ap && ap.list && ap.list.audios ? ap.list.audios : [];
   const list = panelEl.querySelector(".mu-list") as HTMLElement;
   list.innerHTML = "";
@@ -883,15 +931,22 @@ async function renderPanel(ap: any): Promise<void> {
         "click",
         () => removeTrack(ap, audio)
       );
+      if (document.documentElement.dataset.ui === 'mobile') {
+        const coverButton = document.createElement('button');
+        coverButton.type = 'button'; coverButton.className = 'mu-item-btn mu-cover-change'; coverButton.textContent = '封面';
+        coverButton.setAttribute('aria-label', '修改封面：' + (audio.name || '音乐'));
+        coverButton.addEventListener('click', () => changeCover(ap, audio));
+        item.insertBefore(coverButton, item.querySelector('.mu-item-del'));
+      }
       list.appendChild(item);
     });
   }
 
   const fill = panelEl.querySelector(".mu-usage-fill") as HTMLElement;
-  const pct = info.cap ? Math.min(100, (info.used / info.cap) * 100) : 0;
+  const pct = info?.cap ? Math.min(100, (info.used / info.cap) * 100) : 0;
   fill.style.width = pct + "%";
   (panelEl.querySelector(".mu-usage-text") as HTMLElement).textContent =
-    "上传已用 " +
+    info ? "上传已用 " +
     fmtMB(info.used) +
     " / " +
     fmtMB(info.cap) +
@@ -899,18 +954,25 @@ async function renderPanel(ap: any): Promise<void> {
     audios.length +
     " 首，含上传 " +
     info.count +
-    " 首）";
+    " 首）" : '本地存储不可用，请检查浏览器存储权限后重试；内置曲目仍可播放';
 }
 
+let mobilePanelFocus: HTMLElement | null = null;
 function openPanel(ap: any): void {
   currentAp = ap || w.aplayerInstance;
   ensurePanel();
   panelEl!.style.display = "flex";
+  if (document.documentElement.dataset.ui === 'mobile') {
+    mobilePanelFocus = document.activeElement as HTMLElement;
+    panelEl!.setAttribute('role','dialog'); panelEl!.setAttribute('aria-modal','true'); panelEl!.setAttribute('aria-label','我的音乐');
+    panelEl!.querySelector<HTMLButtonElement>('.mu-close')?.focus();
+  }
   renderPanel(currentAp);
 }
 
 function closePanel(): void {
   if (panelEl) panelEl.style.display = "none";
+  if (document.documentElement.dataset.ui === 'mobile') mobilePanelFocus?.focus({preventScroll:true});
 }
 
 /* ------------------------- 主页 .aplayer-list 注入入口 ------------------------- */
@@ -965,7 +1027,8 @@ w.__musicUploads = {
 })();
 
 // 页面卸载时回收所有 object URL，避免内存泄漏
-window.addEventListener("pagehide", () => {
+window.addEventListener("pagehide", (event) => {
+  if (document.documentElement.dataset.ui === 'mobile' && event.persisted) return;
   Object.keys(urlMap).forEach((id) => revoke(id));
   Object.keys(bcUrlMap).forEach((name) => {
     URL.revokeObjectURL(bcUrlMap[name]);

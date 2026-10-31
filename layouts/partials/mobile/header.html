@@ -1,0 +1,23 @@
+{{ if .Site.Params.mobile.enabled }}
+<header class="m-header" hidden>
+  <a class="m-brand" href="{{ .Site.Home.RelPermalink }}">
+    <img src="{{ "image/avatar.webp" | relURL }}" width="32" height="32" alt="">
+    <span>{{ .Site.Title }}</span>
+  </a>
+  <details class="m-navigation">
+    <summary aria-label="打开导航">菜单</summary>
+    <nav aria-label="网站导航">
+      <button class="m-nav-close" type="button">关闭菜单 ✕</button>
+      {{ range .Site.Menus.main }}
+      <a href="{{ .URL }}"{{ if .Params.newTab }} target="_blank" rel="noopener"{{ end }}>{{ .Name }}</a>
+      {{ end }}
+      {{ range where .Site.RegularPages "Layout" "search" }}
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+      {{ end }}
+      {{ range .Site.Menus.social }}
+      <a href="{{ .URL }}" target="_blank" rel="noopener">{{ .Name }}</a>
+      {{ end }}
+    </nav>
+  </details>
+</header>
+{{ end }}

@@ -39,6 +39,10 @@ function escapeRegExp(string) {
 }
 
 class Search {
+    private mobile = document.documentElement.dataset.ui === 'mobile';
+    private lifecycle = new AbortController();
+    private searchVersion = 0;
+    public destroy() { this.lifecycle.abort(); this.searchVersion++; }
     private data: pageData[];
     private form: HTMLFormElement;
     private input: HTMLInputElement;
@@ -191,10 +195,18 @@ class Search {
     }
 
     private async doSearch(keywords: string[]) {
+        const version = ++this.searchVersion;
         const startTime = performance.now();
 
-        const results = await this.searchKeywords(keywords);
-        this.clear();
+        let results: pageData[];
+        try { results = await this.searchKeywords(keywords); }
+        catch (error) {
+            if (!this.mobile) throw error;
+            if (version === this.searchVersion && !this.lifecycle.signal.aborted) this.resultTitle.innerText = '搜索加载失败，请重新输入或刷新重试';
+            return;
+        }
+        if (this.mobile && (version !== this.searchVersion || this.lifecycle.signal.aborted)) return;
+        this.clear(false);
 
         for (const item of results) {
             this.list.append(Search.render(item));
@@ -228,6 +240,7 @@ class Search {
         let lastSearch = '';
 
         const eventHandler = (e) => {
+            if (this.mobile && e.type === 'input' && e.isComposing) return;
             e.preventDefault();
             const keywords = this.input.value.trim();
 
@@ -248,7 +261,8 @@ class Search {
         this.input.addEventListener('compositionend', eventHandler);
     }
 
-    private clear() {
+    private clear(invalidate = true) {
+        if (invalidate) this.searchVersion++;
         this.list.innerHTML = '';
         this.resultTitle.innerText = '';
     }
@@ -256,7 +270,7 @@ class Search {
     private bindQueryStringChange() {
         window.addEventListener('popstate', (e) => {
             this.handleQueryString()
-        })
+        }, this.mobile ? { signal: this.lifecycle.signal } : undefined)
     }
 
     private handleQueryString() {

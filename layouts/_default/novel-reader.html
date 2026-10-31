@@ -132,6 +132,34 @@ window.__initNovelReader = function() {
   var root = document.getElementById('novel-reader-root');
   if (!root || root.dataset.readerInit) return;
   root.dataset.readerInit = '1';
+  var mobile = !!(window.__isMobileUI && window.__isMobileUI());
+  var pagesPerView = mobile ? 1 : 2;
+  var disposed = false;
+  var mobileListeners = [];
+  var mobileTimers = [];
+  var mobileFetch = null;
+  var mobileRequest = 0;
+  var mobileLoad = Promise.resolve();
+  var mobileLayoutRunning = false;
+  var mobileLayoutPending = false;
+  var mobilePagination = null;
+  var readerResizeObserver = null;
+  function readerListen(target, name, handler, options) {
+    target.addEventListener(name, handler, options);
+    if (mobile) mobileListeners.push(function() { target.removeEventListener(name, handler, options); });
+  }
+  if (mobile) window.__destroyMobileReader = function() {
+    if (disposed) return;
+    disposed = true;
+    ++loadToken; ++mobileRequest;
+    if (mobileFetch) mobileFetch.abort();
+    if (mobilePagination) mobilePagination.cancel();
+    mobileListeners.forEach(function(off) { off(); });
+    mobileTimers.forEach(function(id) { clearTimeout(id); clearInterval(id); });
+    if (readerResizeObserver) readerResizeObserver.disconnect();
+    closeToc(); cleanupBook();
+    delete root.dataset.readerInit;
+  };
 
   /* ======================= 工具函数 ======================= */
   function $(id) { return document.getElementById(id); }
@@ -193,6 +221,18 @@ window.__initNovelReader = function() {
   var toolbar = $('reader-toolbar');
   var progressFill = $('reader-progress-fill');
   var progressText = $('reader-progress-text');
+  if (mobile && window.__createMobilePagination) mobilePagination = window.__createMobilePagination(contentEl, viewportEl);
+  if (mobile && !mobilePagination) {
+    showMobileReaderError('移动阅读组件加载失败，请重试', function() { location.reload(); });
+    return;
+  }
+  function showMobileReaderError(message, retryAction) {
+    loadingEl.style.display = '';
+    loadingEl.textContent = message;
+    var retry = document.createElement('button'); retry.type = 'button'; retry.textContent = '重试'; retry.addEventListener('click', retryAction);
+    var back = document.createElement('a'); back.href = '/novel/'; back.textContent = '返回书架';
+    loadingEl.appendChild(retry); loadingEl.appendChild(back);
+  }
 
   /* ======================= 持久化 ======================= */
   function loadState() {
@@ -233,7 +273,7 @@ window.__initNovelReader = function() {
 
   function applyFontSize(idx) {
     state.fontSizeIndex = Math.max(0, Math.min(idx, FONT_SIZE_STEPS.length - 1));
-    if (contentEl) contentEl.style.fontSize = FONT_SIZE_STEPS[state.fontSizeIndex] + '%';
+    if (contentEl) contentEl.style.fontSize = mobile ? (18 * FONT_SIZE_STEPS[state.fontSizeIndex] / 100) + 'px' : FONT_SIZE_STEPS[state.fontSizeIndex] + '%';
     updateFontMenu();
     persistState();
     // 字号变化后总页数变了，重新分页
@@ -266,6 +306,7 @@ window.__initNovelReader = function() {
   function switchVolume(idx) {
     if (idx === state.currentVolIndex) return;
     state.currentVolIndex = idx;
+    if (mobile) { var url = new URL(location.href); url.hash = 'vol=' + VOLUMES[idx].key; history.replaceState(history.state, '', url); }
     persistState();
     updateVolumeLabel();
     loadVolume(VOLUMES[idx].key);
@@ -373,12 +414,14 @@ window.__initNovelReader = function() {
     tocDrawer.classList.add('open');
     tocOverlay.classList.add('open');
     document.body.style.overflow = 'hidden';
+    if (mobile) { tocToggle.setAttribute('aria-expanded', 'true'); tocClose.focus(); }
   }
 
   function closeToc() {
     tocDrawer.classList.remove('open');
     tocOverlay.classList.remove('open');
     document.body.style.overflow = '';
+    if (mobile) { tocToggle.setAttribute('aria-expanded', 'false'); if (root.isConnected && !disposed) tocToggle.focus(); }
   }
 
   /* ======================= EPUB 解析 =======================
@@ -388,7 +431,20 @@ window.__initNovelReader = function() {
    *   - nav.xhtml (EPUB3) 或 toc.ncx (EPUB2) → 目录
    * 用 JSZip 解压，DOMParser 解析 XML，结构很直白。 */
 
-  async function loadVolume(volKey) {
+  function loadVolume(volKey) {
+    if (!mobile) return loadVolumeImpl(volKey);
+    var request = ++mobileRequest;
+    ++loadToken;
+    if (mobileFetch) mobileFetch.abort();
+    if (mobilePagination) mobilePagination.cancel();
+    mobileLoad = mobileLoad.catch(function() {}).then(function() {
+      if (disposed || request !== mobileRequest) return;
+      return loadVolumeImpl(volKey);
+    });
+    return mobileLoad;
+  }
+
+  async function loadVolumeImpl(volKey) {
     var token = ++loadToken;
     if (loadingEl) {
       loadingEl.textContent = '加载中…';
@@ -402,9 +458,12 @@ window.__initNovelReader = function() {
     cleanupBook();
 
     try {
-      var resp = await fetch('/novel/' + volKey + '.epub');
+      if (mobile) mobileFetch = new AbortController();
+      var fetchTimer = mobile ? setTimeout(function() { if (mobileFetch) mobileFetch.abort(); }, 30000) : null;
+      var resp = await fetch('/novel/' + volKey + '.epub', mobile ? { signal: mobileFetch.signal } : undefined);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       var buf = await resp.arrayBuffer();
+      if (fetchTimer) clearTimeout(fetchTimer);
       if (token !== loadToken) return;
 
       var zip = await JSZip.loadAsync(buf);
@@ -483,7 +542,7 @@ window.__initNovelReader = function() {
       if (token !== loadToken) return;
 
       // 5. 应用字号 + 行间距 + 主题（主题靠 root data-theme 自动生效）+ 构建目录
-      contentEl.style.fontSize = FONT_SIZE_STEPS[state.fontSizeIndex] + '%';
+      contentEl.style.fontSize = mobile ? (18 * FONT_SIZE_STEPS[state.fontSizeIndex] / 100) + 'px' : FONT_SIZE_STEPS[state.fontSizeIndex] + '%';
       contentEl.style.lineHeight = String(LINE_HEIGHT_STEPS[state.lineHeightIndex]);
       buildToc(book.toc);
 
@@ -497,17 +556,30 @@ window.__initNovelReader = function() {
       if (saved && saved.t > 1 && totalPages > 1) {
         currentPage = Math.round((saved.p / (saved.t - 1)) * (totalPages - 1));
       }
+      if (mobile && saved && saved.mobileAnchor && mobilePagination) {
+        var restored = mobilePagination.restore(saved.mobileAnchor);
+        if (restored !== null) currentPage = restored;
+      }
       currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
       applyTransform();
 
       if (loadingEl) loadingEl.style.display = 'none';
       contentEl.style.opacity = '';
     } catch (err) {
+      if (mobile && (disposed || token !== loadToken)) return;
       console.error('[novel-reader] loadVolume failed:', err);
       if (loadingEl) {
         loadingEl.style.display = '';
         loadingEl.textContent = '加载失败：' + (err && err.message ? err.message : err);
+        if (mobile) {
+          var retry = document.createElement('button'); retry.type = 'button'; retry.textContent = '重试';
+          retry.addEventListener('click', function() { loadVolume(volKey); });
+          var back = document.createElement('a'); back.href = '/novel/'; back.textContent = '返回书架';
+          loadingEl.appendChild(retry); loadingEl.appendChild(back);
+        }
       }
+    } finally {
+      if (fetchTimer) clearTimeout(fetchTimer);
     }
   }
 
@@ -582,6 +654,7 @@ window.__initNovelReader = function() {
 
   async function getBlobUrl(path) {
     if (!book) return null;
+    var owningBook = book;
     if (book.blobUrls[path]) return book.blobUrls[path];
     var file = book.zip.file(path);
     if (!file && path.charAt(0) === '/') file = book.zip.file(path.slice(1));
@@ -611,6 +684,7 @@ window.__initNovelReader = function() {
         blob = new Blob([blob], { type: mimeMap[ext] });
       }
       var url = URL.createObjectURL(blob);
+      if (mobile && (disposed || book !== owningBook)) { URL.revokeObjectURL(url); return null; }
       book.blobUrls[path] = url;
       return url;
     } catch(e) {
@@ -749,6 +823,15 @@ window.__initNovelReader = function() {
 
   async function paginate() {
     if (!book || !contentEl || !viewportEl) return;
+    if (mobile && mobilePagination) {
+      var layoutBook = book;
+      var layoutToken = loadToken;
+      var completed = await mobilePagination.paginate(layoutBook);
+      if (!completed || disposed || book !== layoutBook || layoutToken !== loadToken) return;
+      spreadWidth = viewportEl.clientWidth;
+      totalPages = Math.max(1, Math.ceil(book.totalPagesCount / pagesPerView));
+      return;
+    }
 
     // 等所有图片加载完成（高度稳定后才能正确测量）
     var allImgs = contentEl.querySelectorAll('img');
@@ -836,6 +919,24 @@ window.__initNovelReader = function() {
   // 字号变 / resize 后重排
   async function relayout() {
     if (!book || !contentEl) return;
+    if (mobile && mobilePagination) {
+      if (!book.mobileSources || loadingEl.style.display !== 'none' || disposed) return;
+      if (mobileLayoutRunning) { mobileLayoutPending = true; return; }
+      mobileLayoutRunning = true;
+      var token = loadToken;
+      var anchor = mobilePagination.capture(currentPage);
+      try {
+        await paginate();
+        if (disposed || token !== loadToken) return;
+        var restored = anchor && mobilePagination.restore(anchor);
+        if (restored !== null && restored !== false) currentPage = restored;
+        applyTransform();
+      } finally {
+        mobileLayoutRunning = false;
+        if (mobileLayoutPending && !disposed) { mobileLayoutPending = false; requestAnimationFrame(relayout); }
+      }
+      return;
+    }
     // 把已经分页的内容 unflatten 回 chapter sections（让 paginate 重新走一遍）
     var pagesEl = contentEl.querySelector('.reader-pages');
     if (pagesEl) {
@@ -894,12 +995,14 @@ window.__initNovelReader = function() {
       var vk = VOLUMES[state.currentVolIndex].key;
       if (!state.progress) state.progress = {};
       state.progress[vk] = { p: currentPage, t: totalPages };
+      if (mobile && mobilePagination) state.progress[vk].mobileAnchor = mobilePagination.capture(currentPage);
       state.lastVolKey = vk;
       persistState();
     }
   }
 
   function gotoPage(p) {
+    if (mobile && (mobileLayoutRunning || loadingEl.style.display !== 'none')) return;
     var prev = currentPage;
     currentPage = Math.max(0, Math.min(p, totalPages - 1));
     if (currentPage !== prev) applyTransform();
@@ -912,13 +1015,19 @@ window.__initNovelReader = function() {
     if (!book || !book.chapterStartPages) return;
     var pageIdx = book.chapterStartPages[idx];
     if (pageIdx === undefined) return;
-    gotoPage(Math.floor(pageIdx / 2));
+    gotoPage(Math.floor(pageIdx / pagesPerView));
   }
 
   // 注释（.cyu）跨引用导航：根据内联 ID（如 refn1）找到目标元素所在页并翻过去
   // 通过 clickedEl 定位所属章节范围，避免多章节 ID 重复导致的全局匹配错误
   function navigateToAnnotation(targetId, clickedEl) {
     if (!contentEl) return;
+    if (mobile && mobilePagination) {
+      var sourcePage = clickedEl.closest('.reader-page');
+      var targetPage = mobilePagination.target(decodeURIComponent(targetId), sourcePage ? Number(sourcePage.dataset.mChapter) : undefined);
+      if (targetPage !== null) gotoPage(targetPage);
+      return;
+    }
     var pagesEl = contentEl.querySelector('.reader-pages');
     if (!pagesEl) return;
 
@@ -967,7 +1076,13 @@ window.__initNovelReader = function() {
       var it = book.items[book.spineIds[i]];
       if (!it) continue;
       var itBase = (it.href || '').split('/').pop().toLowerCase();
-      if (itBase === pathBase) { gotoChapter(i); return; }
+      if (itBase === pathBase) {
+        if (mobile && href.indexOf('#') !== -1 && mobilePagination) {
+          var target = mobilePagination.target(decodeURIComponent(href.split('#')[1]), i);
+          if (target !== null) { gotoPage(target); return; }
+        }
+        gotoChapter(i); return;
+      }
     }
   }
 
@@ -982,12 +1097,12 @@ window.__initNovelReader = function() {
 
   function highlightTocByPage() {
     if (!book || !book.chapterStartPages || !tocItems.length || !book.chapters) return;
-    var firstPageIdx = currentPage * 2;
+    var firstPageIdx = currentPage * pagesPerView;
     var activeChapterIdx = -1;
     for (var key in book.chapterStartPages) {
       var sp = book.chapterStartPages[key];
       var k = parseInt(key, 10);
-      if (sp <= firstPageIdx + 1 && k > activeChapterIdx) activeChapterIdx = k;
+      if (sp <= firstPageIdx + pagesPerView - 1 && k > activeChapterIdx) activeChapterIdx = k;
     }
     if (activeChapterIdx < 0) { autoExpandTocArcs(null); return; }
     var ch = null;
@@ -1056,6 +1171,7 @@ window.__initNovelReader = function() {
   }
 
   function bindInputHandlers() {
+    if (mobile) { bindMobileInputHandlers(); return; }
     if (viewportEl) {
       viewportEl.addEventListener('wheel', onWheel, { passive: false });
     }
@@ -1121,9 +1237,90 @@ window.__initNovelReader = function() {
     console.log('[novel-reader] link interceptor attached');
   }
 
+  function bindMobileInputHandlers() {
+    tocDrawer.setAttribute('role','dialog'); tocDrawer.setAttribute('aria-modal','true'); tocDrawer.setAttribute('aria-label','阅读目录');
+    tocClose.setAttribute('aria-label','关闭目录'); tocToggle.setAttribute('aria-controls','toc-drawer');
+    var settings = document.createElement('div'); settings.className = 'm-reader-settings'; settings.hidden = true;
+    var themeGroup = themeDots.closest('.toolbar-group');
+    var mobileFontGroup = fontDropdown.closest('.font-group');
+    settings.appendChild(themeGroup); settings.appendChild(mobileFontGroup);
+    var homeLink = toolbar.querySelector('.reader-home-btn');
+    homeLink.textContent = '返回首页'; settings.appendChild(homeLink);
+    root.appendChild(settings);
+    var settingsBtn = document.createElement('button'); settingsBtn.type = 'button'; settingsBtn.className = 'toolbar-btn'; settingsBtn.textContent = '设置'; settingsBtn.setAttribute('aria-expanded','false');
+    toolbar.insertBefore(settingsBtn,tocToggle);
+    settingsBtn.addEventListener('click',function() { settings.hidden = !settings.hidden; settingsBtn.setAttribute('aria-expanded',String(!settings.hidden)); });
+    var pager = document.createElement('div'); pager.className = 'm-reader-pager';
+    pager.innerHTML = '<button type="button" aria-label="上一页">上一页</button><span aria-live="polite"></span><button type="button" aria-label="下一页">下一页</button>';
+    root.appendChild(pager);
+    var buttons = pager.querySelectorAll('button');
+    buttons[0].addEventListener('click', prevPage); buttons[1].addEventListener('click', nextPage);
+    var progressObserver = new MutationObserver(function() {
+      pager.querySelector('span').textContent = (currentPage + 1) + ' / ' + totalPages;
+      buttons[0].disabled = currentPage <= 0; buttons[1].disabled = currentPage >= totalPages - 1;
+    });
+    progressObserver.observe(progressText, { childList: true });
+    mobileListeners.push(function() { progressObserver.disconnect(); pager.remove(); toolbar.insertBefore(themeGroup,tocToggle); toolbar.insertBefore(mobileFontGroup,tocToggle); toolbar.insertBefore(homeLink,tocToggle); settings.remove(); settingsBtn.remove(); back.remove(); });
+    var back = document.createElement('a'); back.href = '/novel/'; back.textContent = '书架';
+    back.className = 'toolbar-btn'; back.setAttribute('aria-label', '返回书架');
+    toolbar.insertBefore(back, toolbar.firstChild);
+    readerListen(document, 'keydown', function(e) {
+      if (disposed || !root.isConnected) return;
+      if (e.key === 'Escape') { closeToc(); closeMobileDropdowns(); return; }
+      if (tocDrawer.classList.contains('open')) {
+        if (e.key === 'Tab') {
+          var focusable = Array.from(tocDrawer.querySelectorAll('button,a[href]')).filter(function(el) { return el.getClientRects().length; });
+          var first = focusable[0], last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+        return;
+      }
+      if (e.target.closest('input,textarea,button,a,select,[contenteditable="true"]')) return;
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevPage(); }
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); nextPage(); }
+      if (e.key === 'Home') { e.preventDefault(); gotoPage(0); }
+      if (e.key === 'End') { e.preventDefault(); gotoPage(totalPages - 1); }
+    });
+    var gesture = null;
+    readerListen(viewportEl, 'touchstart', function(e) {
+      if (e.touches.length !== 1 || e.target.closest('a,button,input,select,textarea,pre,table,[data-m-scrollable]')) { gesture = null; return; }
+      var t = e.touches[0];
+      gesture = t.clientX > 24 && t.clientX < window.innerWidth - 24 && !String(window.getSelection()) ? { x:t.clientX, y:t.clientY, time:Date.now() } : null;
+    }, { passive: true });
+    readerListen(viewportEl, 'touchmove', function(e) { if (e.touches.length !== 1) gesture = null; }, {passive:true});
+    readerListen(viewportEl, 'touchcancel', function() { gesture = null; }, {passive:true});
+    readerListen(viewportEl, 'touchend', function(e) {
+      var start = gesture; gesture = null;
+      if (!start || e.touches.length || !e.changedTouches.length || String(window.getSelection()) || Date.now()-start.time>650 || (window.visualViewport && window.visualViewport.scale>1.05)) return;
+      var t=e.changedTouches[0], dx=t.clientX-start.x, dy=t.clientY-start.y;
+      if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.7) { if(dx<0)nextPage();else prevPage(); }
+    }, {passive:true});
+    readerListen(contentEl, 'click', function(e) {
+      var a=e.target.closest('a[href]'); if(!a)return;
+      var href=a.getAttribute('href')||'';
+      if (/^(https?:|mailto:|tel:)/i.test(href)) return;
+      e.preventDefault();
+      if(href.charAt(0)==='#')navigateToAnnotation(href.slice(1),a);
+      else gotoTocHref(href);
+    });
+    function closeMobileDropdowns() {
+      [fontDropdown,lineDropdown].forEach(function(el) { el.classList.remove('m-open'); el.querySelector('button').setAttribute('aria-expanded','false'); });
+    }
+    [fontDropdown,lineDropdown].forEach(function(el) {
+      el.querySelector('button').addEventListener('click',function(e) {
+        e.stopPropagation(); var open=!el.classList.contains('m-open'); closeMobileDropdowns();
+        el.classList.toggle('m-open',open); el.querySelector('button').setAttribute('aria-expanded',String(open));
+      });
+    });
+    readerListen(document,'click',function(e) { if(!e.target.closest('.reader-dropdown'))closeMobileDropdowns(); });
+    fontMenu.addEventListener('click',closeMobileDropdowns); lineMenu.addEventListener('click',closeMobileDropdowns);
+  }
+
   /* ======================= 迷你播放器（APlayer 嵌入） =======================
    * 这段和阅读器内核完全无关，原封从旧版搬过来。 */
   function buildMiniPlayer() {
+    if (mobile) return;
     var ap = window.aplayerInstance;
     if (!ap || !toolbar) return;
 
@@ -1452,6 +1649,7 @@ window.__initNovelReader = function() {
 
   /* ======================= 启动 ======================= */
   function init() {
+    if (disposed) return;
     loadState();
     root.setAttribute('data-theme', state.theme);
 
@@ -1509,12 +1707,29 @@ window.__initNovelReader = function() {
 
     // resize 时重新分页
     var resizeTimer;
-    window.addEventListener('resize', function() {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(function() {
-        relayout();
-      }, 150);
-    });
+    if (mobile) {
+      var lastSize = '';
+      readerResizeObserver = new ResizeObserver(function() {
+        var size = viewportEl.clientWidth + 'x' + viewportEl.clientHeight;
+        if (size === lastSize || (window.visualViewport && window.visualViewport.scale > 1.05)) return;
+        lastSize = size;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(relayout, 220);
+      });
+      readerResizeObserver.observe(viewportEl);
+      mobileListeners.push(function() { clearTimeout(resizeTimer); });
+      if (document.fonts) document.fonts.ready.then(function() { if (!disposed) relayout(); });
+      readerListen(window, 'hashchange', function() {
+        var key = location.hash.indexOf('#vol=') === 0 ? decodeURIComponent(location.hash.slice(5)) : '';
+        var idx = VOLUMES.findIndex(function(vol) { return vol.key === key; });
+        if (idx >= 0 && idx !== state.currentVolIndex) switchVolume(idx);
+      });
+    } else {
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() { relayout(); }, 150);
+      });
+    }
 
     updateFontMenu();
     updateLineMenu();
@@ -1522,16 +1737,19 @@ window.__initNovelReader = function() {
     // 按需加载 JSZip（仅 reader 触发注入，其余页面不拉 97KB）
     var loadJsZip = window.__loadJsZip ? window.__loadJsZip() : Promise.resolve();
     loadJsZip.then(function() {
+      if (mobile && disposed) return;
       loadVolume(VOLUMES[state.currentVolIndex].key);
     }).catch(function(err) {
       console.error('[novel-reader] JSZip 加载失败:', err);
       if (loadingEl) {
         loadingEl.style.display = '';
         loadingEl.textContent = 'JSZip 加载失败，请刷新页面重试';
+        if (mobile && !disposed) showMobileReaderError('电子书解析组件加载失败，请重试', function() { location.reload(); });
       }
     });
 
     // 迷你播放器
+    if (mobile) return;
     var playerCheck = setInterval(function() {
       if (window.aplayerInstance && window.aplayerInstance.list) {
         buildMiniPlayer();

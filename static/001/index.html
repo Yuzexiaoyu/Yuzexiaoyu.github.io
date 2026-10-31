@@ -4,6 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>图库</title>
+<script src="/mobile-config.js"></script>
+<script src="/js/mobile-mode.js"></script>
+<style>
+html.is-mobile-blocked body > * { display:none!important; }
+html.is-mobile-blocked body::before { content:'禁止移动端访问'; display:grid; place-items:center; min-height:100vh; color:white; background:black; font-size:24px; }
+html[data-ui="mobile"] body { overflow-x:visible; }
+html[data-ui="mobile"] header { padding:calc(24px + env(safe-area-inset-top,0px)) 16px 16px; }
+html[data-ui="mobile"] .gallery-wrapper { padding:12px 12px max(20px,env(safe-area-inset-bottom,0px)); }
+html[data-ui="mobile"] .cursor-glow { display:none; }
+html[data-ui="mobile"] .lightbox-close { top:max(8px,env(safe-area-inset-top,0px)); right:max(8px,env(safe-area-inset-right,0px)); min-width:44px; min-height:44px; }
+html[data-ui="mobile"] .lightbox-nav { display:block; width:48px; height:48px; font-size:32px; top:auto; bottom:calc(124px + env(safe-area-inset-bottom,0px)); transform:none; }
+html[data-ui="mobile"] .lightbox-nav.prev { left:max(12px,env(safe-area-inset-left,0px)); }
+html[data-ui="mobile"] .lightbox-nav.next { right:max(12px,env(safe-area-inset-right,0px)); }
+html[data-ui="mobile"] .lightbox-img-container { max-width:100vw; padding:60px 8px 180px; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+html[data-ui="mobile"] #lightbox-img { max-height:100%; max-width:100%; object-fit:contain; touch-action:pan-y pinch-zoom; }
+html[data-ui="mobile"] .lightbox-info { bottom:max(8px,env(safe-area-inset-bottom,0px)); max-width:100%; gap:4px; }
+html[data-ui="mobile"] .lightbox-thumbnails { max-width:94vw; }
+html[data-ui="mobile"] .lightbox-nav,html[data-ui="mobile"] .lightbox-close { z-index:3; }
+html[data-ui="mobile"] .lightbox-info { z-index:2; }
+html[data-ui="mobile"] .lightbox-img-container { pointer-events:none; }
+html[data-ui="mobile"] #lightbox-img { pointer-events:auto; }
+@media(prefers-reduced-motion:reduce) {
+html[data-ui="mobile"] *,html[data-ui="mobile"] *::before,html[data-ui="mobile"] *::after { animation:none!important; transition:none!important; }
+}
+</style>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -503,6 +528,9 @@ header h1 {
 const canvas = document.getElementById('bgCanvas');
 const ctx = canvas.getContext('2d');
 let width, height, particles, mouse, mouseActive;
+const mobileGallery = !!(window.__isMobileUI && window.__isMobileUI());
+const galleryReducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let galleryFrame = 0, galleryLastFrame = 0;
 
 function initCanvas() {
     width = canvas.width = window.innerWidth;
@@ -511,7 +539,7 @@ function initCanvas() {
     mouse = { x: -1000, y: -1000, vx: 0, vy: 0 };
     mouseActive = false;
     
-    const count = Math.min(Math.floor((width * height) / 9000), 150);
+    const count = Math.min(Math.floor((width * height) / 9000), mobileGallery ? 40 : 150);
     
     for (let i = 0; i < count; i++) {
         const hx = Math.random() * width;
@@ -532,7 +560,13 @@ function initCanvas() {
     }
 }
 
-function drawParticles() {
+function drawParticles(now) {
+    if (mobileGallery) {
+        galleryFrame = 0;
+        if (document.hidden || galleryReducedMotion.matches) return;
+        if (galleryLastFrame && now - galleryLastFrame < 1000/30 - 1) { galleryFrame = requestAnimationFrame(drawParticles); return; }
+        galleryLastFrame = now || 0;
+    }
     ctx.clearRect(0, 0, width, height);
     
     const mouseSpeed = Math.sqrt(mouse.vx * mouse.vx + mouse.vy * mouse.vy);
@@ -611,11 +645,22 @@ function drawParticles() {
         }
     });
     
-    requestAnimationFrame(drawParticles);
+    if (mobileGallery) galleryFrame = requestAnimationFrame(drawParticles);
+    else requestAnimationFrame(drawParticles);
 }
 
 initCanvas();
 drawParticles();
+if (mobileGallery) {
+    function resumeGalleryBackground() {
+        cancelAnimationFrame(galleryFrame); galleryFrame = 0; galleryLastFrame = 0;
+        if (!document.hidden && !galleryReducedMotion.matches) galleryFrame = requestAnimationFrame(drawParticles);
+    }
+    document.addEventListener('visibilitychange', resumeGalleryBackground);
+    galleryReducedMotion.addEventListener('change', resumeGalleryBackground);
+    window.addEventListener('pagehide', () => { cancelAnimationFrame(galleryFrame); galleryFrame = 0; });
+    window.addEventListener('pageshow', resumeGalleryBackground);
+}
 
 window.addEventListener('resize', initCanvas);
 
@@ -654,7 +699,7 @@ function animateGlow() {
     cursorGlow.style.top = glowY + 'px';
     requestAnimationFrame(animateGlow);
 }
-animateGlow();
+if (!mobileGallery) animateGlow();
 
 // 滚动进度条
 const progressBar = document.getElementById('scrollProgress');
@@ -688,6 +733,10 @@ function init() {
         const item = document.createElement('div');
         item.className = 'gallery-item';
         item.onclick = () => openLightbox(idx);
+        if (mobileGallery) {
+            item.tabIndex=0;item.setAttribute('role','button');item.setAttribute('aria-label',`查看图片 ${idx+1}`);
+            item.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openLightbox(idx);}});
+        }
         
         item.innerHTML = `
             <div class="img-wrapper">
@@ -739,6 +788,18 @@ const lightbox = document.getElementById('lightbox');
 const lbImg = document.getElementById('lightbox-img');
 const lbCounter = document.getElementById('lightbox-counter');
 const thumbnailsContainer = document.getElementById('thumbnails');
+if (mobileGallery) {
+    lightbox.querySelector('.lightbox-close').setAttribute('aria-label','关闭图片');
+    lightbox.querySelector('.prev').setAttribute('aria-label','上一张图片');
+    lightbox.querySelector('.next').setAttribute('aria-label','下一张图片');
+    lightbox.addEventListener('keydown',e=>{
+        if(e.key!=='Tab')return;
+        const controls=Array.from(lightbox.querySelectorAll('button'));
+        const first=controls[0],last=controls[controls.length-1];
+        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+    });
+}
 
 function generateThumbnails() {
     thumbnailsContainer.innerHTML = '';
@@ -755,15 +816,18 @@ function generateThumbnails() {
 }
 
 function openLightbox(index) {
+    if (mobileGallery) { lightbox.__returnFocus = document.activeElement; lightbox.__scrollY=scrollY; }
     current = index;
     updateLightbox();
     lightbox.classList.add('active');
     document.body.style.overflow = 'hidden';
+    if (mobileGallery) { lightbox.setAttribute('role','dialog'); lightbox.setAttribute('aria-modal','true'); lightbox.setAttribute('aria-label','图片查看器'); lightbox.querySelector('.lightbox-close').focus(); }
 }
 
 function closeLightbox() {
     lightbox.classList.remove('active');
     document.body.style.overflow = '';
+    if (mobileGallery) { lightbox.__returnFocus?.focus({preventScroll:true}); scrollTo(0,lightbox.__scrollY||0); }
 }
 
 function navigate(dir) {
@@ -818,16 +882,31 @@ let touchStartX = 0;
 let touchEndX = 0;
 
 lightbox.addEventListener('touchstart', e => {
+    if (mobileGallery) {
+        const t=e.touches[0];
+        lightbox.__gesture = e.touches.length===1 && !e.target.closest('button,.lightbox-thumbnails') && t.clientX>24 && t.clientX<innerWidth-24 ? {x:t.clientX,y:t.clientY,time:Date.now()} : null;
+        return;
+    }
     touchStartX = e.changedTouches[0].screenX;
 }, { passive: true });
 
 lightbox.addEventListener('touchend', e => {
+    if (mobileGallery) {
+        const start=lightbox.__gesture;lightbox.__gesture=null;
+        if(!start||e.touches.length||!e.changedTouches.length||Date.now()-start.time>650||(visualViewport&&visualViewport.scale>1.05))return;
+        const t=e.changedTouches[0],dx=t.clientX-start.x,dy=t.clientY-start.y;
+        if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.7)navigate(dx<0?1:-1);
+        return;
+    }
     touchEndX = e.changedTouches[0].screenX;
     const diff = touchStartX - touchEndX;
     if (Math.abs(diff) > 50) {
         navigate(diff > 0 ? 1 : -1);
     }
 }, { passive: true });
+
+lightbox.addEventListener('touchmove', e => { if(mobileGallery && e.touches.length!==1)lightbox.__gesture=null; }, {passive:true});
+lightbox.addEventListener('touchcancel', () => { if(mobileGallery)lightbox.__gesture=null; }, {passive:true});
 
 // 3D 倾斜效果
 document.addEventListener('mousemove', e => {

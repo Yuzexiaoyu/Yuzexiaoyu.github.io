@@ -45,6 +45,14 @@ function showPage(pageNum: number): void {
   if (pageNum < 1 || pageNum > total) return;
 
   currentPage = pageNum;
+  if (document.documentElement.dataset.ui === 'mobile') {
+    const url = new URL(location.href);
+    if (pageNum > 1) url.searchParams.set('page', String(pageNum));
+    else url.searchParams.delete('page');
+    const state = { ...(history.state || {}) };
+    if (state.source === 'swup') state.url = url.pathname + url.search + url.hash;
+    history.replaceState(state, '', url);
+  }
 
   // 切换 section 显示
   sections.forEach((el) => {
@@ -91,6 +99,7 @@ function showPage(pageNum: number): void {
 /* ------------------------------------------------------------------ */
 
 function handleWheel(e: WheelEvent): void {
+  if (document.documentElement.dataset.ui === 'mobile') return;
   if (!isLocalPagination()) return;
   if (Date.now() - lastNavTime < NAV_COOLDOWN) return;
   if (Math.abs(e.deltaY) < MIN_DELTA) return;
@@ -163,7 +172,12 @@ document.addEventListener('click', handlePaginationClick, true);
 // Expose for Swup page:view hook (重新初始化当前页状态)
 (window as any).__prefetchAdjacent = function() {
   if (isLocalPagination()) {
-    currentPage = 1;
-    showPage(1);
+    const saved = document.documentElement.dataset.ui === 'mobile' ? Number(new URL(location.href).searchParams.get('page') || 1) : 1;
+    currentPage = Math.max(1, Math.min(Number.isFinite(saved) ? saved : 1, getTotalPages()));
+    showPage(currentPage);
   }
 };
+
+if (document.documentElement.dataset.ui === 'mobile') {
+  document.addEventListener('DOMContentLoaded', () => (window as any).__prefetchAdjacent(), {once:true});
+}

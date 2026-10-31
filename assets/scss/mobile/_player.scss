@@ -1,0 +1,36 @@
+#aplayer {
+  display: block !important; left: Max(8px, env(safe-area-inset-left, 0px)) !important;
+  right: Max(8px, env(safe-area-inset-right, 0px)) !important;
+  bottom: Max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  width: auto !important; max-width: none !important; z-index: 120 !important;
+  max-height: 70vh; max-height: 70dvh; border: 1px solid #30363d !important;
+  overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior: contain;
+  background: #161b22 !important; color: #e6edf3; font-size: 14px;
+}
+#aplayer .aplayer-body { display: none !important; }
+.m-player-bar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; position: sticky; top: 0; z-index: 1; background: #161b22; }
+.m-player-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
+#aplayer button, .mu-panel button { min-height: 44px; min-width: 44px; cursor: pointer; }
+.m-player-bar button, .m-player-tools button { background: transparent; color: inherit; border: 1px solid #30363d; border-radius: 8px; padding: 4px 10px; font: inherit; }
+.m-player-tools { padding: 0 12px 8px; }
+.m-player-tools[hidden] { display: none; }
+.m-player-tools label { display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 44px; }
+.m-player-tools input { min-width: 0; flex: 1; width: 100%; min-height: 44px; accent-color: #58a6ff; }
+.m-player-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.m-player-error { color: #ffa198; font-size: 13px; padding: 0 12px; }
+#aplayer .aplayer-list { display: none !important; }
+#aplayer.m-expanded .aplayer-list {
+  display: block !important; position: static !important; width: 100% !important;
+  max-height: 24vh !important; max-height: 24dvh !important;
+  margin: 0 !important; overflow-y: auto !important; box-sizing: border-box;
+}
+#aplayer .aplayer-list li { min-height: 44px; line-height: 44px; }
+.mu-overlay { z-index: 320; padding: Max(12px, env(safe-area-inset-top,0px)) 12px Max(12px,env(safe-area-inset-bottom,0px)); box-sizing: border-box; }
+.mu-panel { width: 100%; max-width: 560px; max-height: 90vh; max-height: 90dvh; min-width: 0; display: flex; flex-direction: column; }
+.mu-list { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.mu-panel-head { flex-shrink: 0; }
+.mu-item { gap: 8px; }
+.mu-item-meta { min-width: 0; }
+.mu-item-name { white-space: normal; overflow-wrap: anywhere; }
+.mu-foot { flex-wrap: wrap; }
+&.m-keyboard #aplayer { display: none !important; }

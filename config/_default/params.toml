@@ -69,3 +69,7 @@ lang = "zh-CN"
   enable = true
   toggle = false  # 关闭暗色模式切换按钮
   default = "dark" 
+
+# Preview: hugo server --environment mobile-preview. Enable production after device acceptance.
+[mobile]
+  enabled = false

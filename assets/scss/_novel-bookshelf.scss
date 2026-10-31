@@ -1,6 +1,11 @@
 // 书库/书架页面
 
 // ========== 布局覆盖 ==========
+// The global canvas is a sibling of body; keep it out of the opaque bookshelf page.
+html:has(> body.template-novel-bookshelf) #warp-canvas {
+  visibility: hidden;
+}
+
 .template-novel-bookshelf {
   background: #0a0a0f;
   margin: 0 !important;
@@ -16,6 +21,8 @@
   .container.main-container.flex.on-phone--column,
   .container.main-container.flex.on-phone--column.compact,
   .container.main-container.flex.on-phone--column.extended {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     margin-left: 0 !important;

@@ -1,0 +1,51 @@
+section.article-list { grid-template-columns: minmax(0, 1fr); gap: 20px; width: 100%; padding: 0; }
+section.article-list > article { min-width: 0; opacity: 1; transform: none; animation: none; }
+.article-title { font-size: 23px; line-height: 1.45; overflow-wrap: anywhere; }
+.main-article .article-image, .main-article .article-image a { display: block; width: 100%; max-width: 100%; min-width: 0; }
+.main-article .article-image img { display: block; width: 100%; max-width: 100%; height: auto; object-fit: cover; }
+.article-details { padding: 20px !important; }
+.article-subtitle { font-size: 16px; line-height: 1.6; }
+.article-time, .article-category, .article-tags, .article-footer { flex-wrap: wrap; gap: 8px; }
+.article-time { font-size: 13px; }
+.article-content { font-size: 17px; line-height: 1.85; padding: 20px 16px !important; overflow-wrap: anywhere; }
+.article-content h1 { font-size: 1.7em; }
+.article-content h2 { font-size: 1.4em; }
+.article-content h3 { font-size: 1.2em; }
+.article-content img, .article-content video, .article-content iframe { max-width: 100%; height: auto; }
+.article-content iframe { aspect-ratio: 16 / 9; width: 100%; }
+.article-content pre { max-width: 100%; overflow-x: auto; white-space: pre; font-size: 14px; }
+.article-content .highlight { min-width: 0; max-width: 100%; margin-inline: 0; }
+.article-content blockquote { width: auto !important; max-width: 100%; box-sizing: border-box; margin: 1em 0 !important; padding-inline: 16px; }
+.article-content table { display: block; max-width: 100%; overflow-x: auto; white-space: normal; }
+.article-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.copyCodeButton { opacity: 1 !important; min-height: 44px; min-width: 44px; font-size: 13px; }
+.pagination { flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pagination a { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
+.search-form { max-width: 100%; }
+.search-form input { font-size: 16px !important; min-height: 48px; }
+.search-form button { min-width: 44px; min-height: 44px; }
+.search-result--list article { min-width: 0; }
+.search-result--list .article-image { max-width: 26%; flex-shrink: 0; }
+.search-result--list .article-details { min-width: 0; }
+.search-result--list .article-title { font-size: 20px; }
+.article-list--compact article { min-width: 0; }
+body .article-list--compact { grid-template-columns: minmax(0,1fr) !important; }
+.article-list--compact .article-details { min-width: 0; }
+.article-list--compact .article-title { font-size: 20px; }
+.article-list--tile { grid-template-columns: repeat(auto-fit, minmax(Min(100%, 160px),1fr)); }
+.right-sidebar:has(#TableOfContents) { display: block !important; position: static; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; order: -1; }
+.m-toc { width: 100%; border: 1px solid #30363d; border-radius: 10px; padding: 0 12px; box-sizing: border-box; }
+.m-toc summary { cursor: pointer; min-height: 44px; line-height: 44px; }
+.m-toc .widget { max-height: Min(60vh, 480px); overflow-y: auto; overscroll-behavior: contain; }
+#TableOfContents { max-height: none; padding: 0 8px 12px; font-size: 15px; }
+#TableOfContents a { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+#TableOfContents .toc-toggle { min-width: 44px; min-height: 44px; }
+.mermaid-zoom-btn { opacity: 1 !important; min-width: 44px; min-height: 44px; }
+.mermaid-toolbar button, .mermaid-modal-close { opacity: 1 !important; min-width: 44px; min-height: 44px; }
+.mermaid-modal-close { top: Max(8px,env(safe-area-inset-top,0px)); right: Max(8px,env(safe-area-inset-right,0px)); }
+.mermaid, .mermaid svg { max-width: 100%; }
+.mermaid-zoom-overlay { padding: env(safe-area-inset-top, 0px) 8px env(safe-area-inset-bottom, 0px); }
+.comments, .giscus, .giscus-frame { width: 100%; max-width: 100%; min-width: 0; }
+.site-footer { padding: 24px 0 !important; font-size: 13px; }
+@media (min-width: 768px) { section.article-list { grid-template-columns: repeat(2, minmax(0,1fr)); } .article-content { padding: 28px !important; } }
+@media (min-width: 768px) { body .article-list--compact { grid-template-columns: repeat(2,minmax(0,1fr)) !important; } }
