@@ -1,4 +1,4 @@
-// Rotate the outer layout while retaining the complete desktop glitch animation.
+// Move row wrappers independently; the inner text keeps the desktop glitch intact.
 #page-loader.m-intro-home {
   overflow: hidden;
 }
@@ -7,21 +7,52 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: max-content;
-  transform: translate(-50%, -50%) rotate(70deg);
+  display: block;
+  width: 0;
+  height: 0;
+  transform: rotate(45deg);
 }
 
 #page-loader .loader > .glitch { display: none; }
 
 #page-loader .m-intro-wordmark {
   display: block;
-  text-align: center;
+  width: 0;
+  height: 0;
+}
+
+#page-loader .m-intro-row {
+  position: absolute;
+  top: var(--m-row-y, 0px);
+  left: 0;
+  width: max-content;
+  transform: translate(-50%, -50%);
+  animation: m-intro-row-exit 460ms cubic-bezier(.55, .05, .95, .45) var(--m-row-exit, 1550ms) both;
+  will-change: transform;
+}
+
+#page-loader .m-intro-reveal {
+  display: flex;
+  align-items: center;
+  gap: var(--m-word-gap, 0px);
+  animation: m-intro-row-reveal 240ms cubic-bezier(.2, .7, .25, 1) var(--m-row-reveal, 0ms) both;
 }
 
 #page-loader .m-intro-text {
   display: block;
-  font-size: clamp(24px, Min(10vw, 7dvh), 64px);
+  flex: none;
+  font-size: clamp(24px, Min(8.2vw, 6dvh), 42px);
   line-height: 1.1;
   letter-spacing: .035em;
   white-space: nowrap;
+}
+
+@keyframes m-intro-row-reveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes m-intro-row-exit {
+  from { transform: translate(-50%, -50%); }
+  to { transform: translate(calc(-50% + var(--m-row-travel)), -50%); }
 }

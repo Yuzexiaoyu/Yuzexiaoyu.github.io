@@ -208,7 +208,11 @@ window.__preloadData = {{ $preloadData | jsonify | safeJS }};
     <div data-glitch="Yuzexiaoyu.space" class="glitch">Yuzexiaoyu.space</div>
     {{ if .IsHome }}
     <div class="m-intro-wordmark" aria-hidden="true" hidden>
-      <span class="glitch m-intro-text" data-glitch="Yuzexiaoyu.space">Yuzexiaoyu.space</span>
+      <div class="m-intro-row">
+        <div class="m-intro-reveal">
+          <span class="glitch m-intro-text" data-glitch="Yuzexiaoyu.space">Yuzexiaoyu.space</span>
+        </div>
+      </div>
     </div>
     {{ end }}
   </div>
@@ -403,25 +407,63 @@ article.main-article.has-image .article-time svg {
 <script>
 (function() {
   var pageLoader = document.getElementById('page-loader');
+  var mobileIntro = window.__isMobileUI && window.__isMobileUI();
+  var displayTime = 1500;
   // The legacy block div above starts body early. Do not create its class attribute before
   // the real body tag is parsed: that would discard the reader/search page class on reload.
-  if (window.__isMobileUI && window.__isMobileUI()) {
+  if (mobileIntro) {
     window.setupArticleStagger = function() {};
     {{ if not .IsHome }}
     return;
     {{ end }}
   }
-  var displayTime = 1500;
-
   // sessionStorage 持久化标记，避免搜索等全页跳转时重复播放动画
   var loaderKey = '__pageLoaderShown';
   var alreadyShown = sessionStorage.getItem(loaderKey) === '1';
+  // Temporary while tuning the mobile opening; set false when the animation is finalized.
+  var replayMobileIntro = mobileIntro;
 
-  if (!window.__pageLoaderShown && !alreadyShown) {
+  if (replayMobileIntro || (!window.__pageLoaderShown && !alreadyShown)) {
     window.__pageLoaderShown = true;
     sessionStorage.setItem(loaderKey, '1');
 
-    // 固定显示时间
+    if (mobileIntro && pageLoader) {
+      var wordmark = pageLoader.querySelector('.m-intro-wordmark');
+      var seedRow = wordmark && wordmark.querySelector('.m-intro-row');
+      if (seedRow && seedRow.offsetWidth > 0 && seedRow.offsetHeight > 0) {
+        var seedWord = seedRow.querySelector('.m-intro-text');
+        var wordWidth = seedWord.offsetWidth;
+        var wordHeight = seedWord.offsetHeight;
+        // Keep the repeating wall compact without scaling or changing the inner glitch.
+        var rowPitch = Math.ceil(wordHeight * 2.5 + 8);
+        var wordPitch = wordWidth + Math.ceil(wordHeight * 1.1);
+        var diagonalSpan = (window.innerWidth + window.innerHeight) / Math.SQRT2;
+        var rowRadius = Math.ceil(diagonalSpan / (2 * rowPitch));
+        var wordRadius = Math.ceil(diagonalSpan / (2 * wordPitch));
+        var revealStep = Math.min(75, 600 / (rowRadius * 2));
+        var travel = Math.ceil(diagonalSpan + wordPitch * (wordRadius * 2 + 1));
+        var rows = document.createDocumentFragment();
+        wordmark.style.setProperty('--m-word-gap', (wordPitch - wordWidth) + 'px');
+        for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
+          var row = seedRow.cloneNode(true);
+          var line = row.querySelector('.m-intro-reveal');
+          // Alternate above and below the initial, screen-centered row.
+          var revealOrder = rowIndex === 0 ? 0 : Math.abs(rowIndex) * 2 - (rowIndex < 0 ? 1 : 0);
+          row.style.setProperty('--m-row-y', (rowIndex * rowPitch) + 'px');
+          row.style.setProperty('--m-row-reveal', (revealOrder * revealStep) + 'ms');
+          row.style.setProperty('--m-row-exit', (1550 + Math.abs(rowIndex) * 18) + 'ms');
+          row.style.setProperty('--m-row-travel', ((rowIndex % 2 === 0 ? -1 : 1) * travel) + 'px');
+          for (var wordIndex = 0; wordIndex < wordRadius * 2; wordIndex++) {
+            line.appendChild(seedWord.cloneNode(true));
+          }
+          rows.appendChild(row);
+        }
+        wordmark.replaceChildren(rows);
+        displayTime = 1550 + rowRadius * 18 + 460;
+      }
+    }
+
+    // Mobile rows finish their exit before the overlay fades; desktop keeps 1500ms.
     setTimeout(function() {
       hidePageLoader();
     }, displayTime);
