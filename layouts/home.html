@@ -1,5 +1,15 @@
 {{ define "body-class" }}home-page{{ end }}
 
+{{ define "head" }}
+    <style>
+        html:not([data-ui="mobile"]) [data-mobile-home],
+        html[data-ui="mobile"] body.home-page main.main > .home-article-list,
+        html[data-ui="mobile"] body.home-page #local-pagination:not([data-mobile-home]) {
+            display: none !important;
+        }
+    </style>
+{{ end }}
+
 {{ define "main" }}
     {{- $pages := partial "helper/pages.html" . -}}
     {{- $pageSize := .Site.Params.pagination.pagerSize | default 4 -}}
@@ -31,6 +41,37 @@
             {{ partial "helper/icon" "chevron-right" }}
         </a>
     </nav>
+    {{- end -}}
+
+    {{- if .Site.Params.mobile.enabled -}}
+        {{- $mobilePageSize := 6 -}}
+        {{- $mobileTotalPages := int (math.Ceil (div (len $pages) (float $mobilePageSize))) -}}
+        <div class="m-home-viewport{{ if le $mobileTotalPages 1 }} m-home-single-page{{ end }}" data-mobile-home>
+            <div class="m-home-track">
+                {{- range $pageNum := seq $mobileTotalPages }}
+                    {{- $start := mul (sub $pageNum 1) $mobilePageSize -}}
+                    {{- $end := mul $pageNum $mobilePageSize -}}
+                    <section class="article-list home-article-list" data-mobile-page="{{ $pageNum }}" aria-hidden="{{ if eq $pageNum 1 }}false{{ else }}true{{ end }}"{{ if ne $pageNum 1 }} inert{{ end }}>
+                        {{- range first $end $pages | after $start }}
+                            {{ partial "home/article-card" . }}
+                        {{- end }}
+                    </section>
+                {{- end }}
+            </div>
+        </div>
+        {{- if gt $mobileTotalPages 0 -}}
+        <nav class="pagination home-pagination" role="navigation" aria-label="pagination" id="mobile-home-pagination" data-mobile-home{{ if eq $mobileTotalPages 1 }} style="display:none"{{ end }}>
+            <a class="page-link disabled" aria-label="Previous page" aria-disabled="true" data-dir="prev">
+                {{ partial "helper/icon" "chevron-left" }}
+            </a>
+            {{- range $pageNum := seq $mobileTotalPages }}
+            <a class="page-link{{ if eq $pageNum 1 }} current{{ end }}" data-goto="{{ $pageNum }}" aria-label="Page {{ $pageNum }}"{{ if eq $pageNum 1 }} aria-current="page"{{ end }}>{{ $pageNum }}</a>
+            {{- end }}
+            <a class="page-link{{ if eq $mobileTotalPages 1 }} disabled{{ end }}" aria-label="Next page"{{ if eq $mobileTotalPages 1 }} aria-disabled="true"{{ end }} data-dir="next">
+                {{ partial "helper/icon" "chevron-right" }}
+            </a>
+        </nav>
+        {{- end -}}
     {{- end -}}
 
     {{- partial "footer/footer" . -}}

@@ -10,35 +10,21 @@ function isMobile(): boolean { return w.__isMobileUI?.() === true; }
 
 function initHomeSwipe(signal: AbortSignal): void {
   const main = document.querySelector<HTMLElement>('body.home-page main.main');
-  const pagination = document.querySelector<HTMLElement>('#local-pagination');
-  if (!main || !pagination) return;
+  const viewport = main?.querySelector<HTMLElement>('.m-home-viewport');
+  const track = viewport?.querySelector<HTMLElement>('.m-home-track');
+  const pagination = main?.querySelector<HTMLElement>('nav[data-mobile-home]');
+  if (!main || !viewport || !track || !pagination) return;
 
-  const originalSections = Array.from(main.querySelectorAll<HTMLElement>('.home-article-list'));
-  if (!originalSections.length) return;
-  const originalGroups = originalSections.map(section => Array.from(section.children));
-  const originalNav = pagination.innerHTML;
-  const originalNavStyle = pagination.getAttribute('style');
-  const cards = originalGroups.flat();
-  const sections: HTMLElement[] = [];
-  for (let start = 0; start < cards.length; start += 6) {
-    const section = originalSections[0].cloneNode(false) as HTMLElement;
-    section.dataset.page = String(sections.length + 1);
-    section.style.display = sections.length ? 'none' : '';
-    section.append(...cards.slice(start, start + 6));
-    sections.push(section);
-  }
-  const viewport = document.createElement('div');
-  const track = document.createElement('div');
-  viewport.className = `m-home-viewport${sections.length === 1 ? ' m-home-single-page' : ''}`;
-  track.className = 'm-home-track';
-  originalSections[0].before(viewport);
-  viewport.append(track);
-  track.append(...sections);
-  originalSections.forEach(section => section.remove());
-  pagination.querySelectorAll<HTMLElement>('[data-goto]').forEach(button => {
-    if (Number(button.dataset.goto) > sections.length) button.remove();
+  // Mobile pages are already rendered in groups of six before any deferred script runs.
+  // Activate only their pagination metadata; the desktop markup stays out of this device's DOM.
+  main.querySelectorAll(':scope > .home-article-list, #local-pagination:not([data-mobile-home])')
+    .forEach(element => element.remove());
+  pagination.id = 'local-pagination';
+  const sections = Array.from(track.querySelectorAll<HTMLElement>('[data-mobile-page]'));
+  if (!sections.length) return;
+  sections.forEach(section => {
+    section.dataset.page = section.dataset.mobilePage;
   });
-  if (sections.length === 1) pagination.style.display = 'none';
   w.__prefetchAdjacent?.();
 
   type Sample = { x: number; time: number };
@@ -168,12 +154,7 @@ function initHomeSwipe(signal: AbortSignal): void {
     cancelAnimationFrame(frame);
     navObserver.disconnect();
     sizeObserver.disconnect();
-    originalSections.forEach((section, index) => section.append(...originalGroups[index]));
-    viewport.before(...originalSections);
-    viewport.remove();
-    pagination.innerHTML = originalNav;
-    if (originalNavStyle === null) pagination.removeAttribute('style');
-    else pagination.setAttribute('style', originalNavStyle);
+    track.style.transition = 'none';
     gesture = null;
   }, { once: true });
 }
@@ -242,11 +223,11 @@ function initMobilePage(): void {
     history.replaceState(history.state, '', a.hash);
     requestAnimationFrame(() => target.scrollIntoView({block:'start',behavior:'smooth'}));
   }, {signal,capture:true});
+  initHomeSwipe(signal);
   document.querySelectorAll<HTMLElement>('#local-pagination a').forEach(a => { a.tabIndex = 0; a.setAttribute('role','button'); });
   document.getElementById('local-pagination')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.target as HTMLElement).click(); }
   }, {signal});
-  initHomeSwipe(signal);
   if (document.getElementById('novel-reader-root') && !document.getElementById('novel-reader-root')!.dataset.readerInit) w.__initNovelReader?.();
 }
 
