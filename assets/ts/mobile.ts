@@ -11,16 +11,35 @@ function isMobile(): boolean { return w.__isMobileUI?.() === true; }
 function initHomeSwipe(signal: AbortSignal): void {
   const main = document.querySelector<HTMLElement>('body.home-page main.main');
   const pagination = document.querySelector<HTMLElement>('#local-pagination');
-  if (!main || !pagination || document.querySelectorAll('.home-article-list').length < 2) return;
+  if (!main || !pagination) return;
 
-  const sections = Array.from(main.querySelectorAll<HTMLElement>('.home-article-list'));
+  const originalSections = Array.from(main.querySelectorAll<HTMLElement>('.home-article-list'));
+  if (!originalSections.length) return;
+  const originalGroups = originalSections.map(section => Array.from(section.children));
+  const originalNav = pagination.innerHTML;
+  const originalNavStyle = pagination.getAttribute('style');
+  const cards = originalGroups.flat();
+  const sections: HTMLElement[] = [];
+  for (let start = 0; start < cards.length; start += 6) {
+    const section = originalSections[0].cloneNode(false) as HTMLElement;
+    section.dataset.page = String(sections.length + 1);
+    section.style.display = sections.length ? 'none' : '';
+    section.append(...cards.slice(start, start + 6));
+    sections.push(section);
+  }
   const viewport = document.createElement('div');
   const track = document.createElement('div');
-  viewport.className = 'm-home-viewport';
+  viewport.className = `m-home-viewport${sections.length === 1 ? ' m-home-single-page' : ''}`;
   track.className = 'm-home-track';
-  sections[0].before(viewport);
+  originalSections[0].before(viewport);
   viewport.append(track);
   track.append(...sections);
+  originalSections.forEach(section => section.remove());
+  pagination.querySelectorAll<HTMLElement>('[data-goto]').forEach(button => {
+    if (Number(button.dataset.goto) > sections.length) button.remove();
+  });
+  if (sections.length === 1) pagination.style.display = 'none';
+  w.__prefetchAdjacent?.();
 
   type Sample = { x: number; time: number };
   type Gesture = { x: number; y: number; offset: number; locked: boolean; samples: Sample[] };
@@ -77,7 +96,7 @@ function initHomeSwipe(signal: AbortSignal): void {
   sizeObserver.observe(viewport);
 
   main.addEventListener('touchstart', event => {
-    if (event.touches.length !== 1) return;
+    if (sections.length < 2 || event.touches.length !== 1) return;
     if (document.querySelector<HTMLDetailsElement>('.m-navigation')?.open || window.getSelection()?.toString()) return;
     const touch = event.touches[0];
     if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
@@ -149,9 +168,12 @@ function initHomeSwipe(signal: AbortSignal): void {
     cancelAnimationFrame(frame);
     navObserver.disconnect();
     sizeObserver.disconnect();
-    sections.forEach(section => { section.inert = false; section.removeAttribute('aria-hidden'); });
-    viewport.before(...sections);
+    originalSections.forEach((section, index) => section.append(...originalGroups[index]));
+    viewport.before(...originalSections);
     viewport.remove();
+    pagination.innerHTML = originalNav;
+    if (originalNavStyle === null) pagination.removeAttribute('style');
+    else pagination.setAttribute('style', originalNavStyle);
     gesture = null;
   }, { once: true });
 }

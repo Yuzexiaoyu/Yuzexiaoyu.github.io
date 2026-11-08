@@ -10,7 +10,7 @@
 <script src="{{ "js/mobile-mode.js" | relURL }}?v=2"></script>
 {{- if $mobileEnabled -}}
   {{- $mobileCSS := resources.Get "scss/mobile.scss" | css.Sass | minify | fingerprint -}}
-  <link rel="stylesheet" href="{{ $mobileCSS.RelPermalink }}">
+  <link rel="stylesheet" href="{{ $mobileCSS.RelPermalink }}" onerror="this.onerror=null;this.href=this.href.split('?')[0]+'?retry='+Date.now()">
   {{- $mobileJS := resources.Get "ts/mobile.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
   <script src="{{ $mobileJS.RelPermalink }}" defer></script>
 {{- end -}}
