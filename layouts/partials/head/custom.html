@@ -9,6 +9,12 @@
 <script src="{{ $mobileConfig.RelPermalink }}"></script>
 <script src="{{ "js/mobile-mode.js" | relURL }}?v=2"></script>
 {{- if $mobileEnabled -}}
+  {{- if .IsHome -}}
+    {{- /* The opening must have its styles before any layout measurement, including on iOS. */ -}}
+    {{- $introSource := resources.Get "scss/mobile/_intro.scss" -}}
+    {{- $introCSS := resources.FromString "scss/mobile-intro-critical.scss" (printf "html[data-ui=\"mobile\"]{%s}" $introSource.Content) | css.Sass | minify -}}
+    <style id="mobile-intro-styles">{{ $introCSS.Content | safeCSS }}</style>
+  {{- end -}}
   {{- $mobileCSS := resources.Get "scss/mobile.scss" | css.Sass | minify | fingerprint -}}
   <link rel="stylesheet" href="{{ $mobileCSS.RelPermalink }}" onerror="this.onerror=null;this.href=this.href.split('?')[0]+'?retry='+Date.now()">
   {{- $mobileJS := resources.Get "ts/mobile.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
@@ -427,46 +433,57 @@ article.main-article.has-image .article-time svg {
     window.__pageLoaderShown = true;
     sessionStorage.setItem(loaderKey, '1');
 
-    if (mobileIntro && pageLoader) {
-      var wordmark = pageLoader.querySelector('.m-intro-wordmark');
-      var seedRow = wordmark && wordmark.querySelector('.m-intro-row');
-      if (seedRow && seedRow.offsetWidth > 0 && seedRow.offsetHeight > 0) {
-        var seedWord = seedRow.querySelector('.m-intro-text');
-        var wordWidth = seedWord.offsetWidth;
-        var wordHeight = seedWord.offsetHeight;
-        // Keep the repeating wall compact without scaling or changing the inner glitch.
-        var rowPitch = Math.ceil(wordHeight * 2.5 + 8);
-        var wordPitch = wordWidth + Math.ceil(wordHeight * 1.1);
-        var diagonalSpan = (window.innerWidth + window.innerHeight) / Math.SQRT2;
-        var rowRadius = Math.ceil(diagonalSpan / (2 * rowPitch));
-        var wordRadius = Math.ceil(diagonalSpan / (2 * wordPitch));
-        var revealStep = Math.min(75, 600 / (rowRadius * 2));
-        var travel = Math.ceil(diagonalSpan + wordPitch * (wordRadius * 2 + 1));
-        var rows = document.createDocumentFragment();
-        wordmark.style.setProperty('--m-word-gap', (wordPitch - wordWidth) + 'px');
-        for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
-          var row = seedRow.cloneNode(true);
-          var line = row.querySelector('.m-intro-reveal');
-          // Alternate above and below the initial, screen-centered row.
-          var revealOrder = rowIndex === 0 ? 0 : Math.abs(rowIndex) * 2 - (rowIndex < 0 ? 1 : 0);
-          row.style.setProperty('--m-row-y', (rowIndex * rowPitch) + 'px');
-          row.style.setProperty('--m-row-reveal', (revealOrder * revealStep) + 'ms');
-          row.style.setProperty('--m-row-exit', (1550 + Math.abs(rowIndex) * 18) + 'ms');
-          row.style.setProperty('--m-row-travel', ((rowIndex % 2 === 0 ? -1 : 1) * travel) + 'px');
-          for (var wordIndex = 0; wordIndex < wordRadius * 2; wordIndex++) {
-            line.appendChild(seedWord.cloneNode(true));
-          }
-          rows.appendChild(row);
+    var introMeasureUntil = 0;
+    var startIntro = function() {
+      if (mobileIntro && pageLoader) {
+        var wordmark = pageLoader.querySelector('.m-intro-wordmark');
+        var seedRow = wordmark && wordmark.querySelector('.m-intro-row');
+        if (wordmark) wordmark.hidden = false;
+        if (seedRow && (!seedRow.offsetWidth || !seedRow.offsetHeight)) {
+          if (!introMeasureUntil) introMeasureUntil = Date.now() + 2000;
+          if (Date.now() < introMeasureUntil) requestAnimationFrame(startIntro);
+          else window.hidePageLoader();
+          return;
         }
-        wordmark.replaceChildren(rows);
-        displayTime = 1550 + rowRadius * 18 + 460;
+        if (seedRow && seedRow.offsetWidth > 0 && seedRow.offsetHeight > 0) {
+          var seedWord = seedRow.querySelector('.m-intro-text');
+          var wordWidth = seedWord.offsetWidth;
+          var wordHeight = seedWord.offsetHeight;
+          // Keep the repeating wall compact without scaling or changing the inner glitch.
+          var rowPitch = Math.ceil(wordHeight * 2.5 + 8);
+          var wordPitch = wordWidth + Math.ceil(wordHeight * 1.1);
+          var diagonalSpan = (window.innerWidth + window.innerHeight) / Math.SQRT2;
+          var rowRadius = Math.ceil(diagonalSpan / (2 * rowPitch));
+          var wordRadius = Math.ceil(diagonalSpan / (2 * wordPitch));
+          var revealStep = Math.min(75, 600 / (rowRadius * 2));
+          var travel = Math.ceil(diagonalSpan + wordPitch * (wordRadius * 2 + 1));
+          var rows = document.createDocumentFragment();
+          wordmark.style.setProperty('--m-word-gap', (wordPitch - wordWidth) + 'px');
+          for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
+            var row = seedRow.cloneNode(true);
+            var line = row.querySelector('.m-intro-reveal');
+            // Alternate above and below the initial, screen-centered row.
+            var revealOrder = rowIndex === 0 ? 0 : Math.abs(rowIndex) * 2 - (rowIndex < 0 ? 1 : 0);
+            row.style.setProperty('--m-row-y', (rowIndex * rowPitch) + 'px');
+            row.style.setProperty('--m-row-reveal', (revealOrder * revealStep) + 'ms');
+            row.style.setProperty('--m-row-exit', (1550 + Math.abs(rowIndex) * 18) + 'ms');
+            row.style.setProperty('--m-row-travel', ((rowIndex % 2 === 0 ? -1 : 1) * travel) + 'px');
+            for (var wordIndex = 0; wordIndex < wordRadius * 2; wordIndex++) {
+              line.appendChild(seedWord.cloneNode(true));
+            }
+            rows.appendChild(row);
+          }
+          wordmark.replaceChildren(rows);
+          pageLoader.classList.add('m-intro-ready');
+          displayTime = 1550 + rowRadius * 18 + 460;
+        }
       }
-    }
 
-    // Mobile rows finish their exit before the overlay fades; desktop keeps 1500ms.
-    setTimeout(function() {
-      hidePageLoader();
-    }, displayTime);
+      // Mobile rows finish their exit before the overlay fades; desktop keeps 1500ms.
+      setTimeout(function() {
+        hidePageLoader();
+      }, displayTime);
+    };
 
     window.hidePageLoader = function() {
       if (pageLoader) {
@@ -478,6 +495,11 @@ article.main-article.has-image .article-time svg {
         }, 300);
       }
     };
+    if (mobileIntro && document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startIntro, { once: true });
+    } else {
+      startIntro();
+    }
   } else {
     // 已在本会话中播过动画，直接隐藏
     window.__pageLoaderShown = true;

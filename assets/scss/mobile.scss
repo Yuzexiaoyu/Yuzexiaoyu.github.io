@@ -4,7 +4,6 @@ html[data-ui="mobile"] {
   --m-bottom-obstruction: 0px;
   --m-header-height: 64px;
   @import "mobile/shell";
-  @import "mobile/intro";
   @import "mobile/content";
   @import "mobile/home";
   @import "mobile/bookshelf";

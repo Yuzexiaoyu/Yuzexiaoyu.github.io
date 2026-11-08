@@ -19,6 +19,11 @@
   display: block;
   width: 0;
   height: 0;
+  visibility: hidden;
+}
+
+#page-loader.m-intro-ready .m-intro-wordmark {
+  visibility: visible;
 }
 
 #page-loader .m-intro-row {
@@ -27,14 +32,20 @@
   left: 0;
   width: max-content;
   transform: translate(-50%, -50%);
-  animation: m-intro-row-exit 460ms cubic-bezier(.55, .05, .95, .45) var(--m-row-exit, 1550ms) both;
   will-change: transform;
+}
+
+#page-loader.m-intro-ready .m-intro-row {
+  animation: m-intro-row-exit 460ms cubic-bezier(.55, .05, .95, .45) var(--m-row-exit, 1550ms) both;
 }
 
 #page-loader .m-intro-reveal {
   display: flex;
   align-items: center;
   gap: var(--m-word-gap, 0px);
+}
+
+#page-loader.m-intro-ready .m-intro-reveal {
   animation: m-intro-row-reveal 240ms cubic-bezier(.2, .7, .25, 1) var(--m-row-reveal, 0ms) both;
 }
 
