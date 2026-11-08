@@ -27,6 +27,9 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
       assert.equal(html.dataset.ui==='mobile',mobile&&enabled);
       assert.equal(classes.has('is-mobile-blocked'),false);
     }
+    const fallback={dataset:{},classList:{add:()=>{}}};
+    vm.runInNewContext(code,{navigator:{userAgent:'iPhone',maxTouchPoints:5},document:{documentElement:fallback,querySelector:()=>null},window:{}});
+    assert.equal(fallback.dataset.ui,'mobile');
     return {cases:samples.length*2};
   });
   const browser=await chromium.launch({headless:true,channel:process.env.BROWSER_CHANNEL || 'chrome'});

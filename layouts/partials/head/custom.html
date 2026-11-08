@@ -5,9 +5,9 @@
      - 开关开启时设置 html[data-ui="mobile"]
      ════════════════════════════════════════════════════════════════ */}}
 {{- $mobileEnabled := .Site.Params.mobile.enabled | default false -}}
-{{- $mobileConfig := resources.FromString "mobile-config.js" (printf "window.__mobileEnabled=%t;" $mobileEnabled) -}}
+{{- $mobileConfig := resources.FromString "mobile-config-v2.js" (printf "window.__mobileEnabled=%t;" $mobileEnabled) -}}
 <script src="{{ $mobileConfig.RelPermalink }}"></script>
-<script src="{{ "js/mobile-mode.js" | relURL }}"></script>
+<script src="{{ "js/mobile-mode.js" | relURL }}?v=2"></script>
 {{- if $mobileEnabled -}}
   {{- $mobileCSS := resources.Get "scss/mobile.scss" | css.Sass | minify | fingerprint -}}
   <link rel="stylesheet" href="{{ $mobileCSS.RelPermalink }}">
