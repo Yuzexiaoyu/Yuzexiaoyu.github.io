@@ -1,0 +1,12 @@
+{{ $image := partial "helper/image" (dict "Image" .Params.image "Resources" .Resources) }}
+<article class="{{ if $image }}has-image{{ end }}">
+    {{ partial "article/components/header" (dict "Page" . "IsList" true) }}
+    <div class="m-home-overlay" style="display:none">
+        <strong class="m-home-title">{{ .Title }}</strong>
+        {{ with .Params.description }}<span class="m-home-subtitle">{{ . }}</span>{{ end }}
+        <div class="m-home-dates">
+            <time datetime="{{ .Date.Format "2006-01-02" }}" aria-label="发布于 {{ .Date.Format "2006-01-02" }}">{{ partial "helper/icon" "calendar" }}<span class="m-home-date-text">{{ .Date.Format "2006-01-02" }}</span></time>
+            <time datetime="{{ .Lastmod.Format "2006-01-02" }}" aria-label="更新于 {{ .Lastmod.Format "2006-01-02" }}">{{ partial "helper/icon" "edit" }}<span class="m-home-date-text">{{ .Lastmod.Format "2006-01-02" }}</span></time>
+        </div>
+    </div>
+</article>

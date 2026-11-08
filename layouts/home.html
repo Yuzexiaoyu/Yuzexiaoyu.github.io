@@ -1,24 +1,24 @@
+{{ define "body-class" }}home-page{{ end }}
+
 {{ define "main" }}
     {{- $pages := partial "helper/pages.html" . -}}
     {{- $pageSize := .Site.Params.pagination.pagerSize | default 4 -}}
     {{- $totalPages := math.Ceil (div (len $pages) (float $pageSize)) -}}
 
-    <div class="home-feed">
-
     {{- range $pageNum := seq (int $totalPages) }}
         {{- $start := mul (sub $pageNum 1) $pageSize -}}
         {{- $end := mul $pageNum $pageSize -}}
         {{- $subset := first $end $pages | after $start -}}
-        <section class="article-list" data-page="{{ $pageNum }}"{{ if ne $pageNum 1 }} style="display:none"{{ end }}>
+        <section class="article-list home-article-list" data-page="{{ $pageNum }}"{{ if ne $pageNum 1 }} style="display:none"{{ end }}>
             {{ range $subset }}
-                {{ partial "article-list/default" . }}
+                {{ partial "home/article-card" . }}
             {{ end }}
         </section>
     {{- end }}
 
     {{- /* 本地分页导航 */ -}}
     {{- if gt (int $totalPages) 1 -}}
-    <nav class="pagination" role="navigation" aria-label="pagination" id="local-pagination">
+    <nav class="pagination home-pagination" role="navigation" aria-label="pagination" id="local-pagination">
         <a class="page-link disabled" aria-label="Previous page" aria-disabled="true" data-dir="prev">
             {{ partial "helper/icon" "chevron-left" }}
         </a>
@@ -32,7 +32,6 @@
         </a>
     </nav>
     {{- end -}}
-    </div>
 
     {{- partial "footer/footer" . -}}
 {{ end }}

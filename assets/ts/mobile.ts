@@ -8,6 +8,121 @@ let pageObserver: ResizeObserver | null = null;
 
 function isMobile(): boolean { return w.__isMobileUI?.() === true; }
 
+function initHomeSwipe(signal: AbortSignal): void {
+  const main = document.querySelector<HTMLElement>('body.home-page main.main');
+  const pagination = document.querySelector<HTMLElement>('#local-pagination');
+  if (!main || !pagination || document.querySelectorAll('.home-article-list').length < 2) return;
+
+  type Gesture = { section: HTMLElement; x: number; y: number; started: number; locked: boolean };
+  let gesture: Gesture | null = null;
+  let outgoingSection: HTMLElement | null = null;
+  let settling = false;
+  let swapTimer = 0;
+  let unlockTimer = 0;
+  let suppressClickUntil = 0;
+  const visibleSection = () => Array.from(document.querySelectorAll<HTMLElement>('.home-article-list'))
+    .find(section => getComputedStyle(section).display !== 'none');
+  const reset = (section: HTMLElement, spring: boolean) => {
+    section.style.transition = spring ? 'transform 220ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease-out' : '';
+    section.style.transform = '';
+    section.style.opacity = '';
+    section.style.willChange = '';
+  };
+  const adjacentButton = (dx: number) => pagination.querySelector<HTMLElement>(
+    dx < 0 ? '[data-dir="next"]' : '[data-dir="prev"]'
+  );
+
+  main.addEventListener('touchstart', event => {
+    if (settling || event.touches.length !== 1 || event.target instanceof Element && event.target.closest('.home-pagination')) return;
+    if (document.querySelector<HTMLDetailsElement>('.m-navigation')?.open || window.getSelection()?.toString()) return;
+    const touch = event.touches[0];
+    if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
+    const section = visibleSection();
+    if (!section) return;
+    gesture = { section, x: touch.clientX, y: touch.clientY, started: performance.now(), locked: false };
+  }, { signal, passive: true });
+
+  main.addEventListener('touchmove', event => {
+    if (!gesture) return;
+    if (event.touches.length !== 1) { reset(gesture.section, true); gesture = null; return; }
+    const touch = event.touches[0];
+    const dx = touch.clientX - gesture.x;
+    const dy = touch.clientY - gesture.y;
+    if (!gesture.locked) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.15) { gesture = null; return; }
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      gesture.locked = true;
+      gesture.section.style.transition = 'none';
+      gesture.section.style.willChange = 'transform, opacity';
+    }
+    if (event.cancelable) event.preventDefault();
+    suppressClickUntil = performance.now() + 300;
+    const button = adjacentButton(dx);
+    const available = !!button && !button.classList.contains('disabled');
+    const offset = Math.sign(dx) * Math.min(Math.abs(dx) * (available ? .42 : .13), available ? 72 : 16);
+    gesture.section.style.transform = `translate3d(${offset}px, 0, 0)`;
+    gesture.section.style.opacity = String(1 - Math.min(Math.abs(offset) / 400, .18));
+  }, { signal, passive: false });
+
+  main.addEventListener('touchend', event => {
+    if (!gesture) return;
+    const completed = gesture;
+    gesture = null;
+    if (!completed.locked || !event.changedTouches.length) return;
+    const dx = event.changedTouches[0].clientX - completed.x;
+    const distance = Math.abs(dx);
+    const elapsed = Math.max(1, performance.now() - completed.started);
+    const button = adjacentButton(dx);
+    const shouldTurn = distance >= Math.min(74, window.innerWidth * .19) ||
+      (distance >= 36 && elapsed <= 240);
+    if (!button || button.classList.contains('disabled') || !shouldTurn) {
+      reset(completed.section, true);
+      return;
+    }
+
+    settling = true;
+    outgoingSection = completed.section;
+    completed.section.style.transition = 'transform 130ms ease-out, opacity 130ms ease-out';
+    completed.section.style.transform = `translate3d(${Math.sign(dx) * 90}px, 0, 0)`;
+    completed.section.style.opacity = '0';
+    swapTimer = window.setTimeout(() => {
+      reset(completed.section, false);
+      outgoingSection = null;
+      const oldNavTop = pagination.getBoundingClientRect().top;
+      button.click();
+      const navShift = oldNavTop - pagination.getBoundingClientRect().top;
+      if (navShift) pagination.animate([
+        { transform: `translate3d(0, ${navShift}px, 0)` },
+        { transform: 'translate3d(0, 0, 0)' }
+      ], { duration: 250, easing: 'cubic-bezier(.22,1,.36,1)' });
+      const incoming = visibleSection();
+      incoming?.animate([
+        { transform: `translate3d(${-Math.sign(dx) * 44}px, 0, 0)`, opacity: .72 },
+        { transform: 'translate3d(0, 0, 0)', opacity: 1 }
+      ], { duration: 250, easing: 'cubic-bezier(.22,1,.36,1)' });
+      unlockTimer = window.setTimeout(() => { settling = false; }, 250);
+    }, 115);
+  }, { signal, passive: true });
+
+  main.addEventListener('touchcancel', () => {
+    if (gesture) reset(gesture.section, true);
+    gesture = null;
+  }, { signal, passive: true });
+  main.addEventListener('click', event => {
+    if (performance.now() >= suppressClickUntil || !(event.target instanceof Element) || !event.target.closest('.home-article-list a')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, { signal, capture: true });
+  signal.addEventListener('abort', () => {
+    window.clearTimeout(swapTimer);
+    window.clearTimeout(unlockTimer);
+    if (gesture) reset(gesture.section, false);
+    if (outgoingSection) reset(outgoingSection, false);
+    gesture = null;
+    outgoingSection = null;
+  }, { once: true });
+}
+
 function destroyMobilePage(): void {
   pageController?.abort(); pageController = null;
   pageObserver?.disconnect(); pageObserver = null;
@@ -76,6 +191,7 @@ function initMobilePage(): void {
   document.getElementById('local-pagination')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.target as HTMLElement).click(); }
   }, {signal});
+  initHomeSwipe(signal);
   if (document.getElementById('novel-reader-root') && !document.getElementById('novel-reader-root')!.dataset.readerInit) w.__initNovelReader?.();
 }
 

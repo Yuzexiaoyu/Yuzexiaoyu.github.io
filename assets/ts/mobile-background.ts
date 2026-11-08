@@ -5,8 +5,7 @@ export function initMobileBackground(): void {
   document.documentElement.insertBefore(canvas, document.body);
   const ctx = canvas.getContext('2d',{alpha:false});
   if (!ctx) return;
-  let width = 1, height = 1, frame = 0, last = 0, raf = 0;
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let width = 1, height = 1, fadeProgress = 0, last = 0, raf = 0;
   const count = 110;
   let particles: {x:number;y:number;z:number;pz:number}[] = [];
   function resize() {
@@ -22,11 +21,12 @@ export function initMobileBackground(): void {
   }
   function draw(now:number) {
     raf=0;
-    if (document.hidden || reduced.matches) { last=0; return; }
-    if (last && now-last < 1000/30-1) { raf=requestAnimationFrame(draw); return; }
+    if (document.hidden) { last=0; return; }
     const dt=last?Math.min((now-last)/(1000/60),3):2; last=now;
-    ctx!.fillStyle=`rgba(0,0,0,${1-Math.pow(.87,dt)})`;ctx!.fillRect(0,0,width,height);
-    if (++frame%4===0) { ctx!.globalCompositeOperation='color-burn';ctx!.fillStyle='rgb(254,254,254)';ctx!.fillRect(0,0,width,height);ctx!.globalCompositeOperation='source-over'; }
+    // Clear bright trails faster on small screens while keeping short warp streaks.
+    ctx!.fillStyle=`rgba(0,0,0,${1-Math.pow(.7,dt)})`;ctx!.fillRect(0,0,width,height);
+    fadeProgress+=dt;
+    if (fadeProgress>=8) { fadeProgress%=8;ctx!.globalCompositeOperation='color-burn';ctx!.fillStyle='rgb(254,254,254)';ctx!.fillRect(0,0,width,height);ctx!.globalCompositeOperation='source-over'; }
     for (const p of particles) {
       p.z-=5*dt;
       if(p.z<1){const depth=width*1.5-1;p.z=1+((p.z-1)%depth+depth)%depth;p.x=Math.random()*width-width/2;p.y=Math.random()*height-height/2;p.pz=p.z;}
@@ -35,11 +35,10 @@ export function initMobileBackground(): void {
     }
     raf=requestAnimationFrame(draw);
   }
-  function resume(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(!document.hidden&&!reduced.matches)raf=requestAnimationFrame(draw);}
+  function resume(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(!document.hidden)raf=requestAnimationFrame(draw);}
   resize();resume();
   window.addEventListener('resize',resize);
   document.addEventListener('visibilitychange',resume);
-  reduced.addEventListener('change',()=>{resize();resume();});
   window.addEventListener('pagehide',()=>{cancelAnimationFrame(raf);raf=0;last=0;});
   window.addEventListener('pageshow',resume);
 }
