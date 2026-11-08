@@ -1,11 +1,20 @@
 <!-- 播放器容器 -->
 <div id="aplayer"></div>
 
-<!-- APlayer 脚本（defer 异步加载，initPlayer 轮询等库就绪） -->
-<script src="/lib/aplayer/APlayer.min.js" defer></script>
+<!-- 音乐仅在桌面端加载 -->
+<script>
+if (window.__isMobileUI && window.__isMobileUI()) {
+  document.getElementById('aplayer')?.remove();
+} else {
+  var playerScript = document.createElement('script');
+  playerScript.src = '/lib/aplayer/APlayer.min.js';
+  document.head.appendChild(playerScript);
+}
+</script>
 
 <script>
 (function() {
+  if (window.__isMobileUI && window.__isMobileUI()) return;
   if (window.aplayerInstance) return;
   
   function initPlayer() {

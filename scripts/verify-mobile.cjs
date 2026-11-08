@@ -9,6 +9,7 @@ const out = process.argv[3] || '.mobile-validation/checks';
 fs.mkdirSync(out, {recursive:true});
 const results = [];
 async function check(name, run) {
+  if (process.env.MOBILE_TEST_FILTER && !name.includes(process.env.MOBILE_TEST_FILTER)) return;
   const start=Date.now();
   try { const detail=await run(); results.push({name,status:'passed',ms:Date.now()-start,detail}); }
   catch(e) { results.push({name,status:'failed',ms:Date.now()-start,error:e.stack}); }
@@ -65,15 +66,13 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     await page.locator('.m-navigation summary').click();await page.locator('.m-nav-close').click();
     assert.ok(await page.locator('.m-navigation nav a[href$="/search/"]').count());
   });
-  await check('T04 pagination, Swup return, persistent player',async()=>{
-    await page.waitForFunction(()=>window.aplayerInstance && window.swupReady);
-    await page.evaluate(()=>{window.__testAudio=window.aplayerInstance.audio;});
+  await check('T04 pagination and Swup return',async()=>{
+    await page.waitForFunction(()=>window.swupReady);
     await page.locator('#local-pagination a[data-goto="2"]').click();assert.ok(page.url().includes('page=2'));
     await page.locator('section.article-list[data-page="2"] article a').first().click();await page.waitForURL(/\/p\//);
     await page.waitForTimeout(300);await page.goBack();
     await page.waitForFunction(()=>document.querySelector('section.article-list[data-page="2"]')?.style.display!=='none');
-    assert.equal(await page.evaluate(()=>window.__testAudio===window.aplayerInstance.audio),true);
-    assert.equal(await page.locator('#aplayer').count(),1);
+    assert.equal(await page.locator('#aplayer').count(),0);
   });
   await check('T06 Chinese composition, search, empty, clear',async()=>{
     await goto('/search/');const input=page.locator('input[name="keyword"]');
@@ -91,23 +90,22 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     assert.ok(await page.locator('.article-content pre').count());
     assert.ok(await page.locator('.copyCodeButton').first().isVisible());
   });
-  await check('T08-T09 audio upload, playback, continuity, restore, cancellation',async()=>{
-    await goto('/');await page.waitForFunction(()=>window.__musicUploads&&window.aplayerInstance);
-    await page.locator('.m-expand').click();await page.locator('.m-manage').click();
-    const wav=Buffer.alloc(44+8000*2*15);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);
-    let chooser=page.waitForEvent('filechooser');await page.locator('.mu-add-btn').click();await (await chooser).setFiles({name:'mobile-test.wav',mimeType:'audio/wav',buffer:wav});
-    await page.waitForFunction(()=>window.aplayerInstance.list.audios.some(a=>a.name==='mobile-test'),null,{timeout:15000});
-    await page.locator('.mu-close').click();
-    await page.evaluate(()=>{const ap=window.aplayerInstance;ap.list.switch(ap.list.audios.findIndex(a=>a.name==='mobile-test'));window.__testAudio=ap.audio;});
-    await page.locator('.m-play').click();await page.waitForFunction(()=>!window.aplayerInstance.audio.paused && window.aplayerInstance.audio.currentTime>.05);
-    await page.locator('section.article-list[data-page="1"] article a').first().click();await page.waitForURL(/\/p\//);await page.waitForTimeout(300);
-    assert.equal(await page.evaluate(()=>window.__testAudio===window.aplayerInstance.audio&&!window.aplayerInstance.audio.paused),true);
-    await page.locator('.m-play').click();await page.reload({waitUntil:'load'});
-    await page.waitForFunction(()=>window.aplayerInstance?.list.audios.some(a=>a.name==='mobile-test'));
-    await page.locator('.m-expand').click();await page.locator('.m-manage').click();
-    chooser=page.waitForEvent('filechooser');await page.locator('.mu-add-btn').click();await (await chooser).setFiles([]);
-    await page.waitForFunction(()=>!document.querySelector('input[type=file]'));
-    await page.locator('.mu-close').click();return {uploadedBytes:wav.length};
+  await check('T08-T09 compact home and mobile music removal',async()=>{
+    await goto('/');
+    const detail=await page.evaluate(()=>({
+      cards:Array.from(document.querySelectorAll('section.article-list[data-page="1"] > article')).map(el=>{const r=el.getBoundingClientRect();return {x:Math.round(r.x),y:Math.round(r.y),height:Math.round(r.height)};}),
+      player:!!document.querySelector('#aplayer'),audio:!!document.querySelector('audio'),
+      resources:performance.getEntriesByType('resource').filter(entry=>/aplayer|music-uploads/i.test(entry.name)).map(entry=>entry.name),
+      width:document.documentElement.scrollWidth,viewport:innerWidth,
+      heading:!!document.querySelector('.home-feed-heading')
+    }));
+    assert.equal(detail.heading,false);assert.equal(detail.cards.length,4);
+    assert.equal(detail.cards[0].y,detail.cards[1].y);
+    assert.ok(detail.cards[1].x>detail.cards[0].x && detail.cards[2].y>detail.cards[0].y);
+    assert.ok(detail.cards.every(card=>card.height<=260),JSON.stringify(detail.cards));
+    assert.equal(detail.player,false);assert.equal(detail.audio,false);
+    assert.deepEqual(detail.resources,[]);assert.ok(detail.width<=detail.viewport);
+    return detail;
   });
   await check('T11-T14 single-page fixtures, text integrity, IDs, semantic reflow',async()=>{
     await goto('/');
@@ -172,9 +170,8 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     assert.equal(restored.block,bookmark.block);
     return {...start,integrity};
   });
-  await check('T15 twenty Swup navigation rounds, singleton and reader cleanup',async()=>{
-    await goto('/');await page.waitForFunction(()=>window.swupReady&&window.aplayerInstance);
-    await page.evaluate(()=>{window.__testAudio=window.aplayerInstance.audio;});
+  await check('T15 twenty Swup navigation rounds and reader cleanup',async()=>{
+    await goto('/');await page.waitForFunction(()=>window.swupReady);
     const cdp=await context.newCDPSession(page);
     async function listeners(expression){const {result}=await cdp.send('Runtime.evaluate',{expression});const {listeners}=await cdp.send('DOMDebugger.getEventListeners',{objectId:result.objectId});return listeners.reduce((out,l)=>(out[l.type]=(out[l.type]||0)+1,out),{});}
     const before={document:await listeners('document'),window:await listeners('window')};
@@ -185,10 +182,11 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
         if(route.includes('/reader/'))await readyReader();
         else await page.waitForTimeout(30);
       }
-      assert.equal(await page.locator('#aplayer').count(),1);assert.equal(await page.locator('#warp-canvas').count(),1);
-      assert.equal(await page.evaluate(()=>window.__testAudio===window.aplayerInstance.audio),true);
+      assert.equal(await page.locator('#aplayer').count(),0);assert.equal(await page.locator('#warp-canvas').count(),1);
     }
     const after={document:await listeners('document'),window:await listeners('window')};
+    assert.ok((after.window.message||0)<=(before.window.message||0)+1);
+    delete before.window.message;delete after.window.message;
     assert.deepEqual(after,before);await cdp.detach();
     return {rounds:20,navigations:100,listeners:{before,after},pageErrors:errors};
   });

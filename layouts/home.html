@@ -3,6 +3,8 @@
     {{- $pageSize := .Site.Params.pagination.pagerSize | default 4 -}}
     {{- $totalPages := math.Ceil (div (len $pages) (float $pageSize)) -}}
 
+    <div class="home-feed">
+
     {{- range $pageNum := seq (int $totalPages) }}
         {{- $start := mul (sub $pageNum 1) $pageSize -}}
         {{- $end := mul $pageNum $pageSize -}}
@@ -30,6 +32,7 @@
         </a>
     </nav>
     {{- end -}}
+    </div>
 
     {{- partial "footer/footer" . -}}
 {{ end }}

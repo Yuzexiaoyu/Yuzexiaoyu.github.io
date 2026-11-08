@@ -37,9 +37,17 @@
 <link rel="preload" as="script" href="/lib/Swup.umd.js" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/index.umd.js" fetchpriority="high">
 
-{{/* APlayer CSS 异步加载，避免阻塞首次渲染 */}}
-<link rel="preload" href="/lib/aplayer/APlayer.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="/lib/aplayer/APlayer.min.css"></noscript>
+{{/* 桌面端按需加载播放器样式；移动端不加载音乐资源 */}}
+<script>
+if (!(window.__isMobileUI && window.__isMobileUI())) {
+  var playerStyle = document.createElement('link');
+  playerStyle.rel = 'preload';
+  playerStyle.as = 'style';
+  playerStyle.href = '/lib/aplayer/APlayer.min.css';
+  playerStyle.onload = function () { this.onload = null; this.rel = 'stylesheet'; };
+  document.head.appendChild(playerStyle);
+}
+</script>
 
 {{/* 小说阅读器用 JSZip 解压 EPUB（自写 reader 不依赖 epub.js）
      本地加载，按需注入（仅 reader 触发），其余页面不拉 97KB */}}
@@ -71,7 +79,13 @@ window.__loadJsZip = function() {
      模块自启动等待 window.aplayerInstance 后恢复/注入入口 */}}
 {{- $musicOpts := dict "minify" hugo.IsProduction -}}
 {{- $musicScript := resources.Get "ts/music-uploads.ts" | js.Build $musicOpts -}}
-<script src="{{ $musicScript.RelPermalink }}" defer></script>
+<script>
+if (!(window.__isMobileUI && window.__isMobileUI())) {
+  var musicScript = document.createElement('script');
+  musicScript.src = '{{ $musicScript.RelPermalink }}';
+  document.head.appendChild(musicScript);
+}
+</script>
 
 {{/* ──── Mermaid 图表支持（按需加载，不被 Swup body swap 影响）────
        不再每页全局拉 CDN 脚本（全站仅个别文章用到图表，省掉加载动画期间的 jsdelivr 连接）。

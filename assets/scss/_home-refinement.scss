@@ -1,0 +1,110 @@
+.home-feed {
+  width: 100%;
+  min-width: 0;
+}
+
+.home-feed section.article-list {
+  gap: 14px;
+  padding: 18px 0 10px;
+}
+
+.home-feed section.article-list > article {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(172, 190, 211, .22);
+  border-radius: 12px;
+  background: rgba(18, 24, 33, .92);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+  opacity: 1;
+  transform: none;
+  animation: none;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  will-change: auto;
+}
+
+.home-feed section.article-list > article::before,
+.home-feed section.article-list > article::after {
+  display: none;
+}
+
+.home-feed section.article-list > article:hover {
+  transform: translateY(-2px);
+  border-color: rgba(172, 190, 211, .44);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .24);
+}
+
+.home-feed section.article-list > article .article-image {
+  height: 152px;
+}
+
+.home-feed section.article-list > article .article-image::after {
+  display: none;
+}
+
+.home-feed section.article-list > article .article-image img {
+  transition: transform .3s ease;
+}
+
+.home-feed section.article-list > article:hover .article-image img {
+  transform: scale(1.035);
+}
+
+.home-feed section.article-list > article .article-details {
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 122px;
+  padding: 16px 18px 18px;
+  text-align: left;
+}
+
+.home-feed section.article-list > article .article-category {
+  margin-bottom: 0;
+}
+
+.home-feed section.article-list > article .article-category a {
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.home-feed section.article-list > article .article-title-wrapper {
+  gap: 5px;
+  width: 100%;
+}
+
+.home-feed section.article-list > article .article-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -.015em;
+}
+
+.home-feed section.article-list > article .article-title a {
+  color: #f2f5f9;
+}
+
+.home-feed section.article-list > article .article-subtitle {
+  color: #a4afbc;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+}
+
+.home-feed section.article-list > article .article-time {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(172, 190, 211, .14);
+  color: #91a0b2;
+  font-size: 12px;
+}
+
+.home-feed section.article-list > article .article-time svg {
+  width: 14px;
+  height: 14px;
+}
+
+.home-feed .pagination {
+  margin-top: 12px;
+}

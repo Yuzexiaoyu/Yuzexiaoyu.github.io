@@ -22,7 +22,7 @@ fs.mkdirSync(out, { recursive: true });
     fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ browser: browser.version(), results }, null, 2));
   }
   await page.goto(base + '/', { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__createMobilePagination && window.aplayerInstance);
+  await page.waitForFunction(() => window.__createMobilePagination);
   await check('EPUB IDs remain local to each chapter, including empty end anchors', async () => {
     const detail = await page.evaluate(async () => {
       const viewport = document.createElement('div');
@@ -78,35 +78,18 @@ fs.mkdirSync(out, { recursive: true });
     assert.equal(detail.text, '新卷内容'); assert.equal(detail.pages, 1); assert.equal(detail.target, 0);
     return detail;
   });
-  await check('expanded player stays scrollable and its last track is reachable in short landscape', async () => {
-    await page.setViewportSize({ width: 667, height: 320 });
-    await page.locator('.m-expand').click();
-    const detail = await page.evaluate(() => {
-      const player = document.querySelector('#aplayer'), rect = player.getBoundingClientRect();
-      const overflow = getComputedStyle(player).overflowY;
-      return { top: rect.top, bottom: rect.bottom, viewport: innerHeight, height: rect.height, scrollHeight: player.scrollHeight, overflow };
-    });
-    await page.screenshot({ path: path.join(out, 'player-landscape.png') });
-    assert.ok(detail.top >= 0 && detail.bottom <= detail.viewport);
-    assert.ok(detail.scrollHeight <= detail.height + 1 || ['auto', 'scroll'].includes(detail.overflow), JSON.stringify(detail));
-    const last = page.locator('#aplayer .aplayer-list li').last();
-    await last.scrollIntoViewIfNeeded();
-    const visible = await last.evaluate(el => {
-      const rect = el.getBoundingClientRect();
-      return rect.top >= 0 && rect.bottom <= innerHeight && !!document.elementFromPoint(rect.left + 20, rect.top + rect.height / 2)?.closest('li');
-    });
-    assert.equal(visible, true);
-    await page.locator('.m-expand').click();
-    return detail;
-  });
-  await check('bottom clearance includes the real fixed-player inset', async () => {
+  await check('no fixed music UI or audio resource on mobile', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    if (await page.locator('#aplayer').evaluate(el => el.classList.contains('m-expanded'))) await page.locator('.m-expand').click();
-    // A controlled inset fixture exercises the same geometry used for a device safe area.
-    await page.addStyleTag({ content: 'html[data-ui="mobile"] #aplayer { bottom: 34px !important; }' });
-    await page.locator('.m-expand').click(); await page.locator('.m-expand').click();
-    const detail = await page.evaluate(() => ({ clearance: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--m-bottom-obstruction')), occupied: innerHeight - document.querySelector('#aplayer').getBoundingClientRect().top }));
-    assert.ok(detail.clearance >= detail.occupied, JSON.stringify(detail));
+    const detail = await page.evaluate(() => ({
+      player: !!document.querySelector('#aplayer'),
+      audio: !!document.querySelector('audio'),
+      musicResources: performance.getEntriesByType('resource').filter(entry => /aplayer|music-uploads/i.test(entry.name)).map(entry => entry.name),
+      clearance: getComputedStyle(document.documentElement).getPropertyValue('--m-bottom-obstruction').trim()
+    }));
+    assert.equal(detail.player, false);
+    assert.equal(detail.audio, false);
+    assert.deepEqual(detail.musicResources, []);
+    assert.equal(detail.clearance, '0px');
     return detail;
   });
   await check('no uncaught browser errors', async () => { assert.deepEqual(errors, []); return errors; });

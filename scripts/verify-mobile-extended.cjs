@@ -41,24 +41,15 @@ fs.mkdirSync(out,{recursive:true});
   await q.goto(base+'/novel/reader/#vol=01');await q.waitForFunction(()=>document.querySelector('#reader-loading')?.style.display==='none');
   const state=await q.evaluate(()=>JSON.parse(localStorage.getItem('novel-reader-state')));assert.equal(state.theme,'sepia');assert.equal(state.fontSizeIndex,0);assert.equal(state.lineHeightIndex,2);assert.ok(state.progress['01'].mobileAnchor);assert.ok(Math.abs(state.progress['01'].p/(state.progress['01'].t-1)-.5)<.01);await x.close();return {legacyFieldsPreserved:true,semanticAnchorAdded:true};
  });
- await run('cover upload, quota error preserves data, invalid files, deletion',async()=>{
-  await p.goto(base+'/');await p.waitForFunction(()=>window.__musicUploads&&window.aplayerInstance);await p.locator('.m-expand').click();await p.locator('.m-manage').click();
-  const wav=Buffer.alloc(44+16000);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(16000,40);
-  async function pick(file){const chooser=p.waitForEvent('filechooser');await p.locator('.mu-add-btn').click();await(await chooser).setFiles(file);}
-  await pick({name:'preserve.wav',mimeType:'audio/wav',buffer:wav});await p.waitForFunction(()=>window.aplayerInstance.list.audios.some(a=>a.name==='preserve'));
-  const row=p.locator('.mu-item').filter({hasText:'preserve'});const chooser=p.waitForEvent('filechooser');await row.locator('.mu-cover-change').click();await(await chooser).setFiles({name:'cover.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6U8AAAAASUVORK5CYII=','base64')});await p.waitForFunction(()=>document.querySelector('.mu-toast')?.textContent==='封面已更新');
-  await p.reload();await p.waitForFunction(()=>window.aplayerInstance?.list.audios.some(a=>a.name==='preserve'&&a.cover.startsWith('blob:')));
-  assert.equal(await p.evaluate(async()=>{const track=window.aplayerInstance.list.audios.find(a=>a.name==='preserve');window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));return (await fetch(track.url)).ok;}),true);
-  await p.locator('.m-expand').click();await p.locator('.m-manage').click();
-  await p.evaluate(()=>{window.__originalPut=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(){throw new DOMException('quota fixture','QuotaExceededError');};});
-  await pick({name:'quota.wav',mimeType:'audio/wav',buffer:wav});await p.waitForFunction(()=>document.querySelector('.mu-toast')?.textContent.includes('保存失败'));
-  assert.equal(await p.evaluate(()=>window.aplayerInstance.list.audios.some(a=>a.name==='quota')),false);assert.equal(await p.evaluate(()=>window.aplayerInstance.list.audios.some(a=>a.name==='preserve')),true);await p.evaluate(()=>{IDBObjectStore.prototype.put=window.__originalPut;});
-  await pick({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('fixture')});await p.waitForFunction(()=>document.querySelector('.mu-toast')?.textContent.includes('跳过非音频文件'));
-  p.once('dialog',dialog=>dialog.accept());await p.locator('.mu-item').filter({hasText:'preserve'}).locator('.mu-item-del').click();await p.waitForFunction(()=>!window.aplayerInstance.list.audios.some(a=>a.name==='preserve'));return {coverPersisted:true,quotaPreservedExistingData:true,invalidSkipped:true,fixtureDeleted:true};
- });
- await run('unavailable IndexedDB keeps builtin playlist and recoverable controls',async()=>{
-  const x=await b.newContext({...devices['iPhone 13'],viewport:{width:390,height:844}});const q=await x.newPage();const errors=[];q.on('pageerror',e=>errors.push(e.message));await q.route('https://**',r=>r.abort());
-  await q.addInitScript(()=>{indexedDB.open=()=>{throw new DOMException('storage fixture','SecurityError');};});await q.goto(base+'/');await q.locator('.m-expand').click();await q.locator('.m-manage').click();await q.waitForFunction(()=>document.querySelector('.mu-usage-text')?.textContent.includes('本地存储不可用'));assert.ok(await q.locator('.mu-item').count());await q.keyboard.press('Escape');assert.equal(await q.locator('.mu-overlay').isVisible(),false);assert.deepEqual(errors,[]);await x.close();return {uncaughtErrors:errors};
+ await run('mobile music resources stay absent across routes',async()=>{
+  const states=[];
+  for(const route of ['/','/p/markdown基本语法/','/novel/reader/#vol=01']){
+   await p.goto(base+route,{waitUntil:'load'});
+   const state=await p.evaluate(()=>({player:!!document.querySelector('#aplayer'),audio:!!document.querySelector('audio'),instance:!!window.aplayerInstance,resources:performance.getEntriesByType('resource').filter(e=>/aplayer|music-uploads/i.test(e.name)).map(e=>e.name)}));
+   assert.equal(state.player,false);assert.equal(state.audio,false);assert.equal(state.instance,false);assert.deepEqual(state.resources,[]);
+   states.push({route,...state});
+  }
+  return states;
  });
  await run('mobile module and ZIP script failures remain recoverable',async()=>{
   const x=await b.newContext({...devices['iPhone 13'],viewport:{width:390,height:844}});const q=await x.newPage();await q.route('https://**',r=>r.abort());await q.route('**/ts/mobile.*.js',r=>r.abort());

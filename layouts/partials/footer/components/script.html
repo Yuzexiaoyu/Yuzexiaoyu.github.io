@@ -809,6 +809,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   swup.hooks.on('visit:end', function() {
     if (window.initMobilePage) window.initMobilePage();
+    var activePlayer = window.aplayerInstance && window.aplayerInstance.container;
+    if (activePlayer) {
+      document.querySelectorAll('#aplayer').forEach(function(el) {
+        if (el !== activePlayer) el.remove();
+      });
+    }
     document.body.classList.add('loaded');
 
     if (typeof window.setupArticleStagger === 'function') {
