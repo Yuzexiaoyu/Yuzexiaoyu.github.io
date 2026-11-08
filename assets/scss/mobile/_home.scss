@@ -213,7 +213,7 @@ body.home-page main.main {
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   gap: 0;
   touch-action: pan-y;
 }
@@ -225,6 +225,31 @@ body.home-page section.home-article-list {
   grid-template-rows: none;
   margin-inline: auto;
   padding: 0;
+}
+
+// Keep the resting card gutters while clipping moving pages at the screen edges.
+body.home-page .m-home-viewport {
+  flex: 0 0 auto;
+  width: 100vw;
+  margin-inline: calc((100% - 100vw) / 2);
+  overflow: hidden;
+}
+
+body.home-page .m-home-track {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  will-change: transform;
+}
+
+body.home-page .m-home-track > section.home-article-list {
+  display: grid !important;
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-inline: Max(var(--m-page-gutter), calc((100vw - (100dvh - var(--m-header-height) - 110px)) / 2));
+  box-sizing: border-box;
 }
 
 body.home-page section.home-article-list > article {

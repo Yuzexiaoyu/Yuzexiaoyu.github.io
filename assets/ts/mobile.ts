@@ -13,101 +13,131 @@ function initHomeSwipe(signal: AbortSignal): void {
   const pagination = document.querySelector<HTMLElement>('#local-pagination');
   if (!main || !pagination || document.querySelectorAll('.home-article-list').length < 2) return;
 
-  type Gesture = { section: HTMLElement; x: number; y: number; started: number; locked: boolean };
+  const sections = Array.from(main.querySelectorAll<HTMLElement>('.home-article-list'));
+  const viewport = document.createElement('div');
+  const track = document.createElement('div');
+  viewport.className = 'm-home-viewport';
+  track.className = 'm-home-track';
+  sections[0].before(viewport);
+  viewport.append(track);
+  track.append(...sections);
+
+  type Sample = { x: number; time: number };
+  type Gesture = { x: number; y: number; offset: number; locked: boolean; samples: Sample[] };
   let gesture: Gesture | null = null;
-  let outgoingSection: HTMLElement | null = null;
-  let settling = false;
-  let swapTimer = 0;
-  let unlockTimer = 0;
+  let frame = 0;
+  let offset = 0;
+  let width = viewport.getBoundingClientRect().width;
+  let currentIndex = 0;
   let suppressClickUntil = 0;
-  const visibleSection = () => Array.from(document.querySelectorAll<HTMLElement>('.home-article-list'))
-    .find(section => getComputedStyle(section).display !== 'none');
-  const reset = (section: HTMLElement, spring: boolean) => {
-    section.style.transition = spring ? 'transform 220ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease-out' : '';
-    section.style.transform = '';
-    section.style.opacity = '';
-    section.style.willChange = '';
+  const pageIndex = () => Math.max(0, sections.findIndex(section =>
+    section.dataset.page === pagination.querySelector<HTMLElement>('[aria-current="page"]')?.dataset.goto
+  ));
+  const render = (position: number) => {
+    offset = position;
+    track.style.transform = `translate3d(${position}px, 0, 0)`;
   };
-  const adjacentButton = (dx: number) => pagination.querySelector<HTMLElement>(
-    dx < 0 ? '[data-dir="next"]' : '[data-dir="prev"]'
-  );
+  const markCurrent = () => {
+    sections.forEach((section, index) => {
+      section.inert = index !== currentIndex;
+      section.setAttribute('aria-hidden', String(index !== currentIndex));
+    });
+  };
+  const settle = (index: number, animate = true) => {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    const target = -index * width;
+    const duration = Math.min(320, Math.max(180, 120 + Math.abs(target - offset) / width * 220));
+    track.style.transition = animate ? `transform ${duration}ms cubic-bezier(.22,.8,.24,1)` : 'none';
+    currentIndex = index;
+    markCurrent();
+    render(target);
+  };
+  const syncPage = () => {
+    const index = pageIndex();
+    if (index !== currentIndex) settle(index);
+  };
+  const dragOffset = (position: number) => {
+    const min = -(sections.length - 1) * width;
+    if (position > 0) return position * .24 / (1 + position / width);
+    if (position < min) return min + (position - min) * .24 / (1 + (min - position) / width);
+    return position;
+  };
+
+  settle(pageIndex(), false);
+  const navObserver = new MutationObserver(syncPage);
+  navObserver.observe(pagination, { subtree: true, attributes: true, attributeFilter: ['aria-current'] });
+  const sizeObserver = new ResizeObserver(() => {
+    const nextWidth = viewport.getBoundingClientRect().width;
+    if (nextWidth === width) return;
+    width = nextWidth;
+    gesture = null;
+    settle(currentIndex, false);
+  });
+  sizeObserver.observe(viewport);
 
   main.addEventListener('touchstart', event => {
-    if (settling || event.touches.length !== 1) return;
+    if (event.touches.length !== 1) return;
     if (document.querySelector<HTMLDetailsElement>('.m-navigation')?.open || window.getSelection()?.toString()) return;
     const touch = event.touches[0];
     if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
-    const section = visibleSection();
-    if (!section) return;
-    gesture = { section, x: touch.clientX, y: touch.clientY, started: performance.now(), locked: false };
+    // Freeze an unfinished snap at its painted position so a new drag never jumps.
+    cancelAnimationFrame(frame);
+    frame = 0;
+    const paintedOffset = track.getBoundingClientRect().left - viewport.getBoundingClientRect().left;
+    track.style.transition = 'none';
+    render(paintedOffset);
+    gesture = {
+      x: touch.clientX, y: touch.clientY, offset: paintedOffset, locked: false,
+      samples: [{ x: touch.clientX, time: performance.now() }]
+    };
   }, { signal, passive: true });
 
   main.addEventListener('touchmove', event => {
     if (!gesture) return;
-    if (event.touches.length !== 1) { reset(gesture.section, true); gesture = null; return; }
+    if (event.touches.length !== 1) { gesture = null; settle(currentIndex); return; }
     const touch = event.touches[0];
     const dx = touch.clientX - gesture.x;
     const dy = touch.clientY - gesture.y;
     if (!gesture.locked) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.15) { gesture = null; return; }
-      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.15) {
+        gesture = null; settle(currentIndex); return;
+      }
+      if (Math.abs(dx) < 7 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
       gesture.locked = true;
-      gesture.section.style.transition = 'none';
-      gesture.section.style.willChange = 'transform, opacity';
     }
     if (event.cancelable) event.preventDefault();
     suppressClickUntil = performance.now() + 300;
-    const button = adjacentButton(dx);
-    const available = !!button && !button.classList.contains('disabled');
-    const offset = Math.sign(dx) * Math.min(Math.abs(dx) * (available ? .42 : .13), available ? 72 : 16);
-    gesture.section.style.transform = `translate3d(${offset}px, 0, 0)`;
-    gesture.section.style.opacity = String(1 - Math.min(Math.abs(offset) / 400, .18));
+    const now = performance.now();
+    gesture.samples.push({ x: touch.clientX, time: now });
+    gesture.samples = gesture.samples.filter(sample => now - sample.time <= 100);
+    offset = dragOffset(gesture.offset + dx);
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; render(offset); });
   }, { signal, passive: false });
 
   main.addEventListener('touchend', event => {
     if (!gesture) return;
     const completed = gesture;
     gesture = null;
-    if (!completed.locked || !event.changedTouches.length) return;
+    if (!completed.locked || !event.changedTouches.length) { settle(currentIndex); return; }
+    // Cancel the touch-generated click before document-level pagination listeners run.
+    if (event.cancelable) event.preventDefault();
     suppressClickUntil = performance.now() + 380;
     const dx = event.changedTouches[0].clientX - completed.x;
-    const distance = Math.abs(dx);
-    const elapsed = Math.max(1, performance.now() - completed.started);
-    const button = adjacentButton(dx);
-    const shouldTurn = distance >= Math.min(74, window.innerWidth * .19) ||
-      (distance >= 36 && elapsed <= 240);
-    if (!button || button.classList.contains('disabled') || !shouldTurn) {
-      reset(completed.section, true);
-      return;
+    const sample = completed.samples[0];
+    const velocity = (event.changedTouches[0].clientX - sample.x) / Math.max(1, performance.now() - sample.time);
+    const shouldTurn = Math.abs(dx) >= Math.min(88, width * .2) || (Math.abs(dx) >= 28 && Math.abs(velocity) >= .45);
+    const direction = Math.abs(velocity) >= .45 ? Math.sign(velocity) : Math.sign(dx);
+    const target = Math.max(0, Math.min(sections.length - 1, currentIndex - (shouldTurn ? direction : 0)));
+    if (target !== currentIndex) {
+      pagination.querySelector<HTMLElement>(`[data-goto="${sections[target].dataset.page}"]`)?.click();
     }
-
-    settling = true;
-    outgoingSection = completed.section;
-    completed.section.style.transition = 'transform 130ms ease-out, opacity 130ms ease-out';
-    completed.section.style.transform = `translate3d(${Math.sign(dx) * 90}px, 0, 0)`;
-    completed.section.style.opacity = '0';
-    swapTimer = window.setTimeout(() => {
-      reset(completed.section, false);
-      outgoingSection = null;
-      const oldNavTop = pagination.getBoundingClientRect().top;
-      button.click();
-      const navShift = oldNavTop - pagination.getBoundingClientRect().top;
-      if (navShift) pagination.animate([
-        { transform: `translate3d(0, ${navShift}px, 0)` },
-        { transform: 'translate3d(0, 0, 0)' }
-      ], { duration: 250, easing: 'cubic-bezier(.22,1,.36,1)' });
-      const incoming = visibleSection();
-      incoming?.animate([
-        { transform: `translate3d(${-Math.sign(dx) * 44}px, 0, 0)`, opacity: .72 },
-        { transform: 'translate3d(0, 0, 0)', opacity: 1 }
-      ], { duration: 250, easing: 'cubic-bezier(.22,1,.36,1)' });
-      unlockTimer = window.setTimeout(() => { settling = false; }, 250);
-    }, 115);
-  }, { signal, passive: true });
+    settle(target);
+  }, { signal, passive: false });
 
   main.addEventListener('touchcancel', () => {
-    if (gesture) reset(gesture.section, true);
     gesture = null;
+    settle(currentIndex);
   }, { signal, passive: true });
   main.addEventListener('click', event => {
     if (performance.now() >= suppressClickUntil || !event.isTrusted || !(event.target instanceof Element) ||
@@ -116,12 +146,13 @@ function initHomeSwipe(signal: AbortSignal): void {
     event.stopImmediatePropagation();
   }, { signal, capture: true });
   signal.addEventListener('abort', () => {
-    window.clearTimeout(swapTimer);
-    window.clearTimeout(unlockTimer);
-    if (gesture) reset(gesture.section, false);
-    if (outgoingSection) reset(outgoingSection, false);
+    cancelAnimationFrame(frame);
+    navObserver.disconnect();
+    sizeObserver.disconnect();
+    sections.forEach(section => { section.inert = false; section.removeAttribute('aria-hidden'); });
+    viewport.before(...sections);
+    viewport.remove();
     gesture = null;
-    outgoingSection = null;
   }, { once: true });
 }
 
