@@ -203,9 +203,15 @@ window.__preloadData = {{ $preloadData | jsonify | safeJS }};
 </script>
 
 <!-- 🔥 页面加载动画（故障风格，必须播放完一次） -->
-<div id="page-loader" class="loading">
+<div id="page-loader" class="loading{{ if .IsHome }} m-intro-home{{ end }}">
   <div class="loader">
     <div data-glitch="Yuzexiaoyu.space" class="glitch">Yuzexiaoyu.space</div>
+    {{ if .IsHome }}
+    <div class="m-intro-wordmark" aria-hidden="true" hidden>
+      <span class="glitch m-intro-name" data-glitch="Yuzexiaoyu">Yuzexiaoyu</span>
+      <span class="glitch m-intro-domain" data-glitch=".space">.space</span>
+    </div>
+    {{ end }}
   </div>
 </div>
 
@@ -402,7 +408,9 @@ article.main-article.has-image .article-time svg {
   // the real body tag is parsed: that would discard the reader/search page class on reload.
   if (window.__isMobileUI && window.__isMobileUI()) {
     window.setupArticleStagger = function() {};
+    {{ if not .IsHome }}
     return;
+    {{ end }}
   }
   var displayTime = 1500;
 
@@ -425,7 +433,7 @@ article.main-article.has-image .article-time svg {
         setupArticleStagger();
         setTimeout(function() {
           pageLoader.style.display = 'none';
-          document.body.classList.add('loaded');
+          if (!(window.__isMobileUI && window.__isMobileUI())) document.body.classList.add('loaded');
         }, 300);
       }
     };
@@ -436,7 +444,7 @@ article.main-article.has-image .article-time svg {
       pageLoader.style.display = 'none';
       pageLoader.classList.add('hidden');
     }
-    document.body.classList.add('loaded');
+    if (!(window.__isMobileUI && window.__isMobileUI())) document.body.classList.add('loaded');
   }
 
   window.setupArticleStagger = function() {

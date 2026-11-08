@@ -1,0 +1,35 @@
+// The homepage uses the desktop glitch keyframes with a portrait wordmark.
+#page-loader.m-intro-home {
+  overflow: hidden;
+}
+
+#page-loader.m-intro-home .loader {
+  position: absolute;
+  top: 42%;
+  inset-inline: 24px;
+  transform: translateY(-50%);
+}
+
+#page-loader .loader > .glitch { display: none; }
+
+#page-loader .m-intro-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+#page-loader .m-intro-name {
+  font-size: clamp(40px, 13vw, 56px);
+  line-height: 1.05;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
+
+#page-loader .m-intro-domain {
+  font-size: clamp(26px, 8vw, 32px);
+  line-height: 1.1;
+  letter-spacing: .16em;
+  white-space: nowrap;
+}
