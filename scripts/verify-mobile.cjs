@@ -25,7 +25,7 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
       const viewport={content:''};const context={navigator:{userAgent:ua,maxTouchPoints:touch},document:{documentElement:html,querySelector:()=>viewport},window:{__mobileEnabled:enabled}};
       vm.runInNewContext(code,context);
       assert.equal(html.dataset.ui==='mobile',mobile&&enabled);
-      assert.equal(classes.has('is-mobile-blocked'),mobile&&!enabled);
+      assert.equal(classes.has('is-mobile-blocked'),false);
     }
     return {cases:samples.length*2};
   });

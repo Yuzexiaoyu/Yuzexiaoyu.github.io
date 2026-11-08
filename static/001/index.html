@@ -7,8 +7,6 @@
 <script src="/mobile-config.js"></script>
 <script src="/js/mobile-mode.js"></script>
 <style>
-html.is-mobile-blocked body > * { display:none!important; }
-html.is-mobile-blocked body::before { content:'禁止移动端访问'; display:grid; place-items:center; min-height:100vh; color:white; background:black; font-size:24px; }
 html[data-ui="mobile"] body { overflow-x:visible; }
 html[data-ui="mobile"] header { padding:calc(24px + env(safe-area-inset-top,0px)) 16px 16px; }
 html[data-ui="mobile"] .gallery-wrapper { padding:12px 12px max(20px,env(safe-area-inset-bottom,0px)); }

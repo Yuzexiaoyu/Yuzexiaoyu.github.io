@@ -1,8 +1,8 @@
 {{/* ════════════════════════════════════════════════════════════════
-     设备模式（同步执行；生产开关关闭时保留原拦截）
+     设备模式（同步执行）
      - 纯 User-Agent 判断：桌面拉窄窗口不会被误伤
-     - 含 iPadOS 13+ 伪装桌面 Safari 的补判，平板一并拦截
-     - 开关开启：html[data-ui="mobile"]；关闭：is-mobile-blocked
+     - 含 iPadOS 13+ 伪装桌面 Safari 的补判
+     - 开关开启时设置 html[data-ui="mobile"]
      ════════════════════════════════════════════════════════════════ */}}
 {{- $mobileEnabled := .Site.Params.mobile.enabled | default false -}}
 {{- $mobileConfig := resources.FromString "mobile-config.js" (printf "window.__mobileEnabled=%t;" $mobileEnabled) -}}
@@ -14,75 +14,6 @@
   {{- $mobileJS := resources.Get "ts/mobile.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
   <script src="{{ $mobileJS.RelPermalink }}" defer></script>
 {{- end -}}
-<style>
-html.is-mobile-blocked,
-html.is-mobile-blocked body {
-  overflow: hidden !important;
-  height: 100% !important;
-  touch-action: none !important;
-}
-/* 拦截前先隐藏一切，避免正文/加载动画透出 */
-html.is-mobile-blocked body > *:not(#mobile-block) {
-  display: none !important;
-}
-#mobile-block {
-  display: none;
-}
-html.is-mobile-blocked #mobile-block {
-  display: flex;
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;          /* 高于 page-loader 的 999999 */
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 2rem;
-  background-color: #000;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  -webkit-user-select: none;
-  user-select: none;
-}
-#mobile-block .mb-title {
-  font-size: clamp(2rem, 11vw, 4rem);
-  font-weight: 800;
-  letter-spacing: 3px;
-  line-height: 1.4;
-  margin-bottom: 1.1rem;
-}
-#mobile-block .mb-sub {
-  font-size: clamp(1rem, 4.5vw, 1.5rem);
-  line-height: 1.7;
-  opacity: 0.7;
-}
-/* Claude Max 风彩虹流光：多色渐变裁切到文字 + 横向流动 + 柔和辉光 */
-#mobile-block .mb-brand {
-  margin-top: 2.2rem;
-  font-size: clamp(0.85rem, 3.5vw, 1.1rem);
-  letter-spacing: 3px;
-  font-weight: 700;
-  background-image: linear-gradient(
-    90deg,
-    #ff5e62, #ff9966, #ffd166, #5cdb95, #4dabf7, #b197fc, #ff5e62
-  );
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  filter: drop-shadow(0 0 10px rgba(177, 151, 252, 0.45));
-  animation: mb-brand-rainbow 4.5s linear infinite;
-}
-@keyframes mb-brand-rainbow {
-  to { background-position: -200% center; }
-}
-</style>
-<div id="mobile-block">
-  <div class="mb-title">禁止移动端访问</div>
-  <div class="mb-brand">Yuzexiaoyu.space</div>
-</div>
-
 {{/* ════ 外部域名预连接（DNS + TCP + TLS 提前握手，省 100-300ms）════
      R2 CDN（所有媒体）、jsdelivr（Mermaid）、giscus（评论） */}}
 <link rel="preconnect" href="https://cdn.yuzexiaoyu.space" crossorigin>
