@@ -33,7 +33,7 @@ function initHomeSwipe(signal: AbortSignal): void {
   );
 
   main.addEventListener('touchstart', event => {
-    if (settling || event.touches.length !== 1 || event.target instanceof Element && event.target.closest('.home-pagination')) return;
+    if (settling || event.touches.length !== 1) return;
     if (document.querySelector<HTMLDetailsElement>('.m-navigation')?.open || window.getSelection()?.toString()) return;
     const touch = event.touches[0];
     if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
@@ -69,6 +69,7 @@ function initHomeSwipe(signal: AbortSignal): void {
     const completed = gesture;
     gesture = null;
     if (!completed.locked || !event.changedTouches.length) return;
+    suppressClickUntil = performance.now() + 380;
     const dx = event.changedTouches[0].clientX - completed.x;
     const distance = Math.abs(dx);
     const elapsed = Math.max(1, performance.now() - completed.started);
@@ -109,7 +110,8 @@ function initHomeSwipe(signal: AbortSignal): void {
     gesture = null;
   }, { signal, passive: true });
   main.addEventListener('click', event => {
-    if (performance.now() >= suppressClickUntil || !(event.target instanceof Element) || !event.target.closest('.home-article-list a')) return;
+    if (performance.now() >= suppressClickUntil || !event.isTrusted || !(event.target instanceof Element) ||
+      !event.target.closest('.home-article-list a, .home-pagination a')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, { signal, capture: true });

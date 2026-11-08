@@ -316,7 +316,23 @@ body.home-page .m-home-date-text {
 
 body.home-page nav.home-pagination {
   flex: 0 0 auto;
+  gap: 4px;
   margin-top: 8px;
+}
+
+body.home-page nav.home-pagination .page-link {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+body.home-page nav.home-pagination .page-link svg {
+  width: 14px;
+  height: 14px;
 }
 
 body.home-page .site-footer {
