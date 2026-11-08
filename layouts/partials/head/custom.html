@@ -450,13 +450,19 @@ article.main-article.has-image .article-time svg {
           var wordWidth = seedWord.offsetWidth;
           var wordHeight = seedWord.offsetHeight;
           // Keep the repeating wall compact without scaling or changing the inner glitch.
-          var rowPitch = Math.ceil(wordHeight * 2.5 + 8);
-          var wordPitch = wordWidth + Math.ceil(wordHeight * 1.1);
+          var rowPitch = Math.ceil(wordHeight * 1.65 + 6);
+          var wordPitch = wordWidth + Math.ceil(wordHeight * .45);
           var diagonalSpan = (window.innerWidth + window.innerHeight) / Math.SQRT2;
           var rowRadius = Math.ceil(diagonalSpan / (2 * rowPitch));
           var wordRadius = Math.ceil(diagonalSpan / (2 * wordPitch));
           var revealStep = Math.min(75, 600 / (rowRadius * 2));
           var travel = Math.ceil(diagonalSpan + wordPitch * (wordRadius * 2 + 1));
+          // Include every desktop glitch extreme and the 12px reveal movement.
+          var skewX = Math.tan(50 * Math.PI / 180);
+          var skewY = Math.tan(20 * Math.PI / 180);
+          var halfWordX = (wordWidth * (1 + skewX * skewY) + wordHeight * skewX) / 2 + 10;
+          var halfWordY = (wordHeight + wordWidth * skewY) / 2 + 22;
+          var wordStep = (parseFloat(getComputedStyle(seedWord).width) || wordWidth) + wordPitch - wordWidth;
           var rows = document.createDocumentFragment();
           wordmark.style.setProperty('--m-word-gap', (wordPitch - wordWidth) + 'px');
           for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
@@ -464,11 +470,28 @@ article.main-article.has-image .article-time svg {
             var line = row.querySelector('.m-intro-reveal');
             // Alternate above and below the initial, screen-centered row.
             var revealOrder = rowIndex === 0 ? 0 : Math.abs(rowIndex) * 2 - (rowIndex < 0 ? 1 : 0);
-            row.style.setProperty('--m-row-y', (rowIndex * rowPitch) + 'px');
+            // Distinct offsets break the columns while keeping the first row centered.
+            var rowPhase = rowIndex * .381966;
+            var rowOffset = Math.round((rowPhase - Math.round(rowPhase)) * wordPitch);
+            var rowY = rowIndex * rowPitch;
+            var minX = Math.max(rowY - halfWordY - window.innerWidth / Math.SQRT2, -rowY - halfWordY - window.innerHeight / Math.SQRT2);
+            var maxX = Math.min(rowY + halfWordY + window.innerWidth / Math.SQRT2, -rowY + halfWordY + window.innerHeight / Math.SQRT2);
+            var direction = rowIndex % 2 === 0 ? -1 : 1;
+            var firstWord = -wordRadius;
+            var lastWord = wordRadius;
+            // Trim only the departing side. Copies that enter during the exit stay intact.
+            if (direction < 0) firstWord = Math.max(firstWord, Math.ceil((minX - halfWordX - rowOffset) / wordStep));
+            else lastWord = Math.min(lastWord, Math.floor((maxX + halfWordX - rowOffset) / wordStep));
+            if (minX > maxX || firstWord > lastWord) continue;
+            row.style.setProperty('--m-row-x', rowOffset + 'px');
+            // A narrower row must retain the surviving words' original coordinates.
+            row.style.setProperty('--m-row-center', ((firstWord + lastWord) * wordStep / 2) + 'px');
+            row.style.setProperty('--m-row-y', rowY + 'px');
             row.style.setProperty('--m-row-reveal', (revealOrder * revealStep) + 'ms');
             row.style.setProperty('--m-row-exit', (1550 + Math.abs(rowIndex) * 18) + 'ms');
-            row.style.setProperty('--m-row-travel', ((rowIndex % 2 === 0 ? -1 : 1) * travel) + 'px');
-            for (var wordIndex = 0; wordIndex < wordRadius * 2; wordIndex++) {
+            row.style.setProperty('--m-row-travel', (direction * travel) + 'px');
+            line.replaceChildren();
+            for (var wordIndex = firstWord; wordIndex <= lastWord; wordIndex++) {
               line.appendChild(seedWord.cloneNode(true));
             }
             rows.appendChild(row);

@@ -5,6 +5,8 @@ export function initMobileBackground(): void {
   document.documentElement.insertBefore(canvas, document.body);
   const ctx = canvas.getContext('2d',{alpha:false});
   if (!ctx) return;
+  const intro = document.querySelector<HTMLElement>('#page-loader.m-intro-home');
+  let introCovering = !!intro && !intro.classList.contains('hidden') && intro.style.display !== 'none';
   let width = 1, height = 1, fadeProgress = 0, last = 0, raf = 0;
   const count = 110;
   let particles: {x:number;y:number;z:number;pz:number}[] = [];
@@ -21,7 +23,7 @@ export function initMobileBackground(): void {
   }
   function draw(now:number) {
     raf=0;
-    if (document.hidden) { last=0; return; }
+    if (document.hidden || introCovering) { last=0; return; }
     const dt=last?Math.min((now-last)/(1000/60),3):2; last=now;
     // Clear bright trails faster on small screens while keeping short warp streaks.
     ctx!.fillStyle=`rgba(0,0,0,${1-Math.pow(.7,dt)})`;ctx!.fillRect(0,0,width,height);
@@ -35,8 +37,17 @@ export function initMobileBackground(): void {
     }
     raf=requestAnimationFrame(draw);
   }
-  function resume(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(!document.hidden)raf=requestAnimationFrame(draw);}
-  resize();resume();
+  function resume(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(!document.hidden&&!introCovering)raf=requestAnimationFrame(draw);}
+  resize();
+  // The opaque opening covers every background pixel; resume when its fade begins.
+  if (introCovering && intro) {
+    const introObserver = new MutationObserver(() => {
+      introCovering = intro.isConnected && !intro.classList.contains('hidden') && intro.style.display !== 'none';
+      if (!introCovering) { introObserver.disconnect(); resume(); }
+    });
+    introObserver.observe(intro,{attributes:true,attributeFilter:['class','style']});
+  }
+  resume();
   window.addEventListener('resize',resize);
   document.addEventListener('visibilitychange',resume);
   window.addEventListener('pagehide',()=>{cancelAnimationFrame(raf);raf=0;last=0;});
