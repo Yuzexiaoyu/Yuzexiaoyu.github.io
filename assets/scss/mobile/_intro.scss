@@ -64,11 +64,46 @@
   white-space: nowrap;
 }
 
+// The original 1s alternate glitch is motionless from 1600ms to 2400ms.
+// Finish the equivalent timeline at 1600ms instead of sampling 60+ identical
+// skew transforms throughout the slide. Long intros retain the original loop.
+#page-loader.m-intro-finite .m-intro-text {
+  animation: m-intro-shift 1600ms ease-in-out both;
+  // Keep the existing layer through the slide; do not demote every word at once.
+  will-change: transform;
+}
+
+@keyframes m-intro-shift {
+  0%, 25%, 27.5%, 36.25%, 38.125%, 40.625%, 43.125%, 45.625%,
+  62.5%, 79.375%, 81.875%, 84.375%, 86.875%, 88.75%, 97.5%, 100% { transform: skewX(0deg); }
+  25.625%, 99.375% { transform: skewX(10deg); }
+  26.25%, 98.75% { transform: skewX(-10deg); }
+  36.875%, 88.125% { transform: skewX(40deg) skewY(10deg); }
+  37.5%, 87.5% { transform: skewX(-40deg) skewY(-10deg); }
+  39.375%, 85.625% { transform: skewX(10deg) skewY(-5deg); }
+  43.75%, 81.25% { transform: skewX(-50deg) skewY(-20deg); }
+  44.375%, 80.625% { transform: skewX(10deg) skewY(-10deg); }
+}
+
 // These copies stay outside every glitch/reveal extreme until the row exits.
 // Skip three 400ms color cycles, retaining their exact phase when they enter.
 #page-loader .m-intro-offscreen::before,
 #page-loader .m-intro-offscreen::after {
   animation-delay: 1200ms;
+}
+
+// Keep each flex item's width, but release its three animated layers once every
+// possible glitch extreme has left the screen. The row's centering stays intact.
+#page-loader .m-intro-retired {
+  visibility: hidden;
+}
+
+#page-loader .m-intro-text.m-intro-retired,
+#page-loader .m-intro-text.m-intro-retired::before,
+#page-loader .m-intro-text.m-intro-retired::after {
+  animation: none;
+  transform: translate(0);
+  will-change: auto;
 }
 
 @keyframes m-intro-row-reveal {

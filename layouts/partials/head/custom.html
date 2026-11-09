@@ -434,6 +434,51 @@ article.main-article.has-image .article-time svg {
     sessionStorage.setItem(loaderKey, '1');
 
     var introMeasureUntil = 0;
+    var introRetireTimers = [];
+    // Invert the exit easing (.55, .05, .95, .45): distance -> elapsed time.
+    // All geometry is measured once; retirement never reads layout during motion.
+    function exitTimeAtDistance(distance) {
+      var low = 0, high = 1;
+      for (var step = 0; step < 24; step++) {
+        var t = (low + high) / 2;
+        var y = 3 * (1 - t) * (1 - t) * t * .05 + 3 * (1 - t) * t * t * .45 + t * t * t;
+        if (y < distance) low = t;
+        else high = t;
+      }
+      return 3 * (1 - high) * (1 - high) * high * .55 + 3 * (1 - high) * high * high * .95 + high * high * high;
+    }
+    function retireInvisibleWords(entries) {
+      if (!pageLoader.getAnimations) return;
+      var animations = pageLoader.getAnimations({ subtree: true });
+      entries = entries.filter(function(entry) {
+        entry.animation = animations.filter(function(anim) {
+          return anim.animationName === 'm-intro-row-exit' && anim.effect.target === entry.row;
+        })[0];
+        entry.words.sort(function(a, b) { return a.time - b.time; });
+        entry.next = 0;
+        return !!entry.animation;
+      });
+      function retire() {
+        if (pageLoader.classList.contains('hidden') || !pageLoader.isConnected) return;
+        // Use the CSS animation's clock, not wall time: a slow first paint or a
+        // backgrounded tab must never hide a word before it actually slides out.
+        // Read every clock before changing styles, then release layers in one
+        // batch. Independent per-row timers would fragment style recalculation.
+        var pending = [], nextDelay = Infinity;
+        entries.forEach(function(entry) {
+          var elapsed = entry.animation.currentTime;
+          while (elapsed !== null && entry.next < entry.words.length && elapsed >= entry.words[entry.next].time) {
+            pending.push(entry.words[entry.next++].element);
+          }
+          if (entry.next < entry.words.length) nextDelay = Math.min(nextDelay, entry.words[entry.next].time - (elapsed || 0));
+        });
+        pending.forEach(function(word) { word.classList.add('m-intro-retired'); });
+        if (nextDelay < Infinity) {
+          introRetireTimers.push(setTimeout(retire, Math.max(32, nextDelay)));
+        }
+      }
+      retire();
+    }
     var startIntro = function() {
       if (mobileIntro && pageLoader) {
         var wordmark = pageLoader.querySelector('.m-intro-wordmark');
@@ -454,6 +499,7 @@ article.main-article.has-image .article-time svg {
           var wordPitch = wordWidth + Math.ceil(wordHeight * .45);
           var diagonalSpan = (window.innerWidth + window.innerHeight) / Math.SQRT2;
           var rowRadius = Math.ceil(diagonalSpan / (2 * rowPitch));
+          var finiteShift = 1550 + rowRadius * 18 + 460 <= 2400;
           var wordRadius = Math.ceil(diagonalSpan / (2 * wordPitch));
           var revealStep = Math.min(75, 600 / (rowRadius * 2));
           var travel = Math.ceil(diagonalSpan + wordPitch * (wordRadius * 2 + 1));
@@ -464,6 +510,7 @@ article.main-article.has-image .article-time svg {
           var halfWordY = (wordHeight + wordWidth * skewY) / 2 + 22;
           var wordStep = (parseFloat(getComputedStyle(seedWord).width) || wordWidth) + wordPitch - wordWidth;
           var rows = document.createDocumentFragment();
+          var retirements = [];
           for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
             var row = seedRow.cloneNode(true);
             var line = row.querySelector('.m-intro-reveal');
@@ -475,6 +522,11 @@ article.main-article.has-image .article-time svg {
             var rowY = rowIndex * rowPitch;
             var minX = Math.max(rowY - halfWordY - window.innerWidth / Math.SQRT2, -rowY - halfWordY - window.innerHeight / Math.SQRT2);
             var maxX = Math.min(rowY + halfWordY + window.innerWidth / Math.SQRT2, -rowY + halfWordY + window.innerHeight / Math.SQRT2);
+            // After 1600ms the skew is zero; only the +/-3px color offsets remain.
+            var exitHalfX = finiteShift ? wordWidth / 2 + 5 : halfWordX;
+            var exitHalfY = finiteShift ? wordHeight / 2 + 5 : halfWordY;
+            var exitMinX = Math.max(rowY - exitHalfY - window.innerWidth / Math.SQRT2, -rowY - exitHalfY - window.innerHeight / Math.SQRT2);
+            var exitMaxX = Math.min(rowY + exitHalfY + window.innerWidth / Math.SQRT2, -rowY + exitHalfY + window.innerHeight / Math.SQRT2);
             var direction = rowIndex % 2 === 0 ? -1 : 1;
             var firstWord = -wordRadius;
             var lastWord = wordRadius;
@@ -492,6 +544,7 @@ article.main-article.has-image .article-time svg {
             row.style.animationDelay = (1550 + Math.abs(rowIndex) * 18) + 'ms';
             row.style.setProperty('--m-row-travel', (direction * travel) + 'px');
             line.replaceChildren();
+            var departingWords = [];
             for (var wordIndex = firstWord; wordIndex <= lastWord; wordIndex++) {
               var word = seedWord.cloneNode(true);
               var wordX = rowOffset + wordIndex * wordStep;
@@ -499,12 +552,19 @@ article.main-article.has-image .article-time svg {
                 word.classList.add('m-intro-offscreen');
               }
               line.appendChild(word);
+              // Once beyond this edge, a word can never re-enter during the exit.
+              var exitDistance = direction < 0 ? wordX + exitHalfX - exitMinX : exitMaxX - wordX + exitHalfX;
+              var exitProgress = Math.max(0, Math.min(1, exitDistance / travel));
+              departingWords.push({ element: word, time: Math.max(1600, 1550 + Math.abs(rowIndex) * 18 + 460 * exitTimeAtDistance(exitProgress)) + 17 });
             }
             rows.appendChild(row);
+            retirements.push({ row: row, words: departingWords });
           }
           wordmark.replaceChildren(rows);
-          pageLoader.classList.add('m-intro-ready');
           displayTime = 1550 + rowRadius * 18 + 460;
+          if (finiteShift) pageLoader.classList.add('m-intro-finite');
+          pageLoader.classList.add('m-intro-ready');
+          retireInvisibleWords(retirements);
         }
       }
 
@@ -516,6 +576,8 @@ article.main-article.has-image .article-time svg {
 
     window.hidePageLoader = function() {
       if (pageLoader) {
+        introRetireTimers.forEach(clearTimeout);
+        introRetireTimers.length = 0;
         pageLoader.classList.add('hidden');
         setupArticleStagger();
         setTimeout(function() {

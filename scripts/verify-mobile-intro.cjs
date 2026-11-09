@@ -61,6 +61,60 @@ fs.mkdirSync(out, { recursive: true });
         assert.equal(equal, true, `${width}x${height}: color phase at ${phase}ms`);
       }
 
+      // Compare the shortened skew timeline with the original loop, including
+      // interpolation between keyframes and the reverse half of the animation.
+      const skewMatches = await page.evaluate(async duration => {
+        const reference = document.createElement('span');
+        reference.className = 'glitch';
+        reference.textContent = 'reference';
+        reference.style.cssText = 'position:fixed;visibility:hidden';
+        document.body.appendChild(reference);
+        const original = reference.getAnimations().find(a => a.animationName === 'shift');
+        const word = document.querySelector('.m-intro-text');
+        const candidate = word.getAnimations().find(a => a.animationName === 'm-intro-shift');
+        if (!candidate) { reference.remove(); return false; }
+        original.pause();
+        await original.ready;
+        let equal = true;
+        for (let time = 0; time <= duration; time += 7) {
+          original.currentTime = candidate.currentTime = time;
+          const a = new DOMMatrix(getComputedStyle(reference).transform);
+          const b = new DOMMatrix(getComputedStyle(word).transform);
+          if (['a', 'b', 'c', 'd', 'e', 'f'].some(key => Math.abs(a[key] - b[key]) > .00001)) { equal = false; break; }
+        }
+        reference.remove();
+        return equal;
+      }, initial.duration);
+      assert.equal(skewMatches, true, `${width}x${height}: original skew timing`);
+
+      // Advance the real retirement timers while seeking CSS animations. Retired
+      // words must be wholly outside the screen and own no remaining animations.
+      const retirement = [];
+      let lastPhase = 0;
+      for (const phase of [1610, 1650, 1750, 1850, 1950, 2050]) {
+        await page.evaluate(time => window.__introTestAnimations.forEach(a => {
+          if (a.playState !== 'idle') a.currentTime = time;
+        }), phase);
+        await page.clock.runFor(phase - lastPhase);
+        lastPhase = phase;
+        const snapshot = await page.evaluate(() => {
+          const words = [...document.querySelectorAll('.m-intro-retired')];
+          return {
+            retired: words.length,
+            active: document.querySelector('#page-loader').getAnimations({ subtree: true }).filter(a => a.effect.getComputedTiming().progress !== null && a.currentTime < a.effect.getComputedTiming().endTime).length,
+            outside: words.every(word => {
+              const r = word.getBoundingClientRect();
+              return r.right < 0 || r.bottom < 0 || r.left > innerWidth || r.top > innerHeight;
+            }),
+            released: words.every(word => word.getAnimations({ subtree: true }).length === 0),
+          };
+        });
+        assert.equal(snapshot.outside, true, `${width}x${height}: visible word retired at ${phase}ms`);
+        assert.equal(snapshot.released, true);
+        retirement.push({ phase, ...snapshot });
+      }
+      assert.ok(retirement.at(-1).retired > initial.words / 2);
+
       await page.reload({ waitUntil: 'load' });
       await page.clock.fastForward(initial.duration - 1);
       assert.equal(await page.locator('#page-loader').evaluate(element => element.classList.contains('hidden')), false);
@@ -73,7 +127,7 @@ fs.mkdirSync(out, { recursive: true });
       await page.clock.fastForward(300);
       assert.equal(await page.locator('#page-loader').evaluate(element => getComputedStyle(element).display), 'none');
       assert.deepEqual(errors, []);
-      results.push({ size: [width, height], status: 'passed', initial, phaseChecks: phases.length, fade });
+      results.push({ size: [width, height], status: 'passed', initial, phaseChecks: phases.length, skewMatches, retirement, fade });
       await page.close();
     }
 
