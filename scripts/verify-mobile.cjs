@@ -16,7 +16,7 @@ async function check(name, run) {
   console.log(`${results.at(-1).status}: ${name}`);
   fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));
 }
-const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新日志/','/tags/','/categories/','/404.html','/p/markdown基本语法/','/p/数据结构之线性表/','/p/数据结构之栈与队列/','/p/数据结构之串与数组/','/p/数据结构之树与二叉树/','/p/数据结构之图/','/post/','/page/','/novel/','/001/'];
+const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新日志/','/tags/','/categories/','/404.html','/p/markdown基本语法/','/p/数据结构之线性表/','/p/数据结构之栈与队列/','/p/数据结构之串与数组/','/p/数据结构之树与二叉树/','/p/数据结构之图/','/post/','/page/','/novel/'];
 (async()=>{
   await check('T01 device and feature-switch matrix',async()=>{
     const code=fs.readFileSync('static/js/mobile-mode.js','utf8');
@@ -189,12 +189,6 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     delete before.window.message;delete after.window.message;
     assert.deepEqual(after,before);await cdp.detach();
     return {rounds:20,navigations:100,listeners:{before,after},pageErrors:errors};
-  });
-  await check('T18 gallery image controls and close',async()=>{
-    await goto('/001/');await page.locator('.gallery-item').first().click();
-    const before=await page.locator('#lightbox-counter').textContent();await page.locator('.lightbox-nav.next').click();
-    assert.notEqual(await page.locator('#lightbox-counter').textContent(),before);
-    await page.locator('.lightbox-close').click();assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
   });
   await check('T19 mobile viewport widths',async()=>{
     const measurements=[];

@@ -464,7 +464,6 @@ article.main-article.has-image .article-time svg {
           var halfWordY = (wordHeight + wordWidth * skewY) / 2 + 22;
           var wordStep = (parseFloat(getComputedStyle(seedWord).width) || wordWidth) + wordPitch - wordWidth;
           var rows = document.createDocumentFragment();
-          wordmark.style.setProperty('--m-word-gap', (wordPitch - wordWidth) + 'px');
           for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
             var row = seedRow.cloneNode(true);
             var line = row.querySelector('.m-intro-reveal');
@@ -483,16 +482,23 @@ article.main-article.has-image .article-time svg {
             if (direction < 0) firstWord = Math.max(firstWord, Math.ceil((minX - halfWordX - rowOffset) / wordStep));
             else lastWord = Math.min(lastWord, Math.floor((maxX + halfWordX - rowOffset) / wordStep));
             if (minX > maxX || firstWord > lastWord) continue;
-            row.style.setProperty('--m-row-x', rowOffset + 'px');
+            // Fixed layout/timing values need not inherit through every glyph layer.
+            row.style.left = rowOffset + 'px';
             // A narrower row must retain the surviving words' original coordinates.
             row.style.setProperty('--m-row-center', ((firstWord + lastWord) * wordStep / 2) + 'px');
-            row.style.setProperty('--m-row-y', rowY + 'px');
-            row.style.setProperty('--m-row-reveal', (revealOrder * revealStep) + 'ms');
-            row.style.setProperty('--m-row-exit', (1550 + Math.abs(rowIndex) * 18) + 'ms');
+            row.style.top = rowY + 'px';
+            line.style.gap = (wordPitch - wordWidth) + 'px';
+            line.style.animationDelay = (revealOrder * revealStep) + 'ms';
+            row.style.animationDelay = (1550 + Math.abs(rowIndex) * 18) + 'ms';
             row.style.setProperty('--m-row-travel', (direction * travel) + 'px');
             line.replaceChildren();
             for (var wordIndex = firstWord; wordIndex <= lastWord; wordIndex++) {
-              line.appendChild(seedWord.cloneNode(true));
+              var word = seedWord.cloneNode(true);
+              var wordX = rowOffset + wordIndex * wordStep;
+              if (wordX + halfWordX < minX || wordX - halfWordX > maxX) {
+                word.classList.add('m-intro-offscreen');
+              }
+              line.appendChild(word);
             }
             rows.appendChild(row);
           }

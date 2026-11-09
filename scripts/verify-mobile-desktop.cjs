@@ -10,7 +10,7 @@ const cases = [
   { width: 375, route: '/' }, { width: 768, route: '/' }, { width: 1440, route: '/' },
   { width: 375, route: '/novel/reader/#vol=01' }, { width: 1440, route: '/novel/reader/#vol=01' },
   { width: 1440, route: '/p/markdown基本语法/' }, { width: 1440, route: '/search/?keyword=数据' },
-  { width: 1440, route: '/archives/' }, { width: 1440, route: '/novel/' }, { width: 1440, route: '/001/' }
+  { width: 1440, route: '/archives/' }, { width: 1440, route: '/novel/' }
 ];
 (async () => {
   const browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || 'chrome' });

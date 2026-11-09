@@ -1,4 +1,4 @@
-/* One device decision for both Hugo pages and the standalone gallery. Width is layout only. */
+/* One device decision for Hugo pages. Width is layout only. */
 (function () {
   var ua = navigator.userAgent || '';
   var isDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk|Kindle|PlayBook|BB10|Windows Phone/i.test(ua) ||

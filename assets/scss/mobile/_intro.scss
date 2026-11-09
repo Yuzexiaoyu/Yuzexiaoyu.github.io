@@ -1,6 +1,7 @@
 // Move row wrappers independently; the inner text keeps the desktop glitch intact.
 #page-loader.m-intro-home {
   overflow: hidden;
+  contain: layout paint style;
 }
 
 #page-loader.m-intro-home .loader {
@@ -26,27 +27,32 @@
   visibility: visible;
 }
 
+// Every row is already outside the viewport when the overlay starts fading.
+#page-loader.hidden .m-intro-wordmark {
+  display: none;
+}
+
 #page-loader .m-intro-row {
   position: absolute;
-  top: var(--m-row-y, 0px);
-  left: var(--m-row-x, 0px);
+  top: 0;
+  left: 0;
   width: max-content;
   transform: translate(calc(-50% + var(--m-row-center, 0px)), -50%);
   will-change: transform;
 }
 
 #page-loader.m-intro-ready .m-intro-row {
-  animation: m-intro-row-exit 460ms cubic-bezier(.55, .05, .95, .45) var(--m-row-exit, 1550ms) both;
+  animation: m-intro-row-exit 460ms cubic-bezier(.55, .05, .95, .45) 1550ms both;
 }
 
 #page-loader .m-intro-reveal {
   display: flex;
   align-items: center;
-  gap: var(--m-word-gap, 0px);
+  gap: 0;
 }
 
 #page-loader.m-intro-ready .m-intro-reveal {
-  animation: m-intro-row-reveal 240ms cubic-bezier(.2, .7, .25, 1) var(--m-row-reveal, 0ms) both;
+  animation: m-intro-row-reveal 240ms cubic-bezier(.2, .7, .25, 1) both;
 }
 
 #page-loader .m-intro-text {
@@ -56,6 +62,13 @@
   line-height: 1.1;
   letter-spacing: .035em;
   white-space: nowrap;
+}
+
+// These copies stay outside every glitch/reveal extreme until the row exits.
+// Skip three 400ms color cycles, retaining their exact phase when they enter.
+#page-loader .m-intro-offscreen::before,
+#page-loader .m-intro-offscreen::after {
+  animation-delay: 1200ms;
 }
 
 @keyframes m-intro-row-reveal {
