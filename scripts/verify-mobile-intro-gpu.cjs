@@ -20,18 +20,19 @@ fs.mkdirSync(out, { recursive: true });
     page.on('pageerror', error => errors.push(error.message));
     await page.route('https://**', route => route.abort());
     await page.addInitScript(mode => {
-      window.__draw = { uniforms: {}, vertices: [], count: 0, uploads: 0 };
+      window.__draw = { uniforms: {}, vertices: [], count: 0, uploads: 0, bufferUploads: 0 };
       const getContext = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function(type, ...args) {
-        if (mode === 'no-webgl' && type === 'webgl') return null;
+        if (mode.endsWith('no-webgl') && type === 'webgl') return null;
         return getContext.call(this, type, ...args);
       };
       if (mode === 'no-spacing') delete CanvasRenderingContext2D.prototype.letterSpacing;
       const p = WebGLRenderingContext.prototype, names = new WeakMap();
       const location = p.getUniformLocation, uniform = p.uniform2f, data = p.bufferData;
-      const draw = p.drawArrays, upload = p.texImage2D, compile = p.getShaderParameter;
-      p.getShaderParameter = function(shader, name) {
-        return mode === 'shader-failure' && name === this.COMPILE_STATUS ? false : compile.call(this, shader, name);
+      const draw = p.drawArrays, upload = p.texImage2D, link = p.getProgramParameter;
+      const rows = p.uniform3fv, scalar = p.uniform1f;
+      p.getProgramParameter = function(program, name) {
+        return mode === 'shader-failure' && name === this.LINK_STATUS ? false : link.call(this, program, name);
       };
       p.getUniformLocation = function(...args) {
         const value = location.apply(this, args); if (value) names.set(value, args[1]); return value;
@@ -39,7 +40,16 @@ fs.mkdirSync(out, { recursive: true });
       p.uniform2f = function(location, x, y) {
         window.__draw.uniforms[names.get(location)] = [x,y]; return uniform.call(this, location, x, y);
       };
+      p.uniform3fv = function(location, values) {
+        window.__draw.uniforms[names.get(location)] = Array.from(values);
+        return rows.call(this, location, values);
+      };
+      p.uniform1f = function(location, value) {
+        window.__draw.uniforms[names.get(location)] = value;
+        return scalar.call(this, location, value);
+      };
       p.bufferData = function(target, vertices, ...args) {
+        window.__draw.bufferUploads++;
         if (ArrayBuffer.isView(vertices)) window.__draw.vertices = Array.from(vertices);
         return data.call(this, target, vertices, ...args);
       };
@@ -53,7 +63,9 @@ fs.mkdirSync(out, { recursive: true });
     }, mode);
     await page.clock.install({ time: new Date('2026-11-09T08:00:00Z') });
     await page.clock.pauseAt(new Date('2026-11-09T08:00:01Z'));
-    await page.goto(base, { waitUntil: 'load' });
+    const url = new URL(base);
+    if (mode.startsWith('profile')) url.searchParams.set('intro-profile','1');
+    await page.goto(url.href, { waitUntil: 'load' });
     return page;
   };
   const pause = page => page.evaluate(async () => {
@@ -67,7 +79,7 @@ fs.mkdirSync(out, { recursive: true });
     await page.clock.runFor(20);
   };
   try {
-    for (const [width,height] of [[320,480],[390,844],[430,932],[844,390],[500,939]]) {
+    for (const [width,height] of [[320,480],[390,844],[430,932],[844,390],[500,939],[768,1024],[1024,1366]]) {
       const gpu = await create(width,height), css = await create(width,height,'no-webgl');
       const initial = await gpu.evaluate(() => ({
         cached: document.querySelector('#page-loader').classList.contains('m-intro-cached'),
@@ -76,6 +88,7 @@ fs.mkdirSync(out, { recursive: true });
         resolution: [document.querySelector('.m-intro-surface')?.width, document.querySelector('.m-intro-surface')?.height],
       }));
       assert.equal(initial.cached, true); assert.equal(initial.words, 1);
+      assert.equal(await gpu.evaluate(() => window.__mobileIntroProfile), undefined);
       assert.deepEqual(initial.animations, ['mobile-intro-clock']);
       assert.deepEqual(initial.resolution, [width * 3, height * 3]);
       await pause(gpu); await pause(css);
@@ -106,9 +119,11 @@ fs.mkdirSync(out, { recursive: true });
         for (const color of ['purple','green']) actual.uniforms[`u_${color}`].forEach((v,k) =>
           close(v * actual.texture[k],expected[color][k],color));
         const centers = [];
-        for (let i = 0; i < actual.vertices.length; i += 48) centers.push({
-          x: actual.vertices[i], y: actual.vertices[i+1], opacity: actual.vertices[i+6], colorActive: actual.vertices[i+7],
-        });
+        for (let i = 0; i < actual.vertices.length; i += 48) {
+          const row = actual.vertices[i+6] * 3, values = actual.uniforms['u_rows[0]'];
+          centers.push({ x: actual.vertices[i] + values[row], y: actual.vertices[i+1] + values[row+1],
+            opacity: values[row+2], colorActive: Math.max(actual.vertices[i+7],actual.uniforms.u_allColors) });
+        }
         for (const center of centers) assert.ok(expected.centers.some(c =>
           Math.abs(c.x-center.x) < .02 && Math.abs(c.y-center.y) < .02),
           `${width}x${height} ${time}ms extra glyph ${JSON.stringify(center)}; nearest ${JSON.stringify(expected.centers.toSorted((a,b) => Math.hypot(a.x-center.x,a.y-center.y)-Math.hypot(b.x-center.x,b.y-center.y))[0])}`);
@@ -122,12 +137,13 @@ fs.mkdirSync(out, { recursive: true });
           assert.equal(match.colorActive, time >= 1200 || !expectedCenter.deferred ? 1 : 0, 'Deferred color phase');
         }
         assert.equal(actual.uploads, 1, 'Glyph texture must be uploaded only once');
+        assert.equal(actual.bufferUploads, 1, 'Vertex buffer must be uploaded only once');
       }
       results.push({ size: [width,height], initial, phaseChecks: phases.length, status: 'passed' });
       await gpu.close(); await css.close();
     }
-    for (const mode of ['no-webgl','no-spacing','shader-failure','tablet']) {
-      const page = await create(mode === 'tablet' ? 768 : 390, mode === 'tablet' ? 1024 : 844,mode);
+    for (const mode of ['no-webgl','no-spacing','shader-failure']) {
+      const page = await create(390,844,mode);
       assert.equal(await page.locator('.m-intro-surface').count(), 0);
       assert.ok(await page.locator('.m-intro-row').count() > 1);
       await page.clock.runFor(2600);
@@ -157,9 +173,34 @@ fs.mkdirSync(out, { recursive: true });
       assert.equal(await page.evaluate(() => document.getAnimations().some(a => a.id === 'mobile-intro-clock')), false);
       results.push({ case: mode, status: 'passed' }); await page.close();
     }
+    const profile = await create(390,844,'profile');
+    await pause(profile);
+    await seek(profile,1550);
+    await profile.clock.runFor(160);
+    await profile.evaluate(() => {
+      const a = document.getAnimations().find(a => a.id === 'mobile-intro-clock');
+      a.currentTime = a.effect.getTiming().duration;
+    });
+    await profile.clock.runFor(450);
+    const measured = await profile.evaluate(() => window.__mobileIntroProfile);
+    assert.equal(measured.renderer, 'webgl-static');
+    assert.ok(measured.frames.count > 2 && measured.submission.count > 2);
+    assert.equal(await profile.locator('#mobile-intro-profile').count(), 1);
+    await profile.getByRole('button',{name:'关闭',exact:true}).click();
+    assert.equal(await profile.locator('#mobile-intro-profile').count(), 0);
+    results.push({ case:'opt-in local diagnostics',status:'passed' });
+    await profile.close();
+    const fallbackProfile = await create(390,844,'profile-no-webgl');
+    await fallbackProfile.clock.runFor(2800);
+    const fallbackReport = await fallbackProfile.evaluate(() => window.__mobileIntroProfile);
+    assert.equal(fallbackReport.renderer,'css');
+    assert.equal(fallbackReport.fallbackReason,'webgl-unavailable');
+    assert.equal(await fallbackProfile.locator('#mobile-intro-profile').count(),1);
+    results.push({ case:'diagnostic fallback reason',status:'passed' });
+    await fallbackProfile.close();
     assert.deepEqual(errors, []);
     const report = { browser: browser.version(), results, errors };
     fs.writeFileSync(path.join(out,'results.json'), JSON.stringify(report,null,2));
-    console.log(JSON.stringify({ passed: results.length, gpuPhaseChecks: phases.length * 5, results: path.join(out,'results.json') }));
+    console.log(JSON.stringify({ passed: results.length, gpuPhaseChecks: phases.length * 7, results: path.join(out,'results.json') }));
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
