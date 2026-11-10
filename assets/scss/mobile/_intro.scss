@@ -27,6 +27,16 @@
   visibility: visible;
 }
 
+#page-loader.m-intro-cached .m-intro-wordmark { display: none; }
+
+#page-loader .m-intro-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 // Every row is already outside the viewport when the overlay starts fading.
 #page-loader.hidden .m-intro-wordmark {
   display: none;

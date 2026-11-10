@@ -14,6 +14,14 @@ fs.mkdirSync(out, { recursive: true });
   try {
     for (const [width, height] of [[320, 480], [390, 844], [430, 932], [844, 390], [768, 1024]]) {
       const page = await browser.newPage({ viewport: { width, height }, isMobile: true, hasTouch: true, userAgent: ua });
+      // Exercise the complete CSS fallback even on GPU-capable test machines.
+      await page.addInitScript(() => {
+        const getContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+          if (type === 'webgl') return null;
+          return getContext.call(this, type, ...args);
+        };
+      });
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('https://**', route => route.abort());

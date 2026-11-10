@@ -14,6 +14,8 @@
     {{- $introSource := resources.Get "scss/mobile/_intro.scss" -}}
     {{- $introCSS := resources.FromString "scss/mobile-intro-critical.scss" (printf "html[data-ui=\"mobile\"]{%s}" $introSource.Content) | css.Sass | minify -}}
     <style id="mobile-intro-styles">{{ $introCSS.Content | safeCSS }}</style>
+    {{- $introJS := resources.Get "ts/mobile-intro.ts" | js.Build (dict "minify" true) -}}
+    <script>{{ $introJS.Content | safeJS }}</script>
   {{- end -}}
   {{- $mobileCSS := resources.Get "scss/mobile.scss" | css.Sass | minify | fingerprint -}}
   <link rel="stylesheet" href="{{ $mobileCSS.RelPermalink }}" onerror="this.onerror=null;this.href=this.href.split('?')[0]+'?retry='+Date.now()">
@@ -435,6 +437,7 @@ article.main-article.has-image .article-time svg {
 
     var introMeasureUntil = 0;
     var introRetireTimers = [];
+    var stopCachedIntro = null;
     // Invert the exit easing (.55, .05, .95, .45): distance -> elapsed time.
     // All geometry is measured once; retirement never reads layout during motion.
     function exitTimeAtDistance(distance) {
@@ -509,6 +512,14 @@ article.main-article.has-image .article-time svg {
           var halfWordX = (wordWidth * (1 + skewX * skewY) + wordHeight * skewX) / 2 + 10;
           var halfWordY = (wordHeight + wordWidth * skewY) / 2 + 22;
           var wordStep = (parseFloat(getComputedStyle(seedWord).width) || wordWidth) + wordPitch - wordWidth;
+          if (window.__startMobileIntro) {
+            stopCachedIntro = window.__startMobileIntro(pageLoader, seedWord, {
+              wordWidth: wordWidth, wordHeight: wordHeight, wordStep: wordStep, wordPitch: wordPitch,
+              rowPitch: rowPitch, rowRadius: rowRadius, wordRadius: wordRadius,
+              revealStep: revealStep, travel: travel, duration: 1550 + rowRadius * 18 + 460
+            }, window.hidePageLoader);
+            if (stopCachedIntro) return;
+          }
           var rows = document.createDocumentFragment();
           var retirements = [];
           for (var rowIndex = -rowRadius; rowIndex <= rowRadius; rowIndex++) {
@@ -576,6 +587,7 @@ article.main-article.has-image .article-time svg {
 
     window.hidePageLoader = function() {
       if (pageLoader) {
+        if (stopCachedIntro) { stopCachedIntro(); stopCachedIntro = null; }
         introRetireTimers.forEach(clearTimeout);
         introRetireTimers.length = 0;
         pageLoader.classList.add('hidden');
