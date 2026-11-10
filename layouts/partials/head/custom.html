@@ -425,13 +425,11 @@ article.main-article.has-image .article-time svg {
     return;
     {{ end }}
   }
-  // sessionStorage 持久化标记，避免搜索等全页跳转时重复播放动画
+  // 当前标签页只播放一次；刷新和站内跳转沿用 sessionStorage 标记。
   var loaderKey = '__pageLoaderShown';
   var alreadyShown = sessionStorage.getItem(loaderKey) === '1';
-  // Temporary while tuning the mobile opening; set false when the animation is finalized.
-  var replayMobileIntro = mobileIntro;
 
-  if (replayMobileIntro || (!window.__pageLoaderShown && !alreadyShown)) {
+  if (!window.__pageLoaderShown && !alreadyShown) {
     window.__pageLoaderShown = true;
     sessionStorage.setItem(loaderKey, '1');
 
