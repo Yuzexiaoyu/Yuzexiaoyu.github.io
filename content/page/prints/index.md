@@ -5,7 +5,7 @@ layout: "print-catalog"
 comments: false
 menu:
   main:
-    name: "小鱼的工坊 | Workshop"
+    name: "雨泽小鱼的工坊"
     weight: 30
     params:
       icon: "workshop"

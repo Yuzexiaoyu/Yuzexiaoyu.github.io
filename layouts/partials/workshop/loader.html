@@ -1,7 +1,23 @@
 {{- $workshop := resources.Get "ts/print-workshop.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
-<script>
+<script id="workshop-loader">
 (function(){
   var source = {{ $workshop.RelPermalink | jsonify | safeJS }};
+  var dataSource = {{ .Site.Params.workshop.dataSource | default "static" | jsonify | safeJS }};
+  function load(){
+    if (window.WorkshopApp) return Promise.resolve();
+    if (!window.__workshopLoad) {
+      window.__workshopLoad = new Promise(function(resolve,reject){
+        var script=document.createElement('script'); script.src=source;
+        script.onload=function(){
+          window.WorkshopApp.preload(dataSource).catch(function(){});
+          resolve();
+        };
+        script.onerror=function(){script.remove();window.__workshopLoad=null;reject(new Error('Workshop bundle failed'));};
+        document.head.appendChild(script);
+      });
+    }
+    return window.__workshopLoad;
+  }
   window.__runWorkshop = function(){
     var root = document.querySelector('[data-workshop]');
     // Legacy head content can start body before its template classes are parsed.
@@ -10,14 +26,7 @@
     if (!root) return;
     if (window.WorkshopIntro) window.WorkshopIntro.enter(root);
     if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
-    if (!window.__workshopLoad) {
-      window.__workshopLoad = new Promise(function(resolve,reject){
-        var script=document.createElement('script'); script.src=source;
-        script.onload=resolve; script.onerror=function(){script.remove();window.__workshopLoad=null;reject(new Error('Workshop bundle failed'));};
-        document.head.appendChild(script);
-      });
-    }
-    window.__workshopLoad.then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
+    load().then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
       var node=document.querySelector('[data-catalog-grid],[data-detail-content],[data-admin-notice]');
       if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
     });
@@ -25,5 +34,7 @@
   window.__destroyWorkshop = function(){if(window.WorkshopApp)window.WorkshopApp.destroy();};
   document.addEventListener('DOMContentLoaded',window.__runWorkshop);
   window.addEventListener('pageshow',function(event){if(event.persisted)window.__runWorkshop();});
+  // Start on the blog as well, on both desktop and mobile, before any visit.
+  load().catch(function(){});
 })();
 </script>

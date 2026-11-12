@@ -1,5 +1,5 @@
 import {abortError, escapeHTML as e, quote, money, replaceQuery, setStatus, Entry, Color, Settings} from './workshop-shared';
-import {publicApi as api} from './workshop-public';
+import {publicApi as api, preloadPublicCatalog} from './workshop-public';
 import {initAdmin} from './print-admin';
 
 const w = window as any;
@@ -28,18 +28,14 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
     const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
     if(signal.aborted) return;
     let tab = new URLSearchParams(location.search).get('tab') === 'product' ? 'product' : 'work';
-    const search = root.querySelector<HTMLInputElement>('[data-catalog-search]')!;
     const render = () => {
-      const term = search.value.trim().toLocaleLowerCase();
-      const items = entries.filter(p=>p.kind === tab && `${p.name} ${p.description}`.toLocaleLowerCase().includes(term));
+      const items = entries.filter(p=>p.kind === tab);
       root.querySelectorAll<HTMLElement>('[data-count]').forEach(n=>n.textContent = String(entries.filter(p=>p.kind === n.dataset.count).length).padStart(2,'0'));
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
-      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="lazy" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}<span class="wk-card-open" aria-hidden="true">↗</span>${p.model?'<span class="wk-3d-label">◇ 可查看 3D</span>':''}</div><div class="wk-card-info"><div><span class="wk-card-kicker">${tab==='work'?'FORM & EXPLORATION':'MADE FOR YOUR EVERYDAY'}</span><h2>${e(p.name)}</h2></div>${tab==='product'?`<span class="wk-card-price">${money(p.min_price)}<small>起${p.is_demo?' · 示例价':''}</small></span>`:'<span class="wk-card-number">↗</span>'}</div></a>`).join('') : empty(term?'没有找到这个形状':'新的创作，正在路上',`<p>${term?'试试其他关键词，或清空搜索。':'首批内容整理中，稍后再来看看。'}</p>${term?'<button type="button" class="wk-button wk-secondary" data-clear-search>清空搜索</button>':''}`);
+      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="lazy" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}<span class="wk-card-open" aria-hidden="true">↗</span>${p.model?'<span class="wk-3d-label">◇ 可查看 3D</span>':''}</div><div class="wk-card-info"><div><span class="wk-card-kicker">${tab==='work'?'FORM & EXPLORATION':'MADE FOR YOUR EVERYDAY'}</span><h2>${e(p.name)}</h2></div>${tab==='product'?`<span class="wk-card-price">${money(p.min_price)}<small>起${p.is_demo?' · 示例价':''}</small></span>`:'<span class="wk-card-number">↗</span>'}</div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
     };
     root.querySelectorAll<HTMLButtonElement>('[data-catalog-tab]').forEach(button=>button.addEventListener('click',()=>{tab=button.dataset.catalogTab!;const params=new URLSearchParams(location.search);params.set('tab',tab);replaceQuery(params);render();},{signal}));
-    search.addEventListener('input',render,{signal});
-    grid.addEventListener('click',event=>{if((event.target as HTMLElement).closest('[data-clear-search]')){search.value='';render();search.focus();}},{signal});
     render();
   } catch(error) {if(!abortError(error)) grid.innerHTML=empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);}
 }
@@ -129,4 +125,4 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
 
 function destroy(){controller?.abort();cleanup?.();cleanup=null;currentRoot?.querySelectorAll<any>('model-viewer').forEach(v=>{v.pause?.();v.removeAttribute('src');v.remove();});currentRoot?.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach(d=>d.close());controller=null;currentRoot=null;}
 function init(){const root=document.querySelector<HTMLElement>('[data-workshop]');if(root===currentRoot)return;destroy();if(!root)return;currentRoot=root;controller=new AbortController();const signal=controller.signal;if(root.dataset.workshop==='catalog')void catalog(root,signal);else if(root.dataset.workshop==='detail')void detail(root,signal);else cleanup=initAdmin(root,signal);}
-w.WorkshopApp={init,destroy};
+w.WorkshopApp={init,destroy,preload:preloadPublicCatalog};

@@ -45,6 +45,8 @@
 <link rel="preload" as="script" href="{{ $mainScript.RelPermalink }}" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/Swup.umd.js" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/index.umd.js" fetchpriority="high">
+{{- $workshopScript := resources.Get "ts/print-workshop.ts" | js.Build $mainOpts | fingerprint -}}
+<link rel="preload" as="script" href="{{ $workshopScript.RelPermalink }}">
 
 {{/* 桌面端按需加载播放器样式；移动端不加载音乐资源 */}}
 <script>

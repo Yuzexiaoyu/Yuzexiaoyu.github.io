@@ -786,6 +786,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   swupReady = true;
+  // Warm the workshop HTML on mobile too; its script/data/covers load separately.
+  swup.preload('/prints/').catch(function(){});
 
   // 同页 hash 链接由浏览器原生导航，Swup 不介入
   swup.hooks.replace('link:click', function(visit, _args, defaultHandler) {

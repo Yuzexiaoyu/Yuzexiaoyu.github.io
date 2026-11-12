@@ -90,3 +90,23 @@
 - E34：`assets/ts/workshop-public.ts`、`assets/ts/print-workshop.ts` 的静态数据读取与清单；本轮 CUA 可访问性树显示陶土橘、50%、53 元和完整清单，浏览器 error 日志为空。
 - E35：`https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io/actions/runs/43161701332` 返回 `completed` / `success`，提交 `8a1173c42dc78ed13b7cff7f5c51c1ab79770f67`；本轮线上 HTTP 检查输出。
 - E36：`assets/scss/mobile/_print-workshop.scss` 的 `.m-header`；实际计算样式 `rgba(0, 0, 0, 0.82)` / `blur(12px)`；截图 `.local/print-workshop/qa/static-mobile-product.png`。
+
+## 2026-11-12：工坊预加载与页面精简
+
+| 本轮需求 | 已执行结果 | 证据 |
+| --- | --- | --- |
+| 进入前预加载 | 博客阶段提前加载工坊脚本、目录快照、两栏封面及 Swup 页面缓存；桌面和手机实际进入后目录请求仍为一次 | E37、E40 |
+| 统一工坊名称 | 桌面品牌及网站导航名称改为“雨泽小鱼的工坊” | E38、E40 |
+| 删除工坊搜索 | 移除公开目录的输入框、搜索筛选与清空搜索逻辑；两栏切换正常 | E38、E39、E40 |
+| 删除底部横线及下方内容 | 移除整个工坊页脚和对应桌面、手机样式 | E38、E40 |
+
+[已核实] 生产与 `workshop-local` 两套 Hugo 构建均成功。`node --test services/print-workshop/test_preload.cjs` 输出 `tests 6` / `pass 6` / `fail 0`，覆盖后台预载启动、并发去重、两栏复用、取消导航、失败重试及本地数据重新读取。原有 `test_intro.cjs` 输出 `tests 8` / `pass 8` / `fail 0`。`git -c core.whitespace=cr-at-eol diff --check` 通过。（E39）
+
+[已核实] 实际浏览器从博客进入工坊时 `catalogRequests: 1`，`search: 0`、`footer: 0`、`coverReady: true`。手机模拟 `width: 390`、`scrollWidth: 390`。详情及清单生成正常；50% 填充显示 53 元，生成清单时额外请求一次目录以确认最新报价。浏览器 error 日志为空，手机模拟设置已恢复。（E40）
+
+本节记录本地验收结果；用户随后追加“发布”指令，授权将上述改动提交并推送至 `master`，由 `.github/workflows/deploy.yml` 执行部署。实体手机验收尚未执行。
+
+- E37：`layouts/partials/head/custom.html` 的工坊脚本预载；`layouts/partials/workshop/loader.html` 的 `load`；`assets/ts/workshop-public.ts` 的 `loadSnapshot`／`preloadPublicCatalog`／`publicApi`；`layouts/partials/footer/components/script.html` 的 `swup.preload('/prints/')`。
+- E38：`content/page/prints/index.md`；`layouts/partials/workshop/header.html`；`layouts/_default/print-catalog.html`；`assets/ts/print-workshop.ts` 的 `catalog`；两套 `_print-workshop.scss`。
+- E39：本轮实际构建与命令输出；`services/print-workshop/test_preload.cjs` 和 `services/print-workshop/test_intro.cjs`。
+- E40：本轮 CUA 浏览器状态及 CDP 网络计时；`.local/print-workshop/qa/preload-browser.json`、`preload-desktop.png`、`preload-mobile.png`。
