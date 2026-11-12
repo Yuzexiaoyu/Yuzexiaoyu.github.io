@@ -48,7 +48,7 @@
     const containers = Array.from(document.body.children).filter((node): node is HTMLElement =>
       node instanceof HTMLElement && !/^(SCRIPT|STYLE|LINK|TEMPLATE|NOSCRIPT)$/.test(node.tagName));
     const groups = Array.from(document.querySelectorAll<HTMLElement>(
-      '[data-workshop] > .wk-nav, .wk-collection-toolbar, .wk-grid, .wk-footer, .wk-breadcrumb, .wk-gallery, .wk-config > *'));
+      '[data-workshop] > .wk-nav, .wk-collection-toolbar, .wk-grid, .wk-breadcrumb, .wk-gallery, .wk-config > *'));
     const duration = motionReduced ? 160 : REVEAL;
     containers.forEach(element => {
       const animation = element.animate([{opacity: 0}, {opacity: 1}], {duration, fill: 'both'});
@@ -71,15 +71,16 @@
     const elapsed = now - started;
     if (phase === 'warp') {
       const ramp = Math.min(elapsed / 400, 1);
-      speed(motionReduced ? NORMAL : NORMAL + (FAST - NORMAL) * ramp * ramp * (3 - 2 * ramp));
-      if (root?.isConnected && elapsed >= (motionReduced ? 0 : HOLD)) reveal(now);
+      // The requested workshop warp runs even when content motion is reduced.
+      speed(NORMAL + (FAST - NORMAL) * ramp * ramp * (3 - 2 * ramp));
+      if (root?.isConnected && elapsed >= HOLD) reveal(now);
       // A failed/cancelled navigation must not leave the old page invisible.
       else if (elapsed > 8000) { finish(); return; }
     }
     if (phase === 'reveal') {
       const time = now - revealing;
-      const progress = Math.min(time / (motionReduced ? 160 : REVEAL), 1);
-      speed(motionReduced ? NORMAL : NORMAL + (FAST - NORMAL) * Math.pow(1 - progress, 3));
+      const progress = Math.min(time / REVEAL, 1);
+      speed(NORMAL + (FAST - NORMAL) * Math.pow(1 - progress, 3));
       animations.forEach(animation => { animation.currentTime = time; });
       if (progress === 1) { finish(); return; }
     }

@@ -110,3 +110,19 @@
 - E38：`content/page/prints/index.md`；`layouts/partials/workshop/header.html`；`layouts/_default/print-catalog.html`；`assets/ts/print-workshop.ts` 的 `catalog`；两套 `_print-workshop.scss`。
 - E39：本轮实际构建与命令输出；`services/print-workshop/test_preload.cjs` 和 `services/print-workshop/test_intro.cjs`。
 - E40：本轮 CUA 浏览器状态及 CDP 网络计时；`.local/print-workshop/qa/preload-browser.json`、`preload-desktop.png`、`preload-mobile.png`。
+
+## 2026-11-12：修复减少动态效果下工坊背景不加速
+
+[已核实] 线上浏览器的 `prefers-reduced-motion: reduce` 为 `true`。旧版 `tick` 在该分支始终设置速度 5，并将背景保持阶段缩短为零，实际点击记录也只出现速度 5。因此用户进入工坊时看不到加速。（E43）
+
+[已核实] 按本轮明确要求，工坊背景在两种动态偏好下均使用前 400 毫秒加速、页面隐藏共 1600 毫秒、随后 900 毫秒减速的既有流程。减少动态效果仍使内容使用 160 毫秒淡入，省略位移；无需修改系统或浏览器设置。（E43、E44）
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 桌面真实点击 | 减少动态效果开启，速度最小 5、峰值 40、最终 5；结束后 `inert: false` | E45 |
+| 手机真实点击 | iPhone UA、390 像素视口、减少动态效果开启；速度 5→40→5；无横向溢出 | E45 |
+| 生命周期回归 | 9 项入场测试通过，包含减少动态效果的桌面与手机回归；6 项预加载测试通过；两套 Hugo 构建成功 | E44 |
+
+- E43：`assets/ts/workshop-intro.ts` 的 `tick`／`reveal`；旧版提交 `17bbce9` 的动态偏好条件；本轮线上 CDP 的 `reduced: true` 与速度记录。
+- E44：`services/print-workshop/test_intro.cjs`；本轮执行输出 `tests 9` / `pass 9` / `fail 0` 及 `test_preload.cjs` 的 `pass 6` / `fail 0`。
+- E45：`.local/print-workshop/qa/warp-reduced-desktop.json`、`warp-reduced-mobile.json`，保存实际点击过程的完整速度采样。浏览器模拟设置已恢复，实体手机验收未执行。

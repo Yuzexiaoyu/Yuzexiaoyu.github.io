@@ -101,13 +101,36 @@ test('failed navigation releases the old page within eight seconds', () => {
   assert.equal(p.document.body.inert, false);
 });
 
-test('reduced motion skips acceleration and spatial movement', () => {
+test('reduced motion preserves the requested warp and simplifies content reveal', () => {
   const p = page({path: '/prints/', reduced: true});
   p.window.WorkshopIntro.enter(p.root());
-  p.step(16); p.step(176);
-  assert.equal(p.phase(), undefined);
-  assert.ok(p.speeds.every(([, speed]) => speed === 5));
+  p.step(200);
+  assert.ok(p.speeds.at(-1)[1] > 5 && p.speeds.at(-1)[1] < 40);
+  p.step(800);
+  assert.equal(p.phase(), 'warp');
+  assert.equal(p.speeds.at(-1)[1], 40);
+  p.step(1600);
+  assert.equal(p.phase(), 'reveal');
+  assert.ok(p.animations.every(a => a.timing.duration === 160));
   assert.ok(p.animations.every(a => a.keyframes.every(frame => !frame.transform)));
+  p.step(2050);
+  assert.ok(p.speeds.at(-1)[1] > 5 && p.speeds.at(-1)[1] < 40);
+  p.step(2500);
+  assert.equal(p.phase(), undefined);
+  assert.equal(p.speeds.at(-1)[1], 5);
+  assert.equal(p.document.body.inert, false);
+});
+
+test('mobile reduced-motion navigation still accelerates the existing background', () => {
+  const p = page({mobile: true, reduced: true});
+  assert.equal(p.window.WorkshopIntro.navigate('/prints/', '/'), true);
+  p.window.WorkshopIntro.enter(p.root());
+  p.step(800);
+  assert.equal(p.speeds.at(-1)[1], 40);
+  assert.ok(p.speeds.every(([engine]) => engine === 'mobile'));
+  p.step(1600); p.step(2500);
+  assert.equal(p.phase(), undefined);
+  assert.equal(p.speeds.at(-1)[1], 5);
 });
 
 test('pagehide cancels the entrance so history restoration remains usable', () => {
