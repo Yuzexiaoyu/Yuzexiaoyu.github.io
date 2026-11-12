@@ -1,5 +1,5 @@
 body.template-workshop {
-  .m-header { background: transparent; }
+  .m-header { background: rgba(0,0,0,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   .container.main-container.flex.on-phone--column { padding: 0 0 28px !important; }
   .wk-shell { width: calc(100% - 32px); font-size: 14px; }
   .wk-nav { min-height: 60px; gap: 12px; }

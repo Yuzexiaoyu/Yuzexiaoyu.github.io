@@ -81,9 +81,12 @@
 | 本机管理隔离 | 生产构建未包含管理 HTML、SQLite 或 3MF；本地构建使用 `local` 数据源、生产构建使用 `static` | E32、E33 |
 | 公开页面功能 | 无 API 的静态 HTTP 服务下，目录、详情、GLB 预览、陶土橘选择、50% 填充显示 53 元、生成完整清单成功；商品地址不再误标为“仅供本机” | E34 |
 | 自动检查 | 20 项 Python 测试通过（含原有 16 项及新增 4 项导出测试），8 项入场测试通过；生产和本地 Hugo 构建成功 | E33 |
-| 线上状态 | 以本轮 GitHub Actions 部署结果及线上检查为准，本段记录不预先声称发布成功 | E31 |
+| 线上状态 | 首次发布 `8a1173c` 的 GitHub Actions 运行成功；线上 `/prints/` 和 `/workshop/catalog.json` 返回 200，`/admin/prints/` 返回 404；后续样式修正沿用同一部署流程 | E35 |
+| 手机滚动导航 | 390 × 844 静态浏览器模拟无横向溢出，底部显示 53 元；顶部导航增加局部遮罩与模糊，修复滚动内容透过导航造成的重叠 | E36 |
 
 - E31：`.github/workflows/deploy.yml`；`config/_default/hugo.toml`；本轮 `git ls-remote` 和 GitHub Actions API 返回。
 - E32：`services/print-workshop/export_public.py` 的 `export_public`／`verify_snapshot`；`services/print-workshop/test_export.py`；`static/workshop/catalog.json`。
 - E33：本轮实际命令 `python -m unittest discover -s services/print-workshop -p 'test_*.py' -v`（`Ran 20 tests` / `OK`）、`node --test services/print-workshop/test_intro.cjs`（`pass 8` / `fail 0`）、Hugo 两套构建及产物隔离检查输出。
 - E34：`assets/ts/workshop-public.ts`、`assets/ts/print-workshop.ts` 的静态数据读取与清单；本轮 CUA 可访问性树显示陶土橘、50%、53 元和完整清单，浏览器 error 日志为空。
+- E35：`https://github.com/Yuzexiaoyu/Yuzexiaoyu.github.io/actions/runs/43161701332` 返回 `completed` / `success`，提交 `8a1173c42dc78ed13b7cff7f5c51c1ab79770f67`；本轮线上 HTTP 检查输出。
+- E36：`assets/scss/mobile/_print-workshop.scss` 的 `.m-header`；实际计算样式 `rgba(0, 0, 0, 0.82)` / `blur(12px)`；截图 `.local/print-workshop/qa/static-mobile-product.png`。
