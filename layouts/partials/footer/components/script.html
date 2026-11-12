@@ -11,6 +11,8 @@
 <script src="/lib/Swup.umd.js" defer></script>
 <script src="/lib/index.umd.js" defer></script>
 
+{{ partial "workshop/loader.html" . }}
+
 {{- $js := `
 var swupReady = false;
 // 首屏链接失效修复：Swup 未就绪时绝不拦截点击，直接放行浏览器原生导航，
@@ -792,6 +794,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   swup.hooks.on('visit:start', function(visit) {
+    if (window.__destroyWorkshop) window.__destroyWorkshop();
     if (window.destroyMobilePage) window.destroyMobilePage();
     document.body.classList.remove('loaded');
     window.__bookshelfIntroConsumed = false;   // 每次导航重置：防 page:view 二次触发，又不卡死后续导航
@@ -800,7 +803,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // 不再先空跃迁等 HTML 回来才在 page:view 里起动画（那段往返正是"跃迁干等"）。
     var toPath = '';
     try { toPath = ((visit && visit.to && visit.to.url) || '').split('?')[0].split('#')[0]; } catch (e) {}
-    if (/^\/novel\/?$/.test(toPath) && typeof window.__playBookshelfIntro === 'function') {
+    var workshopEntering = window.WorkshopIntro && window.WorkshopIntro.navigate(visit.to.url, visit.from.url);
+    if (workshopEntering) {
+      // Workshop owns the complete acceleration/hold/reveal sequence.
+    } else if (/^\/novel\/?$/.test(toPath) && typeof window.__playBookshelfIntro === 'function') {
       window.__playBookshelfIntro({ early: true });
     } else if (typeof window.setWarpSpeed === 'function') {
       window.setWarpSpeed(40);
@@ -821,12 +827,13 @@ document.addEventListener('DOMContentLoaded', function() {
       window.setupArticleStagger();
     }
 
-    if (typeof window.setWarpSpeedSlow === 'function') {
+    if (!(window.WorkshopIntro && window.WorkshopIntro.active()) && typeof window.setWarpSpeedSlow === 'function') {
       window.setWarpSpeedSlow();
     }
   });
 
   swup.hooks.on('page:view', function() {
+    if (window.__runWorkshop) window.__runWorkshop();
     if (typeof window.__prefetchAdjacent === 'function') window.__prefetchAdjacent();
 
     var pageLoader = document.getElementById('page-loader');

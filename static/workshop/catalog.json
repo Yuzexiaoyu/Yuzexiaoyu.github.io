@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "description": "这是一件用于体验工坊的程序生成演示模型，并非实际售卖商品。\n可以旋转、缩放模型，或切换图片欣赏形态与纹理。\n真实作品、价格和颜色请在管理后台添加或替换。",
+      "id": "8551df31cd844b4bb26193f353755542",
+      "is_demo": true,
+      "kind": "work",
+      "max_price": 0,
+      "min_price": 0,
+      "name": "形态练习 · 光与纹理",
+      "revision": 2,
+      "status": "published",
+      "updated_at": "2026-11-11T21:47:18+0800",
+      "images": [
+        {
+          "id": "f422ffbb875dead9f9cdceacb28a54055d85777165a1719890f7bc306f5fdda1",
+          "name": "预览图片",
+          "url": "/workshop/media/f422ffbb875dead9f9cdceacb28a54055d85777165a1719890f7bc306f5fdda1.svg",
+          "kind": "image",
+          "size": 1798
+        }
+      ],
+      "model": {
+        "id": "beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067",
+        "name": "3D 预览",
+        "url": "/workshop/media/beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067.glb",
+        "kind": "model",
+        "size": 613920
+      },
+      "colors": []
+    },
+    {
+      "description": "这是一件用于体验工坊的程序生成演示模型，并非实际售卖商品。\n可以试试旋转模型、切换颜色，或调整填充比例观察报价变化。\n真实作品、价格和颜色请在管理后台添加或替换。",
+      "id": "38682d52aabd49c3834e9baf00250a4c",
+      "is_demo": true,
+      "kind": "product",
+      "max_price": 100,
+      "min_price": 20,
+      "name": "扭纹花器",
+      "revision": 1,
+      "status": "published",
+      "updated_at": "2026-11-11T20:19:36+0800",
+      "images": [
+        {
+          "id": "c16a221b572452e975595ca14f0f6c75979dbccf2bcccf97ab7a88918d29d42c",
+          "name": "预览图片",
+          "url": "/workshop/media/c16a221b572452e975595ca14f0f6c75979dbccf2bcccf97ab7a88918d29d42c.svg",
+          "kind": "image",
+          "size": 1798
+        }
+      ],
+      "model": {
+        "id": "beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067",
+        "name": "3D 预览",
+        "url": "/workshop/media/beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067.glb",
+        "kind": "model",
+        "size": 613920
+      },
+      "colors": [
+        {
+          "id": "50b221af27c24d559f6d2d25bc9753f9",
+          "name": "鼠尾草绿",
+          "hex": "#87B89E",
+          "active": 1
+        },
+        {
+          "id": "dfb9e58f3f44402b912e49b750581077",
+          "name": "云雾白",
+          "hex": "#E9E5DA",
+          "active": 1
+        },
+        {
+          "id": "240e12f8842b42c4b01f715fb8285368",
+          "name": "石墨黑",
+          "hex": "#454A50",
+          "active": 1
+        },
+        {
+          "id": "d5b50bae094c4d1bbde7a55f9de893db",
+          "name": "陶土橘",
+          "hex": "#C28465",
+          "active": 1
+        },
+        {
+          "id": "45c3b5f9eb89451a811c9fbafb2c4331",
+          "name": "雾霭蓝",
+          "hex": "#8AABCD",
+          "active": 1
+        },
+        {
+          "id": "1ec9379b09c64e929fd69539a9218313",
+          "name": "丁香紫",
+          "hex": "#B5A0CC",
+          "active": 1
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "name": "雨泽小鱼的工坊",
+    "qq_image": null
+  }
+}

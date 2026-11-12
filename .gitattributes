@@ -1,0 +1,2 @@
+# Content-addressed public assets must retain their exact bytes on every OS.
+static/workshop/media/* -text

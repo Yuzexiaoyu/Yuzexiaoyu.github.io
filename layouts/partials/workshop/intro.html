@@ -1,0 +1,4 @@
+{{- $introCSS := resources.Get "scss/workshop-intro.scss" | css.Sass | minify -}}
+<style id="workshop-intro-styles">{{ $introCSS.Content | safeCSS }}</style>
+{{- $introJS := resources.Get "ts/workshop-intro.ts" | js.Build (dict "minify" true) -}}
+<script id="workshop-intro-script">{{ $introJS.Content | safeJS }}</script>

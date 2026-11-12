@@ -1,0 +1,89 @@
+body.template-workshop {
+  .m-header { background: transparent; }
+  .container.main-container.flex.on-phone--column { padding: 0 0 28px !important; }
+  .wk-shell { width: calc(100% - 32px); font-size: 14px; }
+  .wk-nav { min-height: 60px; gap: 12px; }
+  .wk-nav .wk-brand, .wk-nav .wk-blog { display: none; }
+  .wk-nav nav { gap: 26px; font-size: 13px; min-height: 54px; }
+  .wk-nav nav a { display: inline-flex; align-items: center; min-height: 44px; }
+  .wk-eyebrow { font-size: 8px; letter-spacing: 1.5px; margin-bottom: 15px; }
+  .wk-text-link { min-height: 36px; }
+  .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; border: 0; }
+  .wk-tabs { gap: 26px; border-bottom: 1px solid #2a3630; }
+  .wk-tabs button { font-size: 14px; min-height: 48px; padding: 12px 0; }
+  .wk-search { padding: 0 12px; border: 1px solid #293d30; border-radius: 7px; margin-top: 8px; }
+  .wk-search input { width: 100%; min-height: 42px; font-size: 16px; }
+  .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 12px; }
+  .wk-card-image { aspect-ratio: .9; border-radius: 8px; }
+  .wk-card-info { display: block; padding: 11px 0 4px; }
+  .wk-card-info h2 { font-size: 13px; margin-top: 3px; }
+  .wk-card-kicker { font-size: 6px; letter-spacing: .6px; }
+  .wk-card-price { font-size: 17px; display: block; margin-top: 7px; }
+  .wk-card-price small { display: inline; margin-left: 6px; font-size: 9px; }
+  .wk-card-number, .wk-card-open { display: none; }
+  .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
+  .wk-3d-label { bottom: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
+  .wk-footer { margin-top: 36px; font-size: 10px; padding: 18px 0; align-items: center; }
+  .wk-footer small { display: none; }
+  .wk-footer a { min-height: 44px; display: inline-flex; align-items: center; }
+  .wk-empty { padding: 35px 18px; }
+  .wk-breadcrumb { margin: 17px 0; gap: 15px; font-size: 10px; }
+  .wk-detail-grid { display: flex; flex-direction: column; gap: 22px; padding: 0 0 88px; }
+  .wk-stage { aspect-ratio: 1.08; border-radius: 10px; }
+  .wk-gallery-tools { padding: 10px 0; }
+  .wk-gallery-tools button { min-height: 44px; }
+  .wk-thumbnails button { width: 48px; height: 48px; }
+  .wk-view-hint { font-size: 9px; }
+  .wk-config { padding: 0; }
+  .wk-config h1 { font-size: 29px; margin: 14px 0; }
+  .wk-description { font-size: 13px; }
+  .wk-swatch { width: 44px; height: 44px; }
+  .wk-label-row h2 { font-size: 13px; }
+  .wk-label-row > span { font-size: 12px; }
+  .wk-config-section { margin-top: 22px; padding-top: 20px; }
+  .wk-infill-number input { font-size: 18px; min-height: 44px; }
+  input.wk-range { margin: 19px 0; height: 5px; }
+  .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; }
+  .wk-range::-moz-range-thumb { width: 18px; height: 18px; }
+  .wk-contact-button { position: fixed; z-index: 60; left: 16px; right: 16px; bottom: Max(14px,env(safe-area-inset-bottom)); width: calc(100% - 32px); min-height: 50px; box-shadow: 0 0 0 8px #0c1115e6,0 -12px 35px #0c1115; font-size: 14px; }
+  .wk-price-note { text-align: left; }
+  .wk-mobile-price { display: block; margin-right: auto; font-size: 20px; }
+  .wk-muted { font-size: 11px; }
+  .wk-dialog { width: calc(100% - 24px); padding: 27px 20px 20px; }
+  .wk-dialog textarea { font-size: 16px; height: 180px; }
+  .wk-dialog h2 { font-size: 23px; }
+  .wk-dialog .wk-button { min-height: 46px; }
+  .wk-contact-qr { width: 160px; height: 160px; }
+  .wk-admin-heading { align-items: flex-start; gap: 12px; margin: 24px 0; }
+  .wk-admin-heading h1 { font-size: 23px; }
+  .wk-admin-heading p { font-size: 11px; }
+  .wk-admin-heading > button { white-space: nowrap; padding: 10px; font-size: 11px; }
+  .wk-admin-stats { grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .wk-admin-stats > div { padding: 12px 14px; }
+  .wk-admin-stats strong { font-size: 24px; }
+  .wk-admin-tabs { gap: 24px; }
+  .wk-admin-tabs button { min-height: 44px; }
+  .wk-admin-filter { gap: 12px; }
+  .wk-admin-filter .wk-search { margin: 0; flex: 1; }
+  .wk-admin-filter input { font-size: 16px; }
+  .wk-admin-filter select { font-size: 16px; max-width: 115px; }
+  .wk-table-head { display: none; }
+  .wk-admin-row { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px; }
+  .wk-admin-title { flex: 1 1 100%; }
+  .wk-row-kind { font-size: 10px; }
+  .wk-row-price { margin-left: auto; }
+  .wk-row-actions { flex: 1 1 100%; justify-content: flex-end; }
+  .wk-row-actions button { min-height: 38px; font-size: 12px; padding: 5px 10px; }
+  .wk-color-form { flex-wrap: wrap; gap: 10px; }
+  .wk-color-form input[name=name] { flex: 1; width: 150px; font-size: 16px; }
+  .wk-color-list { grid-template-columns: 1fr; }
+  .wk-color-card input[name=name] { font-size: 16px; }
+  .wk-settings-card { padding: 20px; }
+  .wk-editor { width: calc(100% - 16px); padding: 20px; max-height: calc(100dvh - 16px); }
+  .wk-editor-grid { grid-template-columns: 1fr; gap: 22px; }
+  .wk-field input, .wk-field textarea, .wk-field select { font-size: 16px; }
+  .wk-editor-footer { bottom: -20px; flex-wrap: wrap; }
+  .wk-editor-footer .wk-feedback { flex-basis: 100%; }
+  .wk-icon-button { width: 44px; height: 44px; }
+  @media (min-width: 700px) { .wk-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+}

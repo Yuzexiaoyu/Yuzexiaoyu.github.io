@@ -34,3 +34,8 @@ yarn.lock
 
 # Claude Code（AI 助手配置）
 .claude/
+
+# Local workshop database, uploaded files, builds and verification artifacts
+.local/
+__pycache__/
+*.pyc

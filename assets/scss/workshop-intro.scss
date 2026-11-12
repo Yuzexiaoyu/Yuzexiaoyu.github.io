@@ -1,0 +1,11 @@
+// Inline in head: hide content before the first workshop frame can paint.
+html[data-workshop-intro] {
+  body { background: transparent !important; }
+  #page-loader { display: none !important; }
+  #aplayer { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+  &[data-workshop-intro="warp"] body > :not(script):not(style):not(link) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}

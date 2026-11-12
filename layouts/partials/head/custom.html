@@ -8,6 +8,7 @@
 {{- $mobileConfig := resources.FromString "mobile-config-v2.js" (printf "window.__mobileEnabled=%t;" $mobileEnabled) -}}
 <script src="{{ $mobileConfig.RelPermalink }}"></script>
 <script src="{{ "js/mobile-mode.js" | relURL }}?v=2"></script>
+{{ partial "workshop/intro.html" . }}
 {{- if $mobileEnabled -}}
   {{- if .IsHome -}}
     {{- /* The opening must have its styles before any layout measurement, including on iOS. */ -}}

@@ -37,6 +37,11 @@ jobs:
       - name: Build site
         run: hugo --minify --gc
 
+      - name: Verify public workshop export
+        run: |
+          python services/print-workshop/export_public.py --check public/workshop
+          test ! -e public/admin/prints/index.html
+
       - name: Upload to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

@@ -7,7 +7,8 @@ export function initMobileBackground(): void {
   if (!ctx) return;
   const intro = document.querySelector<HTMLElement>('#page-loader.m-intro-home');
   let introCovering = !!intro && !intro.classList.contains('hidden') && intro.style.display !== 'none';
-  let width = 1, height = 1, fadeProgress = 0, last = 0, raf = 0;
+  let width = 1, height = 1, fadeProgress = 0, last = 0, raf = 0, speed = 5;
+  (window as any).__mobileWarp = { setSpeed(value: number) { speed = value; } };
   const count = 110;
   let particles: {x:number;y:number;z:number;pz:number}[] = [];
   function resize() {
@@ -30,7 +31,7 @@ export function initMobileBackground(): void {
     fadeProgress+=dt;
     if (fadeProgress>=8) { fadeProgress%=8;ctx!.globalCompositeOperation='color-burn';ctx!.fillStyle='rgb(254,254,254)';ctx!.fillRect(0,0,width,height);ctx!.globalCompositeOperation='source-over'; }
     for (const p of particles) {
-      p.z-=5*dt;
+      p.z-=speed*dt;
       if(p.z<1){const depth=width*1.5-1;p.z=1+((p.z-1)%depth+depth)%depth;p.x=Math.random()*width-width/2;p.y=Math.random()*height-height/2;p.pz=p.z;}
       ctx!.beginPath();ctx!.moveTo(p.x/p.pz*width+width/2,p.y/p.pz*height+height/2);ctx!.lineTo(p.x/p.z*width+width/2,p.y/p.z*height+height/2);
       ctx!.strokeStyle=`rgba(100,210,255,${1-p.z/(width*1.5)})`;ctx!.lineWidth=1.5;ctx!.stroke();p.pz=p.z;

@@ -1,0 +1,11 @@
+{{ define "body-class" }}template-workshop{{ end }}
+{{ define "left-sidebar" }}<!-- Workshop uses its own navigation. -->{{ end }}
+{{ define "right-sidebar" }}{{ end }}
+{{ define "main" }}
+<div class="wk-shell" data-workshop="detail" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
+  {{ partial "workshop/header.html" . }}
+  <div class="wk-breadcrumb"><a href="/prints/" data-detail-back>← 返回工坊</a><span data-detail-breadcrumb></span></div>
+  <div data-detail-content><div class="wk-empty">正在读取作品…</div></div>
+  <dialog class="wk-dialog" data-contact-dialog aria-labelledby="contact-title"><button type="button" class="wk-icon-button wk-dialog-close" data-close-dialog aria-label="关闭">×</button><span class="wk-eyebrow">LET'S MAKE IT REAL</span><h2 id="contact-title">带上清单，来找我吧</h2><p>复制下方配置，通过 QQ 确认制作与价格。</p><div data-contact-qr></div><textarea data-contact-text readonly aria-label="完整选购清单"></textarea><button type="button" class="wk-button wk-primary" data-copy-again>复制完整清单</button><p class="wk-feedback" data-copy-feedback role="status"></p></dialog>
+</div>
+{{ end }}

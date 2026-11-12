@@ -1,0 +1,13 @@
+{{ define "body-class" }}template-workshop{{ end }}
+{{ define "left-sidebar" }}<!-- Workshop uses its own navigation. -->{{ end }}
+{{ define "right-sidebar" }}{{ end }}
+{{ define "main" }}
+<div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
+  {{ partial "workshop/header.html" . }}
+  <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
+    <div class="wk-collection-toolbar"><div class="wk-tabs" role="tablist" aria-label="内容栏目"><button type="button" role="tab" data-catalog-tab="work">作品展示 <span data-count="work">—</span></button><button type="button" role="tab" data-catalog-tab="product">可选购商品 <span data-count="product">—</span></button></div><label class="wk-search"><span aria-hidden="true">⌕</span><input type="search" data-catalog-search placeholder="寻找一个有趣的形状" aria-label="搜索作品与商品"></label></div>
+    <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty">正在打开工坊…</p></div>
+  </section>
+  <footer class="wk-footer"><span>雨泽小鱼的工坊</span><a href="/">返回博客 ↗</a></footer>
+</div>
+{{ end }}

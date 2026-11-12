@@ -1,0 +1,29 @@
+{{- $workshop := resources.Get "ts/print-workshop.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
+<script>
+(function(){
+  var source = {{ $workshop.RelPermalink | jsonify | safeJS }};
+  window.__runWorkshop = function(){
+    var root = document.querySelector('[data-workshop]');
+    // Legacy head content can start body before its template classes are parsed.
+    // Restore the scope after parsing and after every Swup body replacement.
+    document.body.classList.toggle('template-workshop', !!root);
+    if (!root) return;
+    if (window.WorkshopIntro) window.WorkshopIntro.enter(root);
+    if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
+    if (!window.__workshopLoad) {
+      window.__workshopLoad = new Promise(function(resolve,reject){
+        var script=document.createElement('script'); script.src=source;
+        script.onload=resolve; script.onerror=function(){script.remove();window.__workshopLoad=null;reject(new Error('Workshop bundle failed'));};
+        document.head.appendChild(script);
+      });
+    }
+    window.__workshopLoad.then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
+      var node=document.querySelector('[data-catalog-grid],[data-detail-content],[data-admin-notice]');
+      if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
+    });
+  };
+  window.__destroyWorkshop = function(){if(window.WorkshopApp)window.WorkshopApp.destroy();};
+  document.addEventListener('DOMContentLoaded',window.__runWorkshop);
+  window.addEventListener('pageshow',function(event){if(event.persisted)window.__runWorkshop();});
+})();
+</script>
