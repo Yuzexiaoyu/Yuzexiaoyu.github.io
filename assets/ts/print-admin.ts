@@ -8,7 +8,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   const notice=root.querySelector<HTMLElement>('[data-admin-notice]')!;
   const editorNotice=root.querySelector<HTMLElement>('[data-editor-notice]')!;
   const getField=(name:string)=>form.elements.namedItem(name) as HTMLInputElement;
-  const blank=():Entry=>({name:'',description:'',kind:'work',status:'draft',min_price:0,max_price:0,color_ids:[],image_ids:[],model_id:null,source_id:null,images:[],model:null,source:null,colors:[],is_demo:false});
+  const blank=():Entry=>({name:'',description:'',kind:'work',status:'draft',min_price:0,max_price:0,color_ids:[],image_ids:[],video_ids:[],model_id:null,source_id:null,images:[],videos:[],model:null,source:null,colors:[],is_demo:false});
   const statuses={draft:'草稿',published:'已上架',archived:'已下架'};
   const write=<T>(path:string,method:string,data:unknown)=>api<T>(path,signal,{method,headers:{'Content-Type':'application/json','X-Workshop-Token':token},body:JSON.stringify(data)});
   const upload=(file:File)=>api<Asset>('/api/admin/assets',signal,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(file.name),'X-Workshop-Token':token},body:file});
@@ -17,7 +17,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     const status=root.querySelector<HTMLSelectElement>('[data-admin-filter]')!.value;
     const selected=entries.filter(p=>p.name.toLowerCase().includes(query)&&(status==='all'||p.status===status));
     root.querySelector<HTMLElement>('[data-admin-stats]')!.innerHTML=[['工坊内容',entries.length],['已上架',entries.filter(p=>p.status==='published').length],['草稿',entries.filter(p=>p.status==='draft').length],['可用颜色',colors.filter(c=>c.active).length]].map(([label,value])=>`<div><span>${label}</span><strong>${String(value).padStart(2,'0')}</strong></div>`).join('');
-    root.querySelector<HTMLElement>('[data-admin-list]')!.innerHTML=selected.length?`<div class="wk-table-head"><span>作品 / 商品</span><span>栏目</span><span>报价</span><span>状态</span><span>操作</span></div>`+selected.map(p=>`<div class="wk-admin-row"><div class="wk-admin-title">${p.images[0]?`<img src="${e(p.images[0].url)}" alt="">`:'<span class="wk-admin-no-image">◇</span>'}<div><strong>${e(p.name)}</strong><small>${p.is_demo?'演示内容 · ':''}${p.model?'3D 预览已就绪':p.source?'3MF 已保存 · 待补 GLB':'图片内容'}</small></div></div><span class="wk-row-kind">${p.kind==='work'?'作品展示':'可选购商品'}</span><span class="wk-row-price">${p.kind==='product'?`${money(p.min_price)}–${money(p.max_price)}`:'—'}</span><span class="wk-state is-${p.status}">${statuses[p.status]}</span><div class="wk-row-actions"><button type="button" data-edit="${e(p.id)}">编辑</button><button type="button" data-toggle-entry="${e(p.id)}">${p.status==='published'?'下架':'上架'}</button><button type="button" data-delete-entry="${e(p.id)}" class="wk-danger">删除</button></div></div>`).join(''):'<div class="wk-empty"><span class="wk-empty-mark">◇</span><h2>给新的想法留个位置</h2><p>点击“新建内容”，添加一件作品或商品。</p></div>';
+    root.querySelector<HTMLElement>('[data-admin-list]')!.innerHTML=selected.length?`<div class="wk-table-head"><span>作品 / 商品</span><span>栏目</span><span>报价</span><span>状态</span><span>操作</span></div>`+selected.map(p=>`<div class="wk-admin-row"><div class="wk-admin-title">${p.images[0]?`<img src="${e(p.images[0].url)}" alt="">`:'<span class="wk-admin-no-image">◇</span>'}<div><strong>${e(p.name)}</strong><small>${p.is_demo?'演示内容 · ':''}${p.model?'3D 预览已就绪':p.source?'3MF 已保存 · 待补 GLB':'图片内容'}</small></div></div><span class="wk-row-kind">${p.kind==='work'?'可选':'现货'}</span><span class="wk-row-price">${p.kind==='product'?`${money(p.min_price)}–${money(p.max_price)}`:'—'}</span><span class="wk-state is-${p.status}">${statuses[p.status]}</span><div class="wk-row-actions"><button type="button" data-edit="${e(p.id)}">编辑</button><button type="button" data-toggle-entry="${e(p.id)}">${p.status==='published'?'下架':'上架'}</button><button type="button" data-delete-entry="${e(p.id)}" class="wk-danger">删除</button></div></div>`).join(''):'<div class="wk-empty"><span class="wk-empty-mark">◇</span><h2>给新的想法留个位置</h2><p>点击“新建内容”，添加一件作品或商品。</p></div>';
   }
   function renderColors(){
     root.querySelector<HTMLElement>('[data-color-list]')!.innerHTML=colors.length?colors.map(c=>`<form data-edit-color="${e(c.id)}" class="wk-color-card"><input type="color" name="hex" value="${e(c.hex)}" aria-label="${e(c.name)}的颜色"><input name="name" value="${e(c.name)}" required maxlength="30" aria-label="颜色名称"><label class="wk-check"><input name="active" type="checkbox" ${c.active?'checked':''}>启用</label><button type="submit" class="wk-button wk-secondary">保存</button></form>`).join(''):'<p class="wk-empty">还没有色卡，先添加几种实际可提供的颜色。</p>';
@@ -32,6 +32,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   function renderAssets(){
     if(!editing)return;
     root.querySelector<HTMLElement>('[data-editor-images]')!.innerHTML=editing.images.map((a,i)=>`<div><img src="${e(a.url)}" alt="${e(a.name)}"><span>${i===0?'封面':i+1}</span><button type="button" data-image-remove="${i}" aria-label="移除图片 ${i+1}">×</button>${i>0?`<button type="button" data-image-cover="${i}" class="wk-set-cover">设为封面</button>`:''}</div>`).join('');
+    root.querySelector<HTMLElement>('[data-editor-videos]')!.innerHTML=editing.videos.map((a,i)=>`<div><video src="${e(a.url)}" preload="metadata" muted playsinline aria-label="${e(a.name)}"></video><span>视频 ${i+1}</span><button type="button" data-video-remove="${i}" aria-label="移除视频 ${i+1}">×</button></div>`).join('');
     root.querySelector<HTMLElement>('[data-model-name]')!.textContent=editing.model?.name||'尚未添加 GLB';
     root.querySelector<HTMLElement>('[data-source-name]')!.textContent=editing.source?`${editing.source.name} · 原件已保存，未执行转换`:'尚未保存 3MF';
   }
@@ -40,6 +41,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   function samplePrice(){const low=Number(getField('min_price').value),high=Number(getField('max_price').value);root.querySelector<HTMLElement>('[data-price-example]')!.textContent=Number.isInteger(low)&&Number.isInteger(high)&&high>=low&&low>=0?`50% 填充显示 ${money(quote(low,high,50))}，顾客可按 1% 调整。`:'最高价应不低于最低价，请填写非负整数元。';}
   function openEditor(entry?:Entry){
     editing=entry?JSON.parse(JSON.stringify(entry)):blank();editorSerial++;dirty=false;saving=false;
+    if(editing){editing.video_ids=editing.video_ids||[];editing.videos=editing.videos||[];}
     form.reset();for(const name of ['name','kind','status','description','min_price','max_price'])getField(name).value=String((editing as any)[name]);
     getField('is_demo').checked=editing!.is_demo;
     root.querySelector<HTMLElement>('#entry-editor-title')!.textContent=entry?'编辑内容':'新建内容';
@@ -65,21 +67,24 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     button.disabled=true;setStatus(notice,'');
     try{if(button.dataset.deleteEntry)await write(`/api/admin/entries/${entry.id}`,'DELETE',{revision:entry.revision});else await write(`/api/admin/entries/${entry.id}`,'PUT',{...entry,status:entry.status==='published'?'archived':'published'});await refresh();setStatus(notice,button.dataset.deleteEntry?'内容已删除。':'展示状态已更新。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
   },{signal});
-  async function handleUpload(input:HTMLInputElement,role:'images'|'model'|'source'){
+  async function handleUpload(input:HTMLInputElement,role:'images'|'videos'|'model'|'source'){
     const files=Array.from(input.files||[]);input.value='';if(!editing||!files.length)return;
     if(role==='images'&&editing.images.length+files.length>12){setStatus(editorNotice,'每条内容最多 12 张图片。',true);return;}
+    if(role==='videos'&&editing.videos.length+files.length>6){setStatus(editorNotice,'每条内容最多 6 个视频。',true);return;}
     const serial=editorSerial;pending++;updateSaveButton();setStatus(editorNotice,'正在保存素材…');
     try{for(const file of files){const asset=await upload(file);if(signal.aborted||serial!==editorSerial||!editing)return;
       if(role==='images'){if(asset.kind!=='image')throw new Error('请选择图片');if(!editing.image_ids.includes(asset.id)){editing.images.push(asset);editing.image_ids.push(asset.id);}}
+      else if(role==='videos'){if(asset.kind!=='video')throw new Error('请选择 MP4、WebM 或 MOV 视频');if(!editing.video_ids.includes(asset.id)){editing.videos.push(asset);editing.video_ids.push(asset.id);}}
       else if(role==='model'){if(asset.kind!=='model')throw new Error('请选择 GLB 预览文件');editing.model=asset;editing.model_id=asset.id;}
       else{if(asset.kind!=='source')throw new Error('请选择 3MF 原件');editing.source=asset;editing.source_id=asset.id;}
       markDirty();renderAssets();
-    }setStatus(editorNotice,role==='source'?'3MF 原件已保存。请另传 GLB 预览模型，再保存内容。':'素材上传完成，点击“保存内容”写入这条内容。');}
+    }setStatus(editorNotice,role==='source'?'3MF 原件已保存。请另传 GLB 预览模型，再保存内容。':'素材上传完成，点击“保存内容”写入这条内容。发布网站时将自动同步到 R2 CDN。');}
     catch(error){if(!abortError(error))setStatus(editorNotice,(error as Error).message,true);}
     finally{pending--;updateSaveButton();}
   }
-  for(const [selector,role] of [['[data-image-upload]','images'],['[data-model-upload]','model'],['[data-source-upload]','source']] as const){const input=root.querySelector<HTMLInputElement>(selector)!;input.addEventListener('change',()=>void handleUpload(input,role),{signal});}
+  for(const [selector,role] of [['[data-image-upload]','images'],['[data-video-upload]','videos'],['[data-model-upload]','model'],['[data-source-upload]','source']] as const){const input=root.querySelector<HTMLInputElement>(selector)!;input.addEventListener('change',()=>void handleUpload(input,role),{signal});}
   root.querySelector('[data-editor-images]')!.addEventListener('click',event=>{if(!editing)return;const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button');if(!button)return;if(button.dataset.imageRemove!==undefined)editing.images.splice(Number(button.dataset.imageRemove),1);if(button.dataset.imageCover!==undefined){const item=editing.images.splice(Number(button.dataset.imageCover),1)[0];editing.images.unshift(item);}editing.image_ids=editing.images.map(a=>a.id);markDirty();renderAssets();},{signal});
+  root.querySelector('[data-editor-videos]')!.addEventListener('click',event=>{if(!editing)return;const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button');if(!button||button.dataset.videoRemove===undefined)return;editing.videos.splice(Number(button.dataset.videoRemove),1);editing.video_ids=editing.videos.map(a=>a.id);markDirty();renderAssets();},{signal});
   root.querySelector('[data-remove-model]')!.addEventListener('click',()=>{if(editing){editing.model=null;editing.model_id=null;markDirty();renderAssets();}},{signal});
   root.querySelector('[data-remove-source]')!.addEventListener('click',()=>{if(editing){editing.source=null;editing.source_id=null;markDirty();renderAssets();}},{signal});
   form.addEventListener('submit',async event=>{
@@ -87,7 +92,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     const data={...editing,name:getField('name').value,description:getField('description').value,kind:getField('kind').value,status:getField('status').value,min_price:Number(getField('min_price').value),max_price:Number(getField('max_price').value),is_demo:getField('is_demo').checked,color_ids:Array.from(root.querySelectorAll<HTMLInputElement>('[data-product-color]:checked')).map(n=>n.dataset.productColor!)};
     if(data.kind==='work'){data.color_ids=[];data.min_price=0;data.max_price=0;}
     saving=true;updateSaveButton();setStatus(editorNotice,'正在保存…');
-    try{const saved=await write<Entry>(editing.id?`/api/admin/entries/${editing.id}`:'/api/admin/entries',editing.id?'PUT':'POST',data);if(signal.aborted)return;editing=saved;dirty=false;dialog.close();await refresh();setStatus(notice,`“${saved.name}”已保存到本机${saved.status==='published'?'，工坊中可见':''}。`);}
+    try{const saved=await write<Entry>(editing.id?`/api/admin/entries/${editing.id}`:'/api/admin/entries',editing.id?'PUT':'POST',data);if(signal.aborted)return;editing=saved;dirty=false;dialog.close();await refresh();setStatus(notice,`“${saved.name}”已保存到本机${saved.status==='published'?'，本地工坊中可见':''}。发布网站后，图片与视频将通过 R2 CDN 加载。`);}
     catch(error){if(!abortError(error))setStatus(editorNotice,(error as Error).message,true);}
     finally{saving=false;updateSaveButton();}
   },{signal});

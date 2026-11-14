@@ -1,6 +1,6 @@
 export type Asset = {id: string; name: string; url: string | null; kind: string; size: number};
 export type Color = {id: string; name: string; hex: string; active: number};
-export type Entry = {id?: string; revision?: number; name: string; description: string; kind: 'work'|'product'; status: 'draft'|'published'|'archived'; min_price: number; max_price: number; color_ids: string[]; image_ids: string[]; model_id: string|null; source_id: string|null; images: Asset[]; model: Asset|null; source?: Asset|null; colors: Color[]; is_demo: boolean};
+export type Entry = {id?: string; revision?: number; name: string; description: string; kind: 'work'|'product'; status: 'draft'|'published'|'archived'; min_price: number; max_price: number; color_ids: string[]; image_ids: string[]; video_ids: string[]; model_id: string|null; source_id: string|null; images: Asset[]; videos: Asset[]; model: Asset|null; source?: Asset|null; colors: Color[]; is_demo: boolean};
 export type Settings = {name: string; qq_asset: string|null; qq_image: Asset|null};
 export const escapeHTML = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export const quote = (low: number, high: number, infill: number) => Math.floor((2 * (low * 85 + (high - low) * (infill - 15)) + 85) / 170);

@@ -15,6 +15,7 @@ from demo import seed, vase_glb
 from server import Handler, Problem, Server, Store, price
 
 PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aR1kAAAAASUVORK5CYII=")
+MP4 = b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom"
 
 
 def source_3mf():
@@ -104,8 +105,17 @@ class StoreTests(unittest.TestCase):
         self.assertNotIn("source_id", self.store.get_entry(entry["id"]))
         self.assertNotIn("source", self.store.get_entry(entry["id"]))
 
+    def test_video_upload_persists_and_gets_public_url(self):
+        video = self.store.save_asset("clip.mp4", MP4)
+        entry = self.store.save_entry(self.product(video_ids=[video["id"]]))
+        self.assertEqual(entry["videos"], [video])
+        self.assertEqual(video["kind"], "video")
+        self.assertTrue(video["url"].endswith(".mp4"))
+        reopened = Store(self.temp.name)
+        self.assertEqual(reopened.get_entry(entry["id"])["videos"][0]["id"], video["id"])
+
     def test_upload_rejections_and_invalid_reference(self):
-        for name, body in [("bad.png", b"bad"), ("bad.glb", b"bad"), ("bad.3mf", b"bad"), ("script.svg", b"<svg/>"), ("empty.png", b"")]:
+        for name, body in [("bad.png", b"bad"), ("bad.mp4", b"bad"), ("bad.webm", b"bad"), ("bad.glb", b"bad"), ("bad.3mf", b"bad"), ("script.svg", b"<svg/>"), ("empty.png", b"")]:
             with self.subTest(name=name), self.assertRaises(Problem):
                 self.store.save_asset(name, body)
         with self.assertRaises(Problem):
@@ -209,10 +219,15 @@ class HTTPTests(unittest.TestCase):
         status, image, _ = self.request("/api/admin/assets", "POST", PNG, {"X-Filename": "test.png"}, admin=True)
         self.assertEqual(status, 201)
         self.assertEqual(self.request(image["url"])[1], PNG)
+        _, video, _ = self.request("/api/admin/assets", "POST", MP4, {"X-Filename": "clip.mp4"}, admin=True)
+        self.assertEqual(self.request(video["url"])[1], MP4)
+        status, chunk, headers = self.request(video["url"], headers={"Range": "bytes=0-7"})
+        self.assertEqual((status, chunk, headers["Content-Range"]), (206, MP4[:8], f"bytes 0-7/{len(MP4)}"))
+        self.assertEqual(headers["Accept-Ranges"], "bytes")
         _, source, _ = self.request("/api/admin/assets", "POST", source_3mf(), {"X-Filename": "test.3mf"}, admin=True)
         self.assertIsNone(source["url"])
         self.assertEqual(self.request(f'/workshop-media/{source["id"]}.3mf')[0], 404)
-        status, entry, _ = self.request("/api/admin/entries", "POST", {"name": "HTTP test", "kind": "work", "status": "published", "image_ids": [image["id"]], "source_id": source["id"]}, admin=True)
+        status, entry, _ = self.request("/api/admin/entries", "POST", {"name": "HTTP test", "kind": "work", "status": "published", "image_ids": [image["id"]], "video_ids": [video["id"]], "source_id": source["id"]}, admin=True)
         self.assertEqual(status, 201)
         status, entry, _ = self.request(f'/api/admin/entries/{entry["id"]}', "PUT", dict(entry, name="Updated"), admin=True)
         self.assertEqual((status, entry["revision"]), (200, 2))

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import re
+import json
 from pathlib import Path
-from bs4 import BeautifulSoup
 from urllib.parse import quote
 
 def replace_links(html_file, new_domain, public_dir):
+    from bs4 import BeautifulSoup
     try:
         # ========== 新增：处理HTML中的JS纯文本/music/路径（核心修复） ==========
         # 先读取文件纯文本，替换JS里的 url: '/music/xxx' 和 cover: '/music/xxx'
@@ -174,7 +175,7 @@ def replace_links(html_file, new_domain, public_dir):
             '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico',
             '.mp3', '.wav', '.ogg', '.m4a',
             '.mp4', '.webm', '.mov', '.avi',
-            '.pdf', '.zip', '.epub',
+            '.glb', '.pdf', '.zip', '.epub',
         )
         new_host = new_domain.replace('https://', '').replace('http://', '').rstrip('/')
         for tag in soup.find_all('link'):
@@ -208,6 +209,35 @@ def replace_links(html_file, new_domain, public_dir):
         print(f"❌ 处理文件失败 {html_file.name}: {e}")
         return False
 
+def replace_workshop_catalog(public_dir, new_domain):
+    """Point public workshop media at the same R2 origin as homepage media."""
+    catalog_path = public_dir / 'workshop' / 'catalog.json'
+    if not catalog_path.is_file():
+        return False
+    payload = json.loads(catalog_path.read_text(encoding='utf-8'))
+    origin = new_domain.rstrip('/')
+    changed = False
+
+    def rewrite(node):
+        nonlocal changed
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == 'url' and isinstance(value, str) and value.startswith('/workshop/media/'):
+                    node[key] = origin + value
+                    changed = True
+                else:
+                    rewrite(value)
+        elif isinstance(node, list):
+            for value in node:
+                rewrite(value)
+
+    rewrite(payload)
+    if changed:
+        catalog_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        print('✅ [工坊媒体] catalog.json 中的图片和视频链接已指向 R2 CDN')
+    return changed
+
+
 if __name__ == '__main__':
     # 校验参数
     if len(sys.argv) < 3:
@@ -232,6 +262,8 @@ if __name__ == '__main__':
     for html_file in public_dir.rglob('*.html'):
         if replace_links(html_file, new_domain, public_dir):
             modified_count += 1
+    if replace_workshop_catalog(public_dir, new_domain):
+        modified_count += 1
     
     # 输出结果
     print(f"\n✨ 处理完成！共修改 {modified_count} 个文件")

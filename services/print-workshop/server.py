@@ -18,6 +18,7 @@ import subprocess
 import time
 import uuid
 import zipfile
+from contextlib import contextmanager
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -82,10 +83,18 @@ class Store:
             db.execute("INSERT OR IGNORE INTO settings VALUES (1, ?)",
                        (json.dumps({"name": "雨泽小鱼的工坊", "qq_asset": None}),))
 
+    @contextmanager
     def connect(self):
         db = sqlite3.connect(self.database, timeout=15)
         db.row_factory = sqlite3.Row
-        return db
+        try:
+            yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     @staticmethod
     def event(db, action, target):
@@ -111,6 +120,7 @@ class Store:
         p = json.loads(row["payload"])
         p.update(id=row["id"], revision=row["revision"])
         p["images"] = [self.asset_view(db, a) for a in p.get("image_ids", [])]
+        p["videos"] = [self.asset_view(db, a) for a in p.get("video_ids", [])]
         p["model"] = self.asset_view(db, p.get("model_id"))
         p["colors"] = []
         for color_id in p.get("color_ids", []):
@@ -144,13 +154,14 @@ class Store:
         payload = {"kind": kind, "status": status,
                    "name": short_text(data.get("name", ""), "名称", 80, True),
                    "description": short_text(data.get("description", ""), "说明", 5000),
-                   "image_ids": data.get("image_ids", []), "model_id": data.get("model_id") or None,
-                   "source_id": data.get("source_id") or None, "color_ids": data.get("color_ids", []),
+                   "image_ids": data.get("image_ids", []), "video_ids": data.get("video_ids", []),
+                   "model_id": data.get("model_id") or None, "source_id": data.get("source_id") or None,
+                   "color_ids": data.get("color_ids", []),
                    "min_price": data.get("min_price", 0), "max_price": data.get("max_price", 0),
                    "is_demo": data.get("is_demo") is True}
-        for key, limit in (("image_ids", 12), ("color_ids", 80)):
+        for key, limit in (("image_ids", 12), ("video_ids", 6), ("color_ids", 80)):
             if not isinstance(payload[key], list) or len(payload[key]) > limit or any(not isinstance(x, str) for x in payload[key]):
-                raise Problem("图片或颜色列表格式不正确")
+                raise Problem("图片、视频或颜色列表格式不正确")
             payload[key] = list(dict.fromkeys(payload[key]))
         price(payload["min_price"], payload["max_price"], 15)
         with self.connect() as db:
@@ -162,6 +173,8 @@ class Store:
                 raise Problem("内容已在其他页面更新，请重新打开后编辑", 409)
             for a in payload["image_ids"]:
                 self.asset(db, a, "image")
+            for a in payload["video_ids"]:
+                self.asset(db, a, "video")
             for key, asset_kind in (("model_id", "model"), ("source_id", "source")):
                 if payload[key]:
                     if not isinstance(payload[key], str):
@@ -244,6 +257,14 @@ class Store:
             kind, mime = "image", "image/jpeg" if ext in ("jpg", "jpeg") else "image/" + ext
         elif ext == "svg" and trusted_demo:
             kind, mime = "image", "image/svg+xml"
+        elif ext in ("mp4", "webm", "mov"):
+            signatures = {"mp4": len(body) >= 12 and body[4:8] == b"ftyp",
+                          "mov": len(body) >= 12 and body[4:8] == b"ftyp",
+                          "webm": body.startswith(b"\x1a\x45\xdf\xa3")}
+            if not signatures[ext]:
+                raise Problem("视频格式不正确，请使用 MP4、WebM 或 MOV")
+            kind = "video"
+            mime = {"mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime"}[ext]
         elif ext == "glb":
             try:
                 magic, version, length = struct.unpack_from("<4sII", body)
@@ -271,7 +292,7 @@ class Store:
                 raise Problem("3MF 文件无模型内容、格式不正确或解压体积过大")
             kind, mime = "source", "application/vnd.ms-package.3dmanufacturing-3dmodel+xml"
         else:
-            raise Problem("支持 PNG／JPG／WebP 图片、GLB 预览模型和 3MF 原件")
+            raise Problem("支持 PNG／JPG／WebP 图片、MP4／WebM／MOV 视频、GLB 预览模型和 3MF 原件")
         asset_id = hashlib.sha256(body).hexdigest()
         path = self.media / f"{asset_id}.{ext}"
         if not path.exists():
@@ -442,20 +463,46 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if path.startswith("/workshop-media/"):
             filename = path.rsplit("/", 1)[1]
-            if not re.fullmatch(r"[0-9a-f]{64}\.(png|jpg|jpeg|webp|svg|glb)", filename):
+            if not re.fullmatch(r"[0-9a-f]{64}\.(png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)", filename):
                 raise Problem("素材不存在", 404)
             with store.connect() as db:
                 asset = store.asset(db, filename.split(".")[0])
                 if asset["kind"] == "source" or filename != f"{asset['id']}.{asset['ext']}":
                     raise Problem("素材不存在", 404)
             content = (store.media / filename).read_bytes()
-            self.send_response(200)
+            start, end, status = 0, len(content) - 1, 200
+            requested = self.headers.get("Range", "").strip()
+            if requested:
+                matched = re.fullmatch(r"bytes=(\d*)-(\d*)", requested)
+                if not matched or (not matched.group(1) and not matched.group(2)):
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{len(content)}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                if matched.group(1):
+                    start = int(matched.group(1))
+                    end = int(matched.group(2)) if matched.group(2) else len(content) - 1
+                else:
+                    start = max(0, len(content) - int(matched.group(2)))
+                end = min(end, len(content) - 1)
+                if start >= len(content) or start > end:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{len(content)}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                status = 206
+            self.send_response(status)
             self.send_header("Content-Type", asset["mime"])
-            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Accept-Ranges", "bytes")
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{len(content)}")
             self.send_header("Cache-Control", "public, max-age=31536000, immutable")
             self.end_headers()
             if self.command != "HEAD":
-                self.wfile.write(content)
+                self.wfile.write(content[start:end + 1])
             return
         if self.command == "HEAD":
             return super().do_HEAD()

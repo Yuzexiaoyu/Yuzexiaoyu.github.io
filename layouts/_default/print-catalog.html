@@ -5,7 +5,11 @@
 <div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
   {{ partial "workshop/header.html" . }}
   <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
-    <div class="wk-collection-toolbar"><div class="wk-tabs" role="tablist" aria-label="内容栏目"><button type="button" role="tab" data-catalog-tab="work">作品展示 <span data-count="work">—</span></button><button type="button" role="tab" data-catalog-tab="product">可选购商品 <span data-count="product">—</span></button></div></div>
+    <div class="wk-collection-heading">
+      <div><span class="wk-eyebrow">SMALL OBJECTS · BIG IDEAS</span><h1>让想象，有了形状。</h1><p>挑选喜欢的设计，为生活添一件独特的小物。</p></div>
+      <span class="wk-collection-signature" aria-hidden="true">DESIGNED WITH CARE<br>MADE TO BE YOURS</span>
+    </div>
+    <div class="wk-collection-toolbar"><div class="wk-tabs" role="tablist" aria-label="内容栏目"><button type="button" role="tab" data-catalog-tab="work">可选 <span data-count="work">—</span></button><button type="button" role="tab" data-catalog-tab="product">现货 <span data-count="product">—</span></button></div><span class="wk-toolbar-note">用心设计 · 细心制作</span></div>
     <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty">正在打开工坊…</p></div>
   </section>
 </div>

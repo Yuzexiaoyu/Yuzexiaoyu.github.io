@@ -61,6 +61,7 @@ jobs:
             --include "*.bmp" --include "*.ico" \
             --include "*.mp3" --include "*.wav" --include "*.ogg" --include "*.m4a" \
             --include "*.mp4" --include "*.webm" --include "*.mov" --include "*.avi" \
+            --include "*.glb" \
             --include "*.pdf" --include "*.zip" \
             --include "*.epub" \
             --delete \

@@ -3,8 +3,9 @@
   const w = window as any;
   if (w.WorkshopIntro) return;
   const html = document.documentElement;
-  const HOLD = 1600;
-  const REVEAL = 900;
+  const HOLD = 450;
+  const REVEAL = 550;
+  const RAMP = 220;
   const NORMAL = 5;
   const FAST = 40;
   let frame = 0;
@@ -56,9 +57,9 @@
       animations.push(animation);
     });
     if (!motionReduced) groups.forEach((element, index) => {
-      const delay = Math.min(index * 70, 240);
+      const delay = Math.min(index * 35, 120);
       const animation = element.animate([
-        {opacity: 0, transform: 'translate3d(0,20px,0)'},
+        {opacity: 0, transform: 'translate3d(0,12px,0)'},
         {opacity: 1, transform: 'translate3d(0,0,0)'}
       ], {duration: REVEAL - delay, delay, fill: 'both', easing: 'cubic-bezier(.22,1,.36,1)'});
       animation.pause();
@@ -70,7 +71,7 @@
     if (!phase) return;
     const elapsed = now - started;
     if (phase === 'warp') {
-      const ramp = Math.min(elapsed / 400, 1);
+      const ramp = Math.min(elapsed / RAMP, 1);
       // The requested workshop warp runs even when content motion is reduced.
       speed(NORMAL + (FAST - NORMAL) * ramp * ramp * (3 - 2 * ramp));
       if (root?.isConnected && elapsed >= HOLD) reveal(now);

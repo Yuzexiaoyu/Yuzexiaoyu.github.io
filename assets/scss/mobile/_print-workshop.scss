@@ -2,20 +2,21 @@ body.template-workshop {
   .m-header { background: rgba(0,0,0,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   .container.main-container.flex.on-phone--column { padding: 0 0 28px !important; }
   .wk-shell { width: calc(100% - 32px); font-size: 14px; }
-  .wk-nav { min-height: 60px; gap: 12px; }
-  .wk-nav .wk-brand, .wk-nav .wk-blog { display: none; }
-  .wk-nav nav { gap: 26px; font-size: 13px; min-height: 54px; }
-  .wk-nav nav a { display: inline-flex; align-items: center; min-height: 44px; }
+  .wk-shell:not([data-workshop="admin"]) > .wk-nav { display: none; }
   .wk-eyebrow { font-size: 8px; letter-spacing: 1.5px; margin-bottom: 15px; }
   .wk-text-link { min-height: 36px; }
-  .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; border: 0; }
-  .wk-tabs { gap: 26px; border-bottom: 1px solid #2a3630; }
-  .wk-tabs button { font-size: 14px; min-height: 48px; padding: 12px 0; }
+  .wk-collection { padding-top: 14px; }
+  .wk-collection-heading { display: none; }
+  .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .wk-tabs { width: 100%; }
+  .wk-tabs button { flex: 1; justify-content: center; font-size: 13px; min-height: 44px; padding: 10px; }
+  .wk-toolbar-note { display: none; }
   .wk-search { padding: 0 12px; border: 1px solid #293d30; border-radius: 7px; margin-top: 8px; }
   .wk-search input { width: 100%; min-height: 42px; font-size: 16px; }
-  .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 12px; }
-  .wk-card-image { aspect-ratio: .9; border-radius: 8px; }
-  .wk-card-info { display: block; padding: 11px 0 4px; }
+  .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 12px; }
+  .wk-card { border-radius: 13px; }
+  .wk-card-image { aspect-ratio: .9; }
+  .wk-card-info { display: block; padding: 11px 12px 14px; }
   .wk-card-info h2 { font-size: 13px; margin-top: 3px; }
   .wk-card-kicker { font-size: 6px; letter-spacing: .6px; }
   .wk-card-price { font-size: 17px; display: block; margin-top: 7px; }

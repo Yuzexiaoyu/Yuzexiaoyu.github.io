@@ -20,13 +20,13 @@ python services/print-workshop/server.py --build --demo
 ## 管理内容
 
 1. 在“公共色卡”维护实际可用的颜色名称和预览色值。
-2. “新建内容”中选择作品或商品，填写名称、说明，上传图片。第一张作为封面，可更换封面或移除图片。
-3. 作品可以只上传图片；商品上架需要图片、GLB 预览模型、可用颜色和价格。
+2. “新建内容”中选择可选或现货，填写名称、说明，上传图片和视频。第一张图片作为封面，可更换封面或移除图片。
+3. 作品可以只上传图片；商品上架需要图片、GLB 预览模型、可用颜色和价格。视频用于详情页播放，不作为封面。
 4. 设置 15% 填充最低价和 100% 填充最高价。价格按线性比例计算，并四舍五入到整数元。
 5. 选择草稿、上架或下架后保存。未上架内容不会出现在顾客目录中。
 6. 在“联系设置”上传自己的 QQ 联系二维码。顾客每次为一件商品生成配置清单，自行复制到 QQ 联系确认。
 
-图片支持 PNG、JPG、WebP，单张最大 12 MB，单条内容最多 12 张。模型最大 64 MB；GLB 须自包含，当前离线预览不接收 Draco、Meshopt 或 KTX2/Basis 压缩资源。色卡被内容引用时不能直接停用，应先取消相关商品的勾选。
+图片支持 PNG、JPG、WebP，单张最大 12 MB，单条内容最多 12 张。视频支持 MP4、WebM、MOV，单个最大 64 MB，单条内容最多 6 个。模型最大 64 MB；GLB 须自包含，当前离线预览不接收 Draco、Meshopt 或 KTX2/Basis 压缩资源。色卡被内容引用时不能直接停用，应先取消相关商品的勾选。
 
 3MF 可以作为原件保存，但暂不自动转换成 GLB。代表性 Bambu Studio 样本尚未提供，兼容性验证待补。原件没有顾客下载入口；浏览器预览必需的 GLB 会发送到浏览器。
 
@@ -49,9 +49,9 @@ python services/print-workshop/server.py --build --demo
 python services/print-workshop/export_public.py
 ```
 
-该命令更新 `static/workshop/catalog.json` 和 `static/workshop/media/`，仅包含已上架内容、对应预览图片／GLB、公共联系二维码。草稿、下架内容、3MF 原件、数据库和管理页面不导出。重新导出会移除已下架内容及不再引用的公开素材。
+该命令更新 `static/workshop/catalog.json` 和 `static/workshop/media/`，仅包含已上架内容、对应预览图片／视频／GLB、公共联系二维码。草稿、下架内容、3MF 原件、数据库和管理页面不导出。重新导出会移除已下架内容及不再引用的公开素材。
 
-检查导出结果后，将 `static/workshop/` 的变更提交并推送到现有 `master` 分支；GitHub Actions 会构建、校验并发布到 `https://yuzexiaoyu.space/prints/`。发布副本使用静态数据，本地启动脚本使用 `workshop-local` 配置连接实时本机接口。
+检查导出结果后，将 `static/workshop/` 的变更提交并推送到现有 `master` 分支；GitHub Actions 会上传图片、视频和 GLB 到 R2，把目录中的工坊媒体地址重写为 CDN，再发布到 `https://yuzexiaoyu.space/prints/`。发布副本使用静态数据，本地启动脚本使用 `workshop-local` 配置连接实时本机接口。
 
 ## 当前边界
 
@@ -71,4 +71,4 @@ python -m unittest discover -s services/print-workshop -p test_server.py -v
 node --test services/print-workshop/test_intro.cjs
 ```
 
-工坊复用主页动态星空。首次进入时隐藏内容 1.6 秒，随后用 0.9 秒错开浮现；工坊内部切页不重复入场。系统开启“减少动态效果”时使用短淡入。动画时长位于 `assets/ts/workshop-intro.ts` 的 `HOLD` 和 `REVEAL`。
+工坊复用主页动态星空。首次进入时隐藏内容 0.45 秒，随后用 0.55 秒错开浮现；工坊内部切页不重复入场。系统开启“减少动态效果”时使用短淡入。动画时长位于 `assets/ts/workshop-intro.ts` 的 `HOLD`、`REVEAL` 和 `RAMP`。手机端隐藏工坊独立顶栏与首屏文案，直接从栏目标签开始。

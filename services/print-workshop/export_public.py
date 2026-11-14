@@ -12,7 +12,7 @@ from pathlib import Path
 from server import ROOT, Store
 
 ENTRY_FIELDS = {"id", "revision", "name", "description", "kind", "status", "min_price", "max_price", "is_demo", "updated_at"}
-ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|glb)")
+ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)")
 
 
 def verify_snapshot(folder):
@@ -25,7 +25,7 @@ def verify_snapshot(folder):
     def check_asset(asset):
         if asset is None:
             return
-        if set(asset) != {"id", "name", "url", "kind", "size"} or asset["kind"] not in ("image", "model"):
+        if set(asset) != {"id", "name", "url", "kind", "size"} or asset["kind"] not in ("image", "video", "model"):
             raise ValueError("Unexpected asset fields or private source")
         filename = asset["url"].removeprefix("/workshop/media/")
         if not asset["url"].startswith("/workshop/media/") or not ASSET_NAME.fullmatch(filename):
@@ -39,9 +39,9 @@ def verify_snapshot(folder):
         expected.add("media/" + filename)
 
     for entry in payload["entries"]:
-        if set(entry) - (ENTRY_FIELDS | {"images", "model", "colors"}) or entry["status"] != "published":
+        if set(entry) - (ENTRY_FIELDS | {"images", "videos", "model", "colors"}) or entry["status"] != "published":
             raise ValueError("Private or unpublished entry in public catalog")
-        for asset in entry["images"]:
+        for asset in entry["images"] + entry.get("videos", []):
             check_asset(asset)
         check_asset(entry["model"])
     if set(payload["settings"]) != {"name", "qq_image"}:
@@ -67,7 +67,7 @@ def export_public(data_dir, output):
     def public_asset(asset):
         if asset is None:
             return None
-        if asset["kind"] not in ("image", "model"):
+        if asset["kind"] not in ("image", "video", "model"):
             raise ValueError("Original model files cannot be exported")
         filename = f'{asset["id"]}.{asset["ext"]}'
         if not ASSET_NAME.fullmatch(filename):
@@ -76,13 +76,15 @@ def export_public(data_dir, output):
         if source.is_symlink() or source.resolve().parent != store.media:
             raise ValueError("Asset must remain inside local media storage")
         assets[filename] = source
-        return {"id": asset["id"], "name": "3D 预览" if asset["kind"] == "model" else "预览图片",
+        names = {"image": "预览图片", "video": "预览视频", "model": "3D 预览"}
+        return {"id": asset["id"], "name": names[asset["kind"]],
                 "url": "/workshop/media/" + filename, "kind": asset["kind"], "size": asset["size"]}
 
     entries = []
     for entry in store.get_entries():
         public = {key: entry[key] for key in sorted(ENTRY_FIELDS) if key in entry}
         public.update(images=[public_asset(asset) for asset in entry["images"]],
+                      videos=[public_asset(asset) for asset in entry.get("videos", [])],
                       model=public_asset(entry["model"]), colors=entry["colors"])
         entries.append(public)
     settings = store.settings()
