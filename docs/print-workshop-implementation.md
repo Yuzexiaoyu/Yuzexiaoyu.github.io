@@ -368,3 +368,213 @@
 [已验证] 已重新导出两件上架物品并通过完整性校验；生产构建成功，发布产物中无后台页面、数据库或 3MF 原件。34 项 Python、19 项 Node 及 19 组桌面／手机浏览器回归通过，包含颜色自动切换 3D、视频重播、媒体布局与报价。缩放及加载横条另有 E81 的四组检查。本轮沿用 `master` → GitHub Actions → R2 媒体与 GitHub Pages 的已有发布流程。（E82）
 
 - E82：实际测试与生产构建输出；`.local/print-workshop/release`；`.local/print-workshop/qa/pre-deploy-20261115/results.json`；`.github/workflows/deploy.yml`。本次提交仅包含本轮工坊与头像改动，未纳入 `.workbuddy/` 或 `.local/`。
+
+## 2026-11-15：工坊模块化渐入，不再等待跃迁
+
+[已验证] 入场改为各模块独立淡入与短距离上移：导航 240ms、栏目 280ms；卡片以 45ms 间隔错峰，延迟封顶，单张动画 380ms，整组不超过 600ms。详情的媒体、标题、介绍、配置与联系按钮分别出现。取消背景加速、整页隐藏与 body 输入锁定；保留常速星空。慢 HTML 响应期间原页面保持可见，慢数据响应期间导航仍可用，首张卡片就绪后不额外等待。（E84、E85）
+
+[已验证] 减少动态效果时仅播放 120ms 透明度变化，无位移或错峰。重复初始化不重播已显示模块；切页／pagehide 清理正在播放的动画与合成提示；无 Web Animations API 时内容直接可用。动画不施加于页面或网格、配置等共用父级，避免叠加透明度和整页遮挡。（E84、E85）
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 生命周期及回退 | 14 项入场与 6 项预加载检查，共 20 项 Node 测试通过 | E85 |
+| 桌面／手机交互 | 21 组浏览器场景通过；正常／减少动态效果、真实 Swup 换页、慢 HTML、慢数据及原有媒体、报价、选色 3D 回归，脚本错误为空 | E85 |
+| 视觉节奏 | 两种视口分别取实际浏览器动画的 0／120／280／600ms 状态，共 8 帧检查；卡片轻微上移，导航与内容逐步出现 | E85 |
+| 构建及范围 | 两套 Hugo 构建与差异空白检查通过；本轮仅更新本地预览，未再次部署 | E85 |
+
+- E84：`assets/ts/workshop-intro.ts` 的 `show`／`refresh`／`cancel`；`assets/scss/workshop-intro.scss`；`assets/ts/print-workshop.ts` 的目录与详情就绪通知；页脚 Swup 工坊分支。
+- E85：实际构建及检查输出；`services/print-workshop/test_intro.cjs`、`test_preload.cjs`；`scripts/verify-workshop.cjs`；`.local/print-workshop/qa/module-reveal/results.json`、`frames/results.json`、`frames/desktop-120.png`、`frames/desktop-600.png`、`frames/mobile-280.png`。
+
+## 2026-11-15：修正渐入可见时机并拉开节奏
+
+[已验证] 上版取样中，120ms 时导航透明度已为 0.97683，280ms 时卡片已为 0.983149，视觉变化过于前置。新版先创建暂停的效果，在页面可见并绘制首帧后播放；后台状态不消耗动画时间，中途隐藏时暂停，切回继续。旧初始化实例按 `module-reveal-2` 版本替换，避免重新执行脚本时直接保留旧行为。（E86、E87）
+
+[已验证] 导航改为 420ms，栏目 460ms；首张卡片约 130ms 后出现，卡片自身 520ms、错峰 65ms 且封顶，位移增至 20px，并使用更舒缓的透明度曲线。减少动态效果时为 220ms 无位移淡入。背景仍为常速，不锁定操作，不添加跃迁等待。本轮只更新本地预览。（E86、E87）
+
+- E86：`assets/ts/workshop-intro.ts` 的 `VERSION`、`pending`、`playWhenVisible`、`visibilitychange` 与新版节奏；`.local/print-workshop/qa/module-reveal/frames/results.json` 的上版取样。
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 初始化与可见性 | 18 项入场及 6 项预加载检查，共 24 项 Node 测试通过；覆盖首帧后播放、隐藏暂停／恢复与旧实例替换 | E87 |
+| 专项浏览器检查 | 新开预览、模拟后台打开后切回、真实 Swup 从博客进入共 3 组通过；Swup 约 283ms 时卡片透明度为 0.660117，仍能看到渐入 | E87 |
+| 交互回归 | 桌面／手机与减少动态效果等共 21 组浏览器场景通过，脚本错误为空；媒体回归在模型就绪后验证返回视频 | E87 |
+| 构建与视觉记录 | 两套 Hugo 构建和差异空白检查通过；实际浏览器入场录屏为 1240×900、2.4 秒 WebM，已抽帧检查 | E87 |
+
+- E87：实际检查输出；`services/print-workshop/test_intro.cjs`；`.local/print-workshop/qa/visible-reveal/verify.cjs`、`results.json`、`regression/results.json`、`entrance-preview.webm`、`recorded-first.png`、`recorded-045.png`、`recorded-075.png`。
+
+## 2026-11-15：重设计工坊卡片悬停
+
+[已验证] 卡片悬停改为柔和提亮边框、斜向微光与标题区底色，标题轻微转为浅绿，图片缓慢放大至 1.025 倍；取消整张卡片的悬停位移。效果限于工坊及精细鼠标指针，不增加箭头或文案。键盘焦点保留可见轮廓与高亮，触屏不启用鼠标悬停及图片放大，减少动态效果时关闭缩放和过渡。（E88、E89）
+
+[已验证] 两类物品的桌面正常／减少动态效果及手机触屏共六组浏览器核对：悬停前后卡片位置与尺寸不变；桌面图片比例为 1.025，减少动态效果与触屏均为 1；移开及触屏返回后微光恢复为 0。桌面键盘 Enter、触屏点击均进入对应详情，无脚本错误。两套 Hugo 构建和差异空白检查通过；本轮更新本地预览。（E89）
+
+- E88：`assets/scss/_print-workshop.scss` 的 `.wk-card`、`.wk-card::before`、图片及标题规则，精细指针／触屏／减少动态效果媒体查询。
+- E89：实际构建与差异空白检查输出；`.local/print-workshop/qa/card-hover/results.json`、`desktop-work-before.png`、`desktop-work-hover.png`、`desktop-product-hover.png`、`desktop-work-focus.png` 及手机截图。
+
+## 2026-11-15：工坊与文章共用导航跃迁
+
+[已验证] 按最新要求，工坊站内导航直接复用文章页的 `visit:start` 加速至 40、`visit:end` 调用减速流程；移除工坊绕过跃迁的分支及模块初始化时将背景重置为 5 的行为。减速不再等待模块渐入完成，沿用文章页 350ms 后平滑恢复常速的节奏。手机复用现有轻量画布并接入同一加速／减速接口。直接刷新与文章一样不额外触发导航跃迁，模块渐入及卡片悬停保持。（E90、E91）
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 文章／工坊一致性 | 桌面、手机及减少动态效果共四组对比，实际文章点击与工坊点击均记录加速 `[40]`、减速调用 1 次 | E91 |
+| 模块与导航生命周期 | 19 项入场／导航及 6 项预加载检查，共 25 项 Node 测试通过；模块初始化不打断共享跃迁，渐入期间照常触发减速 | E91 |
+| 浏览器回归 | 共 21 组场景通过；慢 HTML 期间保持与文章相同的跃迁，原页面仍可见；媒体、选色、报价等回归无脚本错误 | E91 |
+| 构建及预览 | 两套 Hugo 构建和差异空白检查通过；录制真实文章到工坊的切页过程；本轮只更新本地预览 | E91 |
+
+- E90：页脚 Swup `visit:start`／`visit:end`；`assets/ts/workshop-intro.ts` 的 `module-reveal-3` 及纯模块清理；`assets/ts/mobile-background.ts` 的共享导航接口、350ms 延后减速与帧率归一化。
+- E91：实际构建与检查输出；`services/print-workshop/test_intro.cjs`、`scripts/verify-workshop.cjs`；`.local/print-workshop/qa/shared-article-warp/results.json` 的 `articleWarp`／`workshopWarp` 对比，及 `entrance-preview.webm`、`preview.png`。
+
+## 2026-11-15：顶部左右分块与清晰的入场层次
+
+[已验证] 桌面顶部改为两个独立圆角模块：左侧为工坊标识，右侧为返回博客，父级不再绘制整条背景或边框。手机保留紧凑导航，本地后台仍使用原有导航外观。（E92、E93）
+
+[已验证] 渐入改为可见首帧驱动的统一时间轴，避免数据加载时间抵消错峰：左右模块分别从横向 -24px／24px 淡入，起点为 0／160ms；栏目 300ms、首张卡片 480ms 开始，卡片持续 640ms，后续按 110ms 错峰并封顶。数据较晚到达时首张卡片不另加等待，后台隐藏时暂停时钟。减少动态效果时保留 260ms 纯淡入与最多 180ms 的层次。文章同款跃迁和卡片悬停保留，不等待跃迁结束。本轮更新本地预览。（E92、E93）
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 左右分块 | 桌面父级背景透明、边框 0，两块之间为透明间隔；普通与减少动态效果模式均核对，手机无横向溢出 | E93 |
+| 实际出现顺序 | 真实文章到工坊的录屏中，约 158ms 左侧透明度 0.679448、右侧仍为 0；约 426ms 栏目 0.633959、卡片仍为 0，约 701ms 卡片为 0.762326 | E93 |
+| 时间轴与回归 | 20 项入场／导航及 6 项预加载，共 26 项 Node 检查通过；3 组专项浏览器检查及 21 组完整浏览器回归通过，脚本错误为空 | E93 |
+| 构建与视觉 | 两套 Hugo 构建和差异空白检查通过，已检查顶部与整页截图并录制实际入场过程 | E93 |
+
+- E92：`layouts/partials/workshop/header.html`；`assets/scss/_print-workshop.scss` 的 `.wk-nav-split`／`.wk-header-module`；`assets/ts/workshop-intro.ts` 的 `module-reveal-4`、可见时钟、绝对起点与运行时延迟校正。
+- E93：实际构建及检查输出；`services/print-workshop/test_intro.cjs`、`scripts/verify-workshop.cjs`；`.local/print-workshop/qa/split-header/results.json`、`regression/results.json`、`desktop-header.png`、`desktop-page.png`、`mobile-page.png`、`entrance-preview.webm`。
+
+## 2026-11-15：收紧顶部模块尺寸
+
+[已验证] 顶部两块高度由 78px 收紧至 46px，图标由 32px 缩至 24px，标题为 16px，左右内边距 14px、圆角 12px；同时减淡背景、边框及阴影。样式仅作用于 `.wk-nav-split`，保留左右分块及各自入场动画。（E94）
+
+[已验证] 1440px、2091px 桌面视口实测父级及左右模块均为 46px，390px 手机仍隐藏桌面顶部；三种视口均无横向溢出。已检查桌面顶部与整页截图。本轮更新本地预览。（E95）
+
+- E94：`assets/scss/_print-workshop.scss` 的 `.wk-nav.wk-nav-split`、`.wk-nav-split .wk-header-module`、`.wk-brand` 及图标规则。
+- E95：`.local/print-workshop/qa/compact-header/results.json`、`desktop-header.png`、`desktop-page.png`、`wide-header.png`、`wide-page.png`、`mobile-page.png`。
+
+## 2026-11-15：缩短点击物品后的等待
+
+[已验证] 原有详情渐入在模块时间轴上等待 320ms，且工坊内部切页使用整个 body 替换。现在仅在目录与详情之间替换 `[data-workshop]`，通过 Swup 持久节点保留顶部导航及手机外壳，保留 body 的可见状态。进入或离开工坊、进入后台仍使用原有整页容器。（E96、E98）
+
+[已验证] 工坊内部切页使用紧凑渐入：展示区与标题就绪即开始，持续 320ms、移动 8px，其余配置轻微错峰，顶部不重播。返回目录也缩短错峰。从博客进入工坊仍保留完整模块渐入，导航跃迁继续与文章一致；不等待视频或模型加载。（E96、E98）
+
+[已验证] 本地 Chrome、1440×1000、屏蔽外部 HTTPS 的相同条件下，每组运行三次，以展示区透明度首次超过 0.02 为开始显示：普通 CPU 中位值从 440.2ms 缩至 72.5ms；模拟四倍 CPU 降速时从 728.0ms 缩至 433.8ms。降速组仍有约 200ms 的帧间隔，不能据此宣称所有设备的掉帧已消除。此数据描述受控本地环境的显现等待，未替代真实设备及公网测量。（E97）
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 导航及动画生命周期 | 23 项模块／导航与 6 项预加载检查，共 29 项 Node 检查通过，覆盖内部快切、外部完整入场、取消导航及减少动态效果 | E98 |
+| 节点保留及往返 | 桌面、手机、减少动态效果及本地 API 四组通过；body／顶部节点身份保持，浏览器后退／前进、键盘进入现货及返回博客正常，无脚本错误 | E98 |
+| 媒体与原有交互 | 21 组完整浏览器场景通过，覆盖视频自动播放／重新播放、多媒体、选色切换 3D、价格重量及慢加载 | E98 |
+| 性能与视觉 | 前后各六次性能取样，保存原始数据、追踪及汇总；已检查桌面、手机详情截图 | E97、E98 |
+| 构建及交付范围 | 两套 Hugo 构建及差异空白检查通过；本轮仅更新本地预览 | E98 |
+
+- E96：`layouts/partials/footer/components/script.html` 的 `visit:start` 容器选择；`layouts/partials/workshop/header.html` 的 `data-swup-persist`；`assets/ts/workshop-intro.ts` 的 `module-reveal-5`、`compact`／`nextCompact` 与内部导航节奏。
+- E97：`.local/print-workshop/qa/detail-performance/profile.cjs`、`before.json`、`after.json`、`before-trace.json`、`after-trace.json`、`summary.json`。
+- E98：实际构建和检查输出；`services/print-workshop/test_intro.cjs`、`test_preload.cjs`；`.local/print-workshop/qa/detail-performance/navigation-results.json`、`regression/results.json`、`desktop-detail.png`、`mobile-detail.png`。
+
+## 2026-11-15：桌面编辑器单屏同页与关闭图标
+
+[已验证] 桌面编辑器将标题／介绍、价格／重量／颜色、图片／视频／文件并排显示在同一页，取消编辑页签。窗口高度随视口收缩，头部、内容、底部操作使用三行网格，编辑窗口与背景不滚动，保存和取消始终可见。素材缩略图保持在右侧区域，较多图片及颜色用区域内翻页展示；跨页颜色保存在编辑状态，保存不会遗漏其他页已选颜色。移动端样式文件未改动。（E99、E100）
+
+[已验证] 编辑器右上角关闭按钮及缩略图移除按钮改为 SVG 双斜线图标，关闭按钮通过网格居中。原有未保存确认、原生必填校验、草稿／上架状态、可选与现货字段及文件选择入口保留。（E99、E100）
+
+| 覆盖项 | 验证结果 | 证据 |
+| --- | --- | --- |
+| 单屏同页 | 1920×1080、1440×900、1366×768、1280×600 四种桌面尺寸，分别检查可选和现货；全部字段入口同时显示，无编辑页签，无横向或纵向溢出 | E100 |
+| 滚动与关闭 | 滚轮不改变页面或编辑器滚动位置，底部按钮保持可见；关闭图标中心横纵偏移均为 0；未保存时取消关闭和确认关闭均通过 | E100 |
+| 多素材与保存 | 12 张图片、6 个视频、17 个颜色的隔离数据检查通过；跨页选色、设置封面、跨页删除、重新打开、键盘焦点、必填聚焦及两类条目保存通过 | E100 |
+| 实际预览及范围 | 真实本地后台只读打开并截图，检查同一编辑窗口从 1440×900 缩放至 1280×600，顾客目录正常；两套 Hugo 构建及差异空白检查通过，本轮仅更新本地面板 | E100 |
+
+- E99：`services/print-workshop/admin.html` 的 `.wk-editor-grid`、`.wk-editor-assets`、`.wk-editor-close`；`assets/scss/_print-workshop.scss` 的固定高度、三列网格、滚动锁定和 SVG 居中；`assets/ts/print-admin.ts` 的 `paginate`、`pages`、跨页颜色状态及 SVG 移除图标。
+- E100：实际构建及检查输出；`scripts/verify-workshop-editor.cjs`；`.local/print-workshop/qa/editor-screen/results.json`、`live-preview.json`、`desktop-work.png`、`short-work.png`、`preview.png`。自动保存检查使用 API 隔离数据；实际后台预览未提交任何修改。
+
+## 2026-11-15：修复后台底部背景断层
+
+[已验证] 实际内置浏览器视口高 1243px，后台 body 原先只有约 782.33px，其下露出根页面的纯黑色。为后台 body 设置 `min-height: 100dvh`，并将后台根页面底色设为相同的 `#0c1115`。重新加载后 body 高约 1243.33px，根页面与 body 均为 `rgb(12, 17, 21)`，已目视确认背景连续覆盖底部。修改仅作用于本地后台；两套 Hugo 构建和差异空白检查通过。（E101、E102）
+
+- E101：`assets/scss/_print-workshop.scss` 的 `html:has(> body.workshop-admin-page)` 与 `&.workshop-admin-page`。
+- E102：实际内置浏览器截图及 DOM 读取；记录于 `.local/print-workshop/qa/admin-background/results.json`；实际构建和差异空白检查输出。
+
+## 2026-11-15：精简管理面板首页
+
+[已验证] 删除欢迎文案、四张统计卡片、“本机工作室”标识及顶部英文副标题，移除统计 DOM 的渲染代码和对应桌面样式。“新建内容”移到内容列表筛选栏右侧，与状态筛选并排，导航下方直接呈现列表操作。（E103、E104）
+
+[已验证] 实际内置浏览器中，被移除的三个模块数量为 0，新建按钮位于筛选栏，目录正常显示两条记录；新位置可打开空白编辑器并关闭，搜索“青绿”仅显示现货，清空后恢复两条。底色保持连续；两套 Hugo 构建和差异空白检查通过。本轮只修改本地面板。（E104）
+
+- E103：`services/print-workshop/admin.html` 的导航和 `.wk-admin-actions`；`assets/ts/print-admin.ts` 的 `renderList`；`assets/scss/_print-workshop.scss` 的管理分区间距与筛选栏操作区。
+- E104：实际内置浏览器操作、DOM 读取与构建检查输出；`.local/print-workshop/qa/admin-cleanup/results.json`、`preview.jpg`。
+
+## 2026-11-15：设置联系二维码及 QQ 号
+
+[已验证] 从用户提供的图片提取中央二维码，裁剪范围为 `(0,455,940,940)`，输出 940×940 PNG，保留边缘空白，不包含头像、昵称和底部说明。图片已通过本地后台接口保存为工坊联系二维码，并导出到网站公开资源。（E105、E106）
+
+[已验证] 联系弹窗及后台联系设置显示 `QQ：2045757235`，号码统一取自 `CONTACT_QQ`。可选与现货的联系弹窗均显示同一二维码，保留二维码下载及完整选购清单。实际内置浏览器核对了后台设置和两类物品弹窗，已保存联系弹窗截图。（E106、E107）
+
+[已验证] 本地设置、公开目录和静态预览引用的图片 SHA-256 均为 `2d47a164adb218477353cb3e745c60bf1eb20ee7e1f5ed02df60408c0f566e6e`，公开图片与裁剪文件逐字节相同，大小 894879 字节。公开导出校验、两套 Hugo 构建及差异空白检查通过。本轮更新本地预览和待发布文件，未推送部署。（E107）
+
+- E105：`.local/print-workshop/qq-qrcode.png`；来源为用户提供的 `63cbc286f2c81ead09b88506666225e5.jpg`。
+- E106：`assets/ts/workshop-shared.ts` 的 `CONTACT_QQ`；`assets/ts/print-workshop.ts` 的联系弹窗；`assets/ts/print-admin.ts` 的 `renderQQ`；`assets/scss/_print-workshop.scss` 的 `.wk-contact-number`；`static/workshop/catalog.json` 及其引用的二维码 PNG。
+- E107：实际后台保存、导出校验、构建及浏览器检查输出；`.local/print-workshop/qa/contact-qr/results.json`、`work-contact.jpg`。
+
+## 2026-11-15：联系弹窗去白边与精简清单
+
+[已验证] 联系弹窗及后台二维码预览移除白色背景、内边距和圆角，保留原二维码文件及其边缘空白。联系弹窗右上角改用 SVG 双斜线关闭图标，可正常关闭；实际内置浏览器测得两类物品的图标中心横纵偏移均为 0，二维码内边距为 `0px`、背景为透明。（E108、E109）
+
+[已验证] 下方清单与复制源移除抬头、类型、重量、数量和地址；可选物品仅保留商品、材质、颜色、填充比例、报价五项，现货仅保留适用的商品、材质、报价三项。报价金额及页面本身的重量／配置逻辑保持原有计算。（E108、E109）
+
+[已验证] 实际内置浏览器分别检查现货与可选弹窗，保存五项清单的效果截图。21 组浏览器回归、两套 Hugo 构建及差异空白检查通过。本轮更新本地预览。（E109）
+
+- E108：`layouts/_default/print-detail.html` 的关闭按钮；`assets/scss/_print-workshop.scss` 的 `.wk-dialog-close svg`、`.wk-contact-qr`、`.wk-qq-preview > img`；`assets/ts/print-workshop.ts` 的清单文本构造；`scripts/verify-workshop.cjs` 的两类清单字段断言。
+- E109：实际浏览器、构建及检查输出；`.local/print-workshop/qa/contact-cleanup/results.json`、`preview.jpg`、`regression/results.json`。
+
+## 2026-11-15：移除联系弹窗标题与下载入口
+
+[已验证] 删除“带上清单，来找我吧”标题及“保存 QQ 二维码 ↓”下载入口，保留二维码、QQ 号、精简清单和复制按钮。弹窗改用 `aria-label="QQ 联系"`，不依赖已删除的标题。（E110）
+
+[已验证] 实际内置浏览器刷新后，弹窗标题及下载入口数量均为 0，二维码、`QQ：2045757235` 与五项清单正常显示。两套 Hugo 构建和差异空白检查通过，本轮更新本地预览。（E111）
+
+- E110：`layouts/_default/print-detail.html` 的联系弹窗；`assets/ts/print-workshop.ts` 的二维码内容渲染。
+- E111：实际构建、差异检查及浏览器输出；`.local/print-workshop/qa/contact-minimal/results.json`、`preview.jpg`。
+
+## 2026-11-15：移除后台联系设置
+
+[已验证] 工坊管理移除“联系设置”按钮及其整个面板，同时移除后台二维码渲染、上传／移除事件、设置请求和专用桌面样式。后台仅保留内容管理与公共色卡；网站联系弹窗使用的二维码数据及 `CONTACT_QQ` 保留。（E112、E113）
+
+[已验证] 实际内置浏览器中，后台分区为“内容管理”“公共色卡”，联系设置按钮、面板和上传／移除控件数量均为 0，两条内容正常显示。5 组桌面编辑器检查、两套 Hugo 构建及差异空白检查通过；本地与公开目录仍引用已配置的二维码。本轮更新本地预览。（E113）
+
+- E112：`services/print-workshop/admin.html` 的后台分区；`assets/ts/print-admin.ts` 的 `refresh` 及事件初始化；`assets/scss/_print-workshop.scss` 的后台样式清理；`services/print-workshop/README.md`。
+- E113：实际浏览器、构建及检查输出；`.local/print-workshop/qa/admin-no-contact/results.json`、`preview.jpg`、`regression/results.json`。
+
+## 2026-11-15：统一筛选与新建工具栏外观
+
+[已验证] 状态筛选和新建按钮合并为低对比度深色工具组，使用统一字体、高度和圆角，中间以细线分隔；去掉新建按钮的大块浅绿底，改为浅绿文字与 SVG 加号，悬停时轻微提亮。（E114）
+
+[已验证] 实际内置浏览器中两个控件均高 32px，新建按钮默认背景透明，工具组底色为 `rgb(16,26,21)`。已检查整页截图；两套 Hugo 构建和差异空白检查通过，本轮更新本地面板。（E115）
+
+- E114：`services/print-workshop/admin.html` 的新建按钮图标及样式类；`assets/scss/_print-workshop.scss` 的 `.wk-admin-actions` 及子控件规则。
+- E115：实际构建、差异检查与浏览器输出；`.local/print-workshop/qa/admin-actions/results.json`、`preview.jpg`。
+
+## 2026-11-15：修正状态下拉菜单的白底浅字
+
+[已验证] 状态选项设置明确的深色背景与亮色文字；支持的浏览器使用 `appearance: base-select` 和 `::picker(select)` 绘制深色选项面板，并配置选中、悬停和焦点状态，保留原生 select 及现有筛选事件。实现参考 [Chrome 官方可定制 select 文档](https://developer.chrome.com/blog/a-customizable-select)。（E116）
+
+[已验证] 实际内置浏览器中，展开面板底色为 `rgb(20,32,25)`，已目视确认四个选项均可辨认。鼠标选择草稿后显示 0 条内容，使用 Space／Home／Return 恢复全部状态后显示 2 条，原生键盘选择正常。两套 Hugo 构建及差异空白检查通过，本轮仅更新后台样式。（E117）
+
+- E116：`assets/scss/_print-workshop.scss` 的 `.wk-admin-actions select option`、`@supports (appearance: base-select)` 及选项面板规则。
+- E117：实际构建、差异检查及浏览器操作输出；`.local/print-workshop/qa/admin-status-menu/results.json`、`preview.jpg`。
+
+## 2026-11-15：移动端工坊紧凑布局
+
+[已验证] 仅修改移动端独立工坊样式，压缩展示区与间距，将颜色／材质集中排布、介绍后置；媒体按钮单行横向滚动，模型重置入口放在展示区内，切换媒体保持同一容器。保留原有元素配色、字体、按钮、圆角及底部联系入口。桌面／共享样式、移动端样式入口、模板与业务脚本未因本次任务修改。（E120）
+
+[已验证] 390×844 可选详情页的可滚动距离从 415px 降为 67px；375×667 从 604px 降为 217px。检查了三种手机竖屏、手机横屏、320px 长内容与三种桌面视口，元素外观计算样式指纹和桌面布局一致，桌面主样式及移动入口哈希与基线一致。21 项浏览器回归、两套 Hugo 构建、差异空白检查通过；内置浏览器已刷新为 390×844 手机预览并保存截图。完整范围、数值及检查过程见 `docs/print-workshop-mobile-layout.md`。（E121）
+
+- E120：`assets/scss/mobile/_print-workshop.scss`；`scripts/verify-workshop.cjs` 更新统一容器及单行媒体可达性断言。
+- E121：`.local/print-workshop/qa/mobile-layout/before.json`、`after.json`、`preview.json`、`preview.jpg`、`regression/results.json`，以及实际构建、哈希和差异检查输出。
+
+## 2026-11-15：移动端展示区左右滑动
+
+[已验证] 手机展示区按现有媒体按钮顺序左右切换，边界停在首项／末项；切换后自动横向滚动按钮条以显示当前项。视频沿用既有暂停与从头播放逻辑。3D 中央拖动保留旋转，左右各 28px 的透明区域用于媒体切换。垂直滑动、短距离移动、取消手势、多指触摸及原生视频底部控件不触发媒体切换。事件通过页面 AbortSignal 清理，仅在手机模式初始化，未改元素外观或桌面样式。（E122）
+
+[已验证] 25 项浏览器检查通过，新增真实触摸事件覆盖两类商品的左右滑动、3D 中央旋转／边缘切换、视频控制区、纵向滚动、12 张图片与按钮跟随、边界、多指操作及触屏桌面的原有行为。首轮新增断言将无需滚动的现货页也要求产生滚动，修正为根据实际页面高度判断后，完整重跑通过。生产压缩构建、本地工作室构建、公开导出检查和差异空白检查通过；桌面主样式与移动入口 SHA-256 仍与 E119 基线一致。（E123）
+
+- E122：`assets/ts/mobile-workshop-gallery.ts`、`assets/ts/print-workshop.ts` 的手机模式初始化／媒体按钮同步、`assets/scss/mobile/_print-workshop.scss` 的触摸行为及模型边缘区域。
+- E123：`scripts/verify-workshop.cjs` 的真实触摸检查；`.local/print-workshop/qa/mobile-swipe/regression/results.json`，以及实际构建、导出、哈希和差异检查输出。

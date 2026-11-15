@@ -7,8 +7,20 @@ export function initMobileBackground(): void {
   if (!ctx) return;
   const intro = document.querySelector<HTMLElement>('#page-loader.m-intro-home');
   let introCovering = !!intro && !intro.classList.contains('hidden') && intro.style.display !== 'none';
-  let width = 1, height = 1, fadeProgress = 0, last = 0, raf = 0, speed = 5;
-  (window as any).__mobileWarp = { setSpeed(value: number) { speed = value; } };
+  let width = 1, height = 1, fadeProgress = 0, last = 0, raf = 0, speed = 5, targetSpeed = 5;
+  let holdTimer: ReturnType<typeof setTimeout> | null = null;
+  const setSpeed = (value: number) => {
+    if (holdTimer !== null) clearTimeout(holdTimer);
+    holdTimer = null;
+    speed = targetSpeed = value;
+  };
+  // Share the article/workshop navigation API with the existing mobile canvas.
+  (window as any).__mobileWarp = { setSpeed };
+  (window as any).setWarpSpeed = setSpeed;
+  (window as any).setWarpSpeedSlow = () => {
+    if (holdTimer !== null) clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {targetSpeed = 5;holdTimer = null;},350);
+  };
   const count = 110;
   let particles: {x:number;y:number;z:number;pz:number}[] = [];
   function resize() {
@@ -26,6 +38,10 @@ export function initMobileBackground(): void {
     raf=0;
     if (document.hidden || introCovering) { last=0; return; }
     const dt=last?Math.min((now-last)/(1000/60),3):2; last=now;
+    if (Math.abs(speed-targetSpeed)>.1) {
+      const lerp = speed < targetSpeed ? .3 : .015;
+      speed+=(targetSpeed-speed)*(1-Math.pow(1-lerp,dt));
+    } else speed=targetSpeed;
     // Clear bright trails faster on small screens while keeping short warp streaks.
     ctx!.fillStyle=`rgba(0,0,0,${1-Math.pow(.7,dt)})`;ctx!.fillRect(0,0,width,height);
     fadeProgress+=dt;

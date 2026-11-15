@@ -22,9 +22,23 @@ async function setup(browser, mobile, reduced='no-preference') {
   await page.route('https://**',route=>route.abort());
   await page.addInitScript(()=>{
     window.__qaSpeeds=[];
+    window.__qaSlows=[];
+    window.__qaModules=[];
+    window.__qaEffects=[];
+    const animate=Element.prototype.animate;
+    Element.prototype.animate=function(keyframes,options){
+      const animation=animate.call(this,keyframes,options);
+      if(this.closest('[data-workshop]')){
+        window.__qaModules.push({target:this.className,tag:this.tagName,keyframes,options,at:performance.now(),inert:document.body.inert});
+        window.__qaEffects.push({target:this.className,animation});
+      }
+      return animation;
+    };
     function record(fn) {return function(value){window.__qaSpeeds.push({time:performance.now(),speed:value,phase:document.documentElement.dataset.workshopIntro});return fn(value);};}
     let desktop;
     Object.defineProperty(window,'setWarpSpeed',{configurable:true,get:()=>desktop,set:fn=>{desktop=record(fn);}});
+    let slow;
+    Object.defineProperty(window,'setWarpSpeedSlow',{configurable:true,get:()=>slow,set:fn=>{slow=function(){window.__qaSlows.push({time:performance.now(),modulesActive:!!window.WorkshopIntro?.active()});return fn();};}});
     let mobile;
     Object.defineProperty(window,'__mobileWarp',{configurable:true,get:()=>mobile,set:engine=>{mobile=engine;engine.setSpeed=record(engine.setSpeed);}});
   });
@@ -38,7 +52,9 @@ async function galleryFrame(page) {
     const box=stage.getBoundingClientRect(),content=media.getBoundingClientRect();
     return {type:media.tagName.toLowerCase(),width:box.width,height:box.height,mediaWidth:content.width,mediaHeight:content.height,toolsTop:stage.nextElementSibling.getBoundingClientRect().top+scrollY,fit:getComputedStyle(media).objectFit};
   });
-  assert.ok(Math.abs(frame.width-frame.height)<0.1,'gallery must stay square');
+  if(await page.locator('html').getAttribute('data-ui')==='mobile'){
+    assert.ok(frame.height>=180&&frame.height<=300,'mobile gallery must leave room for configuration');
+  }else assert.ok(Math.abs(frame.width-frame.height)<0.1,'desktop gallery must stay square');
   assert.ok(Math.abs(frame.width-frame.mediaWidth)<0.1&&Math.abs(frame.height-frame.mediaHeight)<0.1,'each medium must fill the same frame');
   if(frame.type!=='model-viewer')assert.equal(frame.fit,'contain');
   return frame;
@@ -68,6 +84,19 @@ async function restartVideoFromButton(page,index,playing=false) {
   return playback;
 }
 
+async function swipeStage(page,direction,{edge=false,vertical=false,short=false,cancel=false,controls=false}={}) {
+  const box=await page.locator('.wk-stage').boundingBox();
+  const from={x:edge?box.x+(direction==='right'?14:box.width-14):box.x+box.width/2,y:box.y+(controls?box.height-20:box.height/2)};
+  const distance=short?16:Math.min(140,box.width*.4);
+  const to={x:from.x+(vertical?0:direction==='left'?-distance:distance),y:from.y-(vertical?90:0)};
+  const cdp=await page.context().newCDPSession(page);
+  try{
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[from]});
+    for(let step=1;step<=8;step++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:from.x+(to.x-from.x)*step/8,y:from.y+(to.y-from.y)*step/8}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:cancel?'touchCancel':'touchEnd',touchPoints:[]});
+  }finally{await cdp.detach();}
+}
+
 (async()=>{
   const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||undefined,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   try {
@@ -77,9 +106,10 @@ async function restartVideoFromButton(page,index,playing=false) {
       await page.goto(base+'/prints/',{waitUntil:'load'});await ready(page);
       assert.doesNotMatch((await state(page)).text,forbidden);
       await page.screenshot({path:path.join(out,label+'-catalog.png'),fullPage:true});
-      await page.evaluate(()=>{window.__qaSpeeds=[];});
+      await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];});
       await page.locator('.wk-card').first().click();await page.waitForFunction(()=>location.pathname==='/prints/detail/'&&document.querySelector('.wk-detail-grid'));await ready(page);
-      assert.ok((await page.evaluate(()=>window.__qaSpeeds)).every(sample=>sample.speed===5),'internal visits must not trigger generic warp');
+      assert.deepEqual(await page.evaluate(()=>window.__qaSpeeds.map(sample=>sample.speed)),[40]);
+      assert.equal(await page.evaluate(()=>window.__qaSlows.length),1);
       assert.equal((await state(page)).selected,work.videos.length?'video':'photo');
       assert.deepEqual((await state(page)).order,work.videos.length?['video','photo','photo','model']:['photo','photo','model']);
       assert.equal(await page.locator('.wk-thumbnails,[data-thumbnail],[data-video-thumbnail]').count(),0);
@@ -137,7 +167,8 @@ async function restartVideoFromButton(page,index,playing=false) {
       await slider.evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
       await page.locator('[data-contact]').click();await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
       const customList=await page.locator('[data-contact-text]').inputValue();
-      assert.match(customList,/颜色：/);assert.match(customList,/填充比例：50%/);assert.match(customList,/重量：109.41 g/);
+      assert.match(customList,/颜色：/);assert.match(customList,/填充比例：50%/);
+      assert.deepEqual(customList.split('\n').map(line=>line.split('：')[0]),['商品','材质','颜色','填充比例','报价']);
       assert.ok(customList.includes('材质：'+work.colors[0].material));
       assert.doesNotMatch(customList,/演示|示例/);
       await page.locator('[data-close-dialog]').click();
@@ -182,7 +213,8 @@ async function restartVideoFromButton(page,index,playing=false) {
       sameFrames(stockFrames);
       await page.locator('[data-contact]').click();await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
       const stockList=await page.locator('[data-contact-text]').inputValue();
-      assert.match(stockList,/售价：¥39/);assert.match(stockList,/重量：120 g/);
+      assert.match(stockList,/报价：¥39/);
+      assert.deepEqual(stockList.split('\n').map(line=>line.split('：')[0]),['商品','材质','报价']);
       assert.ok(stockList.includes('材质：'+product.material));
       assert.doesNotMatch(stockList,/颜色：|填充比例：|演示|示例/);
       await page.locator('[data-close-dialog]').click();
@@ -200,16 +232,32 @@ async function restartVideoFromButton(page,index,playing=false) {
       await page.goto(base+'/404.html',{waitUntil:'load'});
       await page.waitForFunction(()=>window.swup && window.WorkshopApp);
       if(mobile)await page.locator('.m-navigation summary').click();
+      const articleLink=page.locator((mobile?'.m-navigation':'.left-sidebar')+' a').filter({hasText:'雨泽小鱼的工坊'});
+      await articleLink.evaluate(link=>{link.href='/p/'+encodeURIComponent('数据结构之线性表')+'/';});
+      await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];});
+      await articleLink.click();
+      await page.waitForFunction(()=>document.querySelector('article.main-article')&&window.__qaSlows.length>0);
+      const articleWarp=await page.evaluate(()=>({speeds:window.__qaSpeeds.map(sample=>sample.speed),slow:window.__qaSlows.length}));
+      assert.deepEqual(articleWarp,{speeds:[40],slow:1});
+      if(mobile)await page.locator('.m-navigation summary').click();
       const link=page.locator((mobile?'.m-navigation':'.left-sidebar')+' a[href$="/prints/"]');
-      await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaDocument=document;});
+      await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];window.__qaModules=[];window.__qaEffects=[];window.__qaDocument=document;});
       await link.click();await ready(page);
       const speeds=await page.evaluate(()=>window.__qaSpeeds);
-      const peak=Math.max(...speeds.map(sample=>sample.speed));
-      assert.ok(peak>20&&peak<=32);assert.equal(speeds.at(-1).speed,5);
+      const workshopWarp=await page.evaluate(()=>({speeds:window.__qaSpeeds.map(sample=>sample.speed),slow:window.__qaSlows.length}));
+      assert.deepEqual(workshopWarp,articleWarp);
+      const modules=await page.evaluate(()=>window.__qaModules);
+      assert.ok(modules.some(module=>module.target.includes('wk-card')));
+      assert.ok(modules.some(module=>module.target.includes('wk-brand')));
+      assert.ok(modules.some(module=>module.target.includes('wk-nav-back')));
+      assert.ok(modules.some(module=>module.target.includes('wk-collection-toolbar')));
+      assert.ok(modules.every(module=>module.inert===false&&module.options.duration+module.options.delay<=1400));
+      assert.ok(modules.every(module=>module.tag!=='BODY'&&module.target!=='wk-grid'));
+      if(reduced==='reduce')assert.ok(modules.every(module=>module.options.delay<=180&&module.keyframes.every(frame=>!frame.transform)));
       assert.equal(await page.evaluate(()=>document===window.__qaDocument),true,'navigation should use actual Swup body replacement');
       assert.equal((await state(page)).inert,false);
       assert.deepEqual(errors,[]);
-      results.push({case:(mobile?'mobile':'desktop')+' click entrance '+reduced,peak,duration:speeds.at(-1).time-speeds[0].time,speeds,errors});
+      results.push({case:(mobile?'mobile':'desktop')+' article and workshop share warp '+reduced,articleWarp,workshopWarp,modules,speeds,errors});
       await page.close();
     }
     {
@@ -220,15 +268,34 @@ async function restartVideoFromButton(page,index,playing=false) {
       await page.route('**/prints/?qa-delayed=1',async route=>{await held;await route.continue();});
       const link=page.locator('.left-sidebar a').filter({hasText:'雨泽小鱼的工坊'});
       await link.evaluate(el=>{el.href='/prints/?qa-delayed=1';});
-      await page.evaluate(()=>{window.__qaSpeeds=[];});
+      await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];});
       await link.click();await page.waitForTimeout(1200);
-      const waiting=await page.evaluate(()=>({speed:window.__qaSpeeds.at(-1).speed,phase:document.documentElement.dataset.workshopIntro}));
-      assert.equal(waiting.speed,5);assert.equal(waiting.phase,'warp');
+      const waiting=await page.evaluate(()=>({speed:window.__qaSpeeds.at(-1).speed,phase:document.documentElement.dataset.workshopIntro,inert:document.body.inert,opacity:getComputedStyle(document.body).opacity}));
+      assert.equal(waiting.speed,40);assert.equal(waiting.phase,undefined);assert.equal(waiting.inert,false);assert.equal(waiting.opacity,'1');
       const boundary=await page.evaluate(()=>window.__qaSpeeds.length);
       release();await ready(page);
       const after=await page.evaluate(index=>window.__qaSpeeds.slice(index),boundary);
-      assert.ok(after.every(sample=>sample.speed===5));assert.deepEqual(errors,[]);
-      results.push({case:'slow HTML navigation settles before content arrives',waiting,after,errors});await page.close();
+      assert.equal(await page.evaluate(()=>window.__qaSlows.length),1);assert.deepEqual(errors,[]);
+      results.push({case:'slow HTML navigation leaves the old page visible and usable',waiting,after,errors});await page.close();
+    }
+    for(const mobile of [false,true]){
+      const {page,errors}=await setup(browser,mobile);
+      let release;const held=new Promise(resolve=>{release=resolve;});
+      await page.route('**/workshop/catalog.json',async route=>{await held;await route.fulfill({json:catalog});});
+      await page.goto(base+'/prints/',{waitUntil:'domcontentloaded'});
+      await page.locator('.wk-collection-toolbar').waitFor({state:'visible'});
+      await page.waitForFunction(()=>!window.WorkshopIntro.active());
+      assert.equal(await page.locator('.wk-card').count(),0);
+      assert.equal(await page.locator('[data-catalog-tab="product"]').isEnabled(),true);
+      assert.equal((await state(page)).inert,false);
+      assert.equal(await page.locator('.wk-collection-toolbar').evaluate(node=>getComputedStyle(node).opacity),'1');
+      release();await ready(page);
+      const modules=await page.evaluate(()=>window.__qaModules);
+      assert.equal(await page.evaluate(()=>window.__qaEffects.find(item=>item.target==='wk-card').animation.effect.getTiming().delay),0);
+      assert.equal((await page.evaluate(()=>window.__qaSpeeds)).length,0);
+      assert.deepEqual(errors,[]);
+      results.push({case:(mobile?'mobile':'desktop')+' late cards appear immediately after usable navigation',modules,errors});
+      await page.close();
     }
     {
       const videoFile=process.env.WORKSHOP_QA_VIDEO || path.join(out,'gallery-fixture.webm');
@@ -278,6 +345,7 @@ async function restartVideoFromButton(page,index,playing=false) {
           await page.locator('[data-color-id]').nth(1).click();
           assert.equal(await page.locator('[data-material]').innerText(),'PETG');
           assert.equal((await state(page)).selected,'model');
+          await page.waitForFunction(()=>document.querySelector('[data-viewer]')?.model);
           restarts.push(await restartVideoFromButton(page,1));
         }else assert.equal(await page.locator('[data-material]').innerText(),'TPU');
         await page.locator('[data-contact]').click();await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
@@ -371,8 +439,17 @@ async function restartVideoFromButton(page,index,playing=false) {
       await page.goto(base+'/prints/detail/?id='+item.id,{waitUntil:'load'});await ready(page);
       const buttons=page.locator('[data-view]');assert.equal(await buttons.count(),19);
       const layout=await buttons.evaluateAll(elements=>elements.map(element=>{const rect=element.getBoundingClientRect();return {text:element.textContent.trim(),x:rect.x,width:rect.width,top:rect.top};}));
-      assert.ok(new Set(layout.map(button=>button.top)).size>1,'all media buttons should wrap on mobile');
-      assert.ok(layout.every(button=>button.width>0&&button.x>=0&&button.x+button.width<=390));
+      assert.equal(new Set(layout.map(button=>button.top)).size,1,'mobile media buttons stay in one horizontal row');
+      const strip=await page.locator('.wk-view-switch').evaluate(element=>{
+        const rect=element.getBoundingClientRect();return {width:rect.width,scrollWidth:element.scrollWidth,x:rect.x};
+      });
+      assert.ok(strip.scrollWidth>strip.width,'extra media buttons are horizontally scrollable');
+      assert.ok(strip.x>=0&&strip.x+strip.width<=390);
+      for(const button of await buttons.all()){
+        await button.scrollIntoViewIfNeeded();
+        const box=await button.boundingBox();
+        assert.ok(box.width>0&&box.x>=0&&box.x+box.width<=390,'each media button remains reachable');
+      }
       assert.equal(layout[5].text,'▷ 视频6');assert.equal(layout[17].text,'▧ 图片12');
       await page.locator('[data-view="video"][data-media-index="5"]').click();
       assert.ok((await page.locator('[data-stage-video]').getAttribute('src')).endsWith('?qa-video=5'));
@@ -382,7 +459,73 @@ async function restartVideoFromButton(page,index,playing=false) {
       assert.equal(await page.locator('.wk-thumbnails').count(),0);
       assert.ok((await state(page)).scrollWidth<=390);assert.deepEqual(errors,[]);
       await page.screenshot({path:path.join(out,'mobile-all-media-buttons.png'),fullPage:true});
-      results.push({case:'mobile all 19 media buttons visible and selectable',layout,errors});await page.close();
+      results.push({case:'mobile all 19 media buttons reachable in one row and selectable',layout,strip,errors});await page.close();
+    }
+    for(const item of [work,product]){
+      const {page,errors,requests}=await setup(browser,true);
+      await page.goto(base+'/prints/detail/?id='+item.id,{waitUntil:'load'});await ready(page);
+      const selected=()=>page.locator('[data-view][aria-pressed="true"]').evaluate(button=>({view:button.dataset.view,index:Number(button.dataset.mediaIndex||0)}));
+      const frames=[await galleryFrame(page)];
+      await swipeStage(page,'left',{short:true});assert.equal((await selected()).view,'video');
+      await swipeStage(page,'left',{cancel:true});assert.equal((await selected()).view,'video');
+      await swipeStage(page,'left',{controls:true});assert.equal((await selected()).view,'video');
+      await swipeStage(page,'left');assert.deepEqual(await selected(),{view:'photo',index:0});
+      assert.equal(await page.locator('[data-stage-video]').evaluate(video=>video.paused),true);
+      for(let index=1;index<item.images.length;index++){
+        await swipeStage(page,'left');assert.deepEqual(await selected(),{view:'photo',index});
+      }
+      assert.equal(requests.filter(url=>/model-viewer.*\.js|\.glb/.test(url)).length,0);
+      await swipeStage(page,'left');assert.equal((await selected()).view,'model');
+      await page.waitForFunction(()=>!!document.querySelector('[data-viewer]').model);
+      frames.push(await galleryFrame(page));
+      const orbit=await page.locator('[data-viewer]').evaluate(viewer=>viewer.getCameraOrbit().theta);
+      await swipeStage(page,'left');assert.equal((await selected()).view,'model');
+      await page.waitForFunction(before=>Math.abs(document.querySelector('[data-viewer]').getCameraOrbit().theta-before)>.1,orbit);
+      await swipeStage(page,'left',{edge:true});assert.equal((await selected()).view,'model');
+      await swipeStage(page,'right',{edge:true});assert.deepEqual(await selected(),{view:'photo',index:item.images.length-1});
+      frames.push(await galleryFrame(page));sameFrames(frames);
+      for(let index=item.images.length-2;index>=0;index--){await swipeStage(page,'right');assert.deepEqual(await selected(),{view:'photo',index});}
+      await swipeStage(page,'right');assert.equal((await selected()).view,'video');
+      await automaticVideoState(page);
+      await swipeStage(page,'right');assert.equal((await selected()).view,'video');
+      await swipeStage(page,'left');assert.equal((await selected()).view,'photo');
+      const scrollable=await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight);
+      await swipeStage(page,'left',{vertical:true});assert.equal((await selected()).view,'photo');
+      if(scrollable)await page.waitForFunction(()=>scrollY>0);
+      else assert.equal(await page.evaluate(()=>scrollY),0);
+      assert.deepEqual(errors,[]);
+      results.push({case:'mobile '+item.kind+' swipe media, preserve video controls, vertical scroll and 3D rotation',frames,errors});
+      await page.close();
+    }
+    {
+      const {page,errors}=await setup(browser,true);
+      const fixture=structuredClone(catalog),item=fixture.entries.find(row=>row.kind==='work');
+      item.videos=[];item.model=null;item.images=Array.from({length:12},(_,index)=>({...work.images[0],url:work.images[0].url+'?swipe='+index}));
+      await page.route('**/workshop/catalog.json',route=>route.fulfill({json:fixture}));
+      await page.goto(base+'/prints/detail/?id='+item.id,{waitUntil:'load'});await ready(page);
+      for(let index=1;index<12;index++){
+        await swipeStage(page,'left');
+        const selected=page.locator('[data-view][aria-pressed="true"]');
+        assert.equal(await selected.getAttribute('data-media-index'),String(index));
+        const box=await selected.boundingBox();assert.ok(box.x>=16&&box.x+box.width<=374,'swipe reveals active media button without scrolling the page');
+      }
+      await swipeStage(page,'left');assert.equal(await page.locator('[data-view][aria-pressed="true"]').getAttribute('data-media-index'),'11');
+      const cdp=await page.context().newCDPSession(page),box=await page.locator('.wk-stage').boundingBox();
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+90,y:box.y+60},{x:box.x+200,y:box.y+60}]});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x+40,y:box.y+60},{x:box.x+150,y:box.y+60}]});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
+      assert.equal(await page.locator('[data-view][aria-pressed="true"]').getAttribute('data-media-index'),'11');
+      assert.deepEqual(errors,[]);results.push({case:'mobile photo-only swipes reveal all 12 buttons; boundary and multi-touch stay stable',errors});await page.close();
+    }
+    {
+      const page=await browser.newPage({...device(false),hasTouch:true});
+      await page.route('https://**',route=>route.abort());
+      await page.goto(base+'/prints/detail/?id='+work.id,{waitUntil:'load'});await ready(page);
+      assert.notEqual(await page.locator('html').getAttribute('data-ui'),'mobile');
+      await page.locator('[data-view="photo"]').first().click();
+      await swipeStage(page,'left');
+      assert.equal(await page.locator('[data-view][aria-pressed="true"]').getAttribute('data-media-index'),'0');
+      results.push({case:'desktop touch and existing gallery layout stay unchanged'});await page.close();
     }
     fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));
     console.log(JSON.stringify({passed:results.length,cases:results.map(result=>result.case),evidence:path.resolve(out)},null,2));

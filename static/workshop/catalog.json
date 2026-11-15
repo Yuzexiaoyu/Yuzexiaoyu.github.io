@@ -2,49 +2,6 @@
   "version": 1,
   "entries": [
     {
-      "description": "青绿色瓶身带有流动的扭纹，圆润的轮廓为桌面添一点柔和色彩。可搭配干花，或作为书架上的小摆件。",
-      "fixed_price": 39,
-      "id": "38682d52aabd49c3834e9baf00250a4c",
-      "is_demo": false,
-      "kind": "product",
-      "material": "PLA",
-      "max_price": 0,
-      "max_weight_g": null,
-      "min_price": 0,
-      "min_weight_g": null,
-      "name": "青绿扭纹花器",
-      "revision": 7,
-      "status": "published",
-      "updated_at": "2026-11-14T21:57:33+0800",
-      "weight_g": 120,
-      "images": [
-        {
-          "id": "b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958",
-          "name": "预览图片",
-          "url": "/workshop/media/b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958.svg",
-          "kind": "image",
-          "size": 1679
-        }
-      ],
-      "videos": [
-        {
-          "id": "42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80",
-          "name": "预览视频",
-          "url": "/workshop/media/42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80.webm",
-          "kind": "video",
-          "size": 39420
-        }
-      ],
-      "model": {
-        "id": "beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067",
-        "name": "3D 预览",
-        "url": "/workshop/media/beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067.glb",
-        "kind": "model",
-        "size": 613920
-      },
-      "colors": []
-    },
-    {
       "description": "沿瓶身旋转的细纹与收拢的瓶口，勾勒出柔和的曲线。适合搭配干花，也可单独摆放在书桌或书架上。",
       "fixed_price": null,
       "id": "8551df31cd844b4bb26193f353755542",
@@ -56,9 +13,9 @@
       "min_price": 20,
       "min_weight_g": 60,
       "name": "扭纹花器",
-      "revision": 7,
+      "revision": 12,
       "status": "published",
-      "updated_at": "2026-11-14T21:35:54+0800",
+      "updated_at": "2026-11-15T20:31:21+0800",
       "weight_g": null,
       "images": [
         {
@@ -136,10 +93,59 @@
           "material": "PLA"
         }
       ]
+    },
+    {
+      "description": "青绿色瓶身带有流动的扭纹，圆润的轮廓为桌面添一点柔和色彩。可搭配干花，或作为书架上的小摆件。",
+      "fixed_price": 39,
+      "id": "38682d52aabd49c3834e9baf00250a4c",
+      "is_demo": false,
+      "kind": "product",
+      "material": "PLA",
+      "max_price": 0,
+      "max_weight_g": null,
+      "min_price": 0,
+      "min_weight_g": null,
+      "name": "青绿扭纹花器",
+      "revision": 7,
+      "status": "published",
+      "updated_at": "2026-11-14T21:57:33+0800",
+      "weight_g": 120,
+      "images": [
+        {
+          "id": "b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958",
+          "name": "预览图片",
+          "url": "/workshop/media/b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958.svg",
+          "kind": "image",
+          "size": 1679
+        }
+      ],
+      "videos": [
+        {
+          "id": "42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80",
+          "name": "预览视频",
+          "url": "/workshop/media/42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80.webm",
+          "kind": "video",
+          "size": 39420
+        }
+      ],
+      "model": {
+        "id": "beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067",
+        "name": "3D 预览",
+        "url": "/workshop/media/beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067.glb",
+        "kind": "model",
+        "size": 613920
+      },
+      "colors": []
     }
   ],
   "settings": {
     "name": "雨泽小鱼的工坊",
-    "qq_image": null
+    "qq_image": {
+      "id": "2d47a164adb218477353cb3e745c60bf1eb20ee7e1f5ed02df60408c0f566e6e",
+      "name": "预览图片",
+      "url": "/workshop/media/2d47a164adb218477353cb3e745c60bf1eb20ee7e1f5ed02df60408c0f566e6e.png",
+      "kind": "image",
+      "size": 894879
+    }
   }
 }

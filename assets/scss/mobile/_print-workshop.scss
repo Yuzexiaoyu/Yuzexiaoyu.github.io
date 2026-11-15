@@ -1,6 +1,6 @@
 body.template-workshop {
   .m-header { background: rgba(0,0,0,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-  .container.main-container.flex.on-phone--column { padding: 0 0 28px !important; }
+  .container.main-container.flex.on-phone--column { min-height: calc(100svh - var(--m-header-height)); padding: 0 0 28px !important; }
   .wk-shell { width: calc(100% - 32px); font-size: 15px; }
   .wk-shell:not([data-workshop="admin"]) > .wk-nav { display: none; }
   .wk-nav { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
@@ -22,17 +22,40 @@ body.template-workshop {
   .wk-card-price small { display: inline; margin-left: 6px; font-size: 13px; }
   .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
   .wk-empty { padding: 35px 18px; }
-  .wk-breadcrumb { margin: 17px 0; gap: 15px; font-size: 13px; }
-  .wk-detail-grid { display: flex; flex-direction: column; gap: 22px; padding: 0 0 88px; }
-  .wk-gallery-tools { padding: 10px 0; }
+  .wk-breadcrumb { margin: 8px 0; gap: 15px; font-size: 13px; }
+  .wk-detail-grid { display: flex; flex-direction: column; gap: 8px; padding: 0 0 Max(88px,calc(env(safe-area-inset-bottom) + 74px)); }
+  // Reserve space for configuration without changing the media or control appearance.
+  .wk-gallery { position: relative; }
+  .wk-stage { height: clamp(180px,calc(100svh - 610px),300px); aspect-ratio: auto; touch-action: pan-y pinch-zoom; }
+  // Keep center drags available for 3D rotation; reserve invisible edges for media swipes.
+  .wk-stage:has(> model-viewer:not([hidden]))::before,
+  .wk-stage:has(> model-viewer:not([hidden]))::after { content: ''; position: absolute; top: 0; bottom: 0; width: 28px; z-index: 1; }
+  .wk-stage:has(> model-viewer:not([hidden]))::before { left: 0; }
+  .wk-stage:has(> model-viewer:not([hidden]))::after { right: 0; }
+  .wk-gallery-tools { flex-wrap: nowrap; padding: 6px 0; }
+  .wk-view-switch { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; }
+  .wk-gallery-tools [data-reset-view] { position: absolute; top: 6px; right: 8px; z-index: 2; }
   .wk-gallery-tools button { min-height: 44px; }
-  .wk-config { padding: 0; }
-  .wk-config h1 { font-size: 29px; margin: 14px 0; }
+  .wk-config { display: flex; flex-direction: column; padding: 0; }
+  .wk-config h1 { order: 0; font-size: 29px; margin: 0 0 6px; }
+  .wk-description { order: 3; margin: 16px 0 0; }
   .wk-swatch { width: 44px; height: 44px; }
-  .wk-config-section { margin-top: 22px; padding-top: 20px; }
-  input.wk-range { margin: 19px 0; height: 5px; }
+  .wk-config-section { order: 1; margin-top: 10px; padding-top: 10px; }
+  .wk-config-section .wk-label-row { margin-bottom: 8px; }
+  .wk-config-section:has(.wk-swatches) { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 18px; }
+  .wk-config-section:has(.wk-swatches) .wk-label-row { grid-column: 1; grid-row: 1; min-width: 0; margin: 0; }
+  .wk-config-section:has(.wk-swatches) h2, .wk-material > span:first-child { flex-shrink: 0; }
+  [data-color-name] { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+  .wk-material { grid-column: 2; grid-row: 1; min-width: 0; max-width: 140px; gap: 8px; margin: 0; }
+  .wk-swatches { grid-column: 1 / -1; grid-row: 2; }
+  input.wk-range { margin: 12px 0; height: 5px; }
   .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; }
   .wk-range::-moz-range-thumb { width: 18px; height: 18px; }
+  .wk-price-box { order: 2; margin: 10px 0 0; padding-top: 10px; align-items: baseline; }
+  .wk-price-box > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
+  .wk-unit { padding-bottom: 0; }
+  .wk-stock-facts { order: 2; margin: 10px 0 0; }
+  .wk-config > .wk-feedback { order: 4; }
   .wk-contact-button { position: fixed; z-index: 60; left: 16px; right: 16px; bottom: Max(14px,env(safe-area-inset-bottom)); width: calc(100% - 32px); min-height: 50px; box-shadow: 0 0 0 8px #0c1115e6,0 -12px 35px #0c1115; font-size: 14px; }
   .wk-price-note { text-align: left; }
   .wk-mobile-price { display: block; margin-right: auto; font-size: 20px; }
@@ -73,4 +96,8 @@ body.template-workshop {
   .wk-editor-footer .wk-feedback { flex-basis: 100%; }
   .wk-icon-button { width: 44px; height: 44px; }
   @media (min-width: 700px) { .wk-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+  @media (min-width: 700px) and (max-height: 500px) {
+    .wk-detail-grid { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); align-items: start; gap: 20px; }
+    .wk-stage { height: clamp(180px,calc(100svh - 200px),300px); }
+  }
 }

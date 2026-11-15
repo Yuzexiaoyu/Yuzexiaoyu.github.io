@@ -1,6 +1,7 @@
-import {abortError, escapeHTML as e, quote, weightAt, grams, money, replaceQuery, setStatus, Entry, Color, Settings} from './workshop-shared';
+import {abortError, escapeHTML as e, quote, weightAt, grams, money, replaceQuery, setStatus, CONTACT_QQ, Entry, Color, Settings} from './workshop-shared';
 import {publicApi as api, preloadPublicCatalog} from './workshop-public';
 import {initAdmin} from './print-admin';
+import {initMobileGallerySwipe} from './mobile-workshop-gallery';
 
 const w = window as any;
 let currentRoot: HTMLElement|null = null;
@@ -35,6 +36,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
       grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="lazy" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(tab==='work'?p.min_price:(p.fixed_price??0))}<small>${tab==='work'?'起':p.weight_g?`${e(p.weight_g)} g`:''}</small></span></div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
+      w.WorkshopIntro?.refresh?.(root);
     };
     root.querySelectorAll<HTMLButtonElement>('[data-catalog-tab]').forEach(button=>button.addEventListener('click',()=>{tab=button.dataset.catalogTab!;const params=new URLSearchParams(location.search);params.set('tab',tab);replaceQuery(params);render();},{signal}));
     render();
@@ -92,6 +94,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       <button type="button" class="wk-button wk-primary wk-contact-button" data-contact><strong class="wk-mobile-price" data-mobile-price></strong><span>${configurable?'生成清单 · QQ 联系':'联系购买 · QQ'}</span><span>↗</span></button>
       <p class="wk-feedback" data-contact-error role="status"></p>
     </aside></div>`;
+    w.WorkshopIntro?.refresh?.(root);
     const viewer=container.querySelector<any>('[data-viewer]');
     const stageImage=container.querySelector<HTMLImageElement>('[data-stage-image]')!;
     const stageVideo=container.querySelector<HTMLVideoElement>('[data-stage-video]');
@@ -99,6 +102,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const failed=container.querySelector<HTMLElement>('[data-viewer-failed]');
     let viewerReady=false;let viewerFailed=false;
     let imageIndex=0;let videoIndex=0;
+    let revealMediaButton: (()=>void)|undefined;
     const paint=()=>{if(configurable&&viewer?.model&&color) for(const material of viewer.model.materials){const pbr=material.pbrMetallicRoughness;pbr.baseColorTexture?.setTexture(null);pbr.setBaseColorFactor(color.hex);}};
     const viewerError=()=>{
       if(signal.aborted)return;
@@ -121,6 +125,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         n.classList.toggle('is-active',active);
         n.setAttribute('aria-pressed',String(active));
       });
+      revealMediaButton?.();
       if(loading)loading.hidden=!model||viewerReady||viewerFailed;
       if(failed)failed.hidden=!model||!viewerFailed;
       const reset=container.querySelector<HTMLElement>('[data-reset-view]');
@@ -139,6 +144,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         void stageVideo.play().catch(()=>{});
       }
     },{signal}));
+    if(document.documentElement.dataset.ui==='mobile'){
+      revealMediaButton=initMobileGallerySwipe(container.querySelector<HTMLElement>('.wk-stage')!,Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]')),signal);
+    }
     if(viewer){
       viewer.addEventListener('load',()=>{if(signal.aborted)return;viewerReady=true;viewerFailed=false;loading!.hidden=true;failed!.hidden=true;paint();},{signal});
       viewer.addEventListener('error',viewerError,{signal});
@@ -205,11 +213,10 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         if(signal.aborted)return;
         if(q.entry.kind!==entry.kind)throw new Error('内容栏目已更新，请刷新页面后重新选择。');
         const changed=entry.revision!==q.entry.revision;entry=q.entry;color=q.color;update();
-        const link=new URL('/prints/detail/',location.origin);link.searchParams.set('id',entry.id!);
-        if(configurable){link.searchParams.set('color',color!.id);link.searchParams.set('infill',String(infill));}
-        const selection=configurable?`颜色：${color!.name}\n填充比例：${infill}%${q.weight_g==null?'':`\n重量：${grams(q.weight_g)}`}`:`重量：${entry.weight_g} g`;
-        text.value=`雨泽小鱼的工坊｜选购清单\n商品：${entry.name}\n类型：${configurable?'可选定制':'现货'}${q.material?`\n材质：${q.material}`:''}\n${selection}\n数量：1\n${configurable?'报价':'售价'}：¥${q.price}\n商品地址：${link.href}`;
-        root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码"><a class="wk-text-link" href="${e(settings.qq_image.url)}" download="工坊-QQ二维码">保存 QQ 二维码 ↓</a>`:'<p class="wk-qr-empty">店主还没有设置 QQ 二维码。清单可以先复制保存。</p>';
+        text.value=[`商品：${entry.name}`,`材质：${q.material||'—'}`,
+          ...(configurable?[`颜色：${color!.name}`,`填充比例：${infill}%`]:[]),
+          `报价：${money(q.price)}`].join('\n');
+        root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=(settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码">`:'<p class="wk-qr-empty">店主还没有设置 QQ 二维码。清单可以先复制保存。</p>')+`<p class="wk-contact-number">QQ：<strong>${CONTACT_QQ}</strong></p>`;
         setStatus(feedback,changed?'商品信息已更新，清单已使用最新报价。':'');dialog.showModal();
       }catch(error){if(!abortError(error))setStatus(container.querySelector('[data-contact-error]'),(error as Error).message,true);}
       finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range!.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price===null;}}

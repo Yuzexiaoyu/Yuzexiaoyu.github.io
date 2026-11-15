@@ -1,122 +1,157 @@
-/** Customer workshop entrance. The site's existing canvas owns all particles. */
+/** Reveal workshop modules as they arrive; never gate content behind the canvas. */
 (() => {
   const w = window as any;
-  if (w.WorkshopIntro) return;
+  const VERSION = 'module-reveal-5';
+  if (w.WorkshopIntro?.version === VERSION) return;
+  w.WorkshopIntro?.cancel?.();
   const html = document.documentElement;
-  const RAMP = 240;
-  const SETTLE = 620;
-  const REVEAL = 620;
-  const NORMAL = 5;
-  const FAST = 32;
+  const animations = new Map<Animation, {element: HTMLElement; startAt: number; launched: boolean}>();
+  const pending = new Set<Animation>();
   let frame = 0;
-  let started = 0;
-  let revealing = 0;
-  let phase: 'warp' | 'reveal' | null = null;
   let root: HTMLElement | null = null;
-  let motionReduced = false;
-  let revealDuration = REVEAL;
-  let animations: Animation[] = [];
-  const locked = new Map<HTMLElement, boolean>();
+  let seen = new WeakSet<HTMLElement>();
+  let visibleAt: number | null = null;
+  let hiddenAt: number | null = null;
+  let reduced = false;
+  let compact = false;
+  let nextCompact = false;
 
   const isWorkshop = (url: string) => {
     try { return /^\/prints(?:\/|$)/.test(new URL(url, location.origin).pathname); }
     catch { return false; }
   };
-  const speed = (value: number) => {
-    if (w.__isMobileUI?.()) w.__mobileWarp?.setSpeed(value);
-    else w.setWarpSpeed?.(value);
+  const isCollection = (url: string) => {
+    try { return /^\/prints\/(?:detail\/)?$/.test(new URL(url, location.origin).pathname); }
+    catch { return false; }
   };
-  const ease = (value: number) => {
-    const progress = Math.max(0, Math.min(value, 1));
-    return progress * progress * (3 - 2 * progress);
-  };
-  const lock = () => {
-    if (!document.body || locked.has(document.body)) return;
-    locked.set(document.body, document.body.inert);
-    document.body.inert = true;
-  };
-  function finish() {
+  function cancel() {
     cancelAnimationFrame(frame);
     frame = 0;
-    phase = null;
+    animations.forEach(({element}, animation) => {
+      animation.onfinish = null;
+      animation.cancel();
+      delete element.dataset.workshopReveal;
+    });
+    animations.clear();
+    pending.clear();
     root = null;
+    compact = nextCompact = false;
+    visibleAt = hiddenAt = null;
+    seen = new WeakSet();
     delete html.dataset.workshopIntro;
-    animations.forEach(animation => animation.cancel());
-    animations = [];
-    locked.forEach((inert, body) => { body.inert = inert; });
-    locked.clear();
-    speed(NORMAL);
+    delete html.dataset.workshopEntry;
   }
-  function reveal(now: number) {
-    phase = 'reveal';
-    revealing = now;
-    // Opacity on outer containers also covers late-arriving images/API content.
-    const containers = Array.from(document.body.children).filter((node): node is HTMLElement =>
-      node instanceof HTMLElement && !/^(SCRIPT|STYLE|LINK|TEMPLATE|NOSCRIPT)$/.test(node.tagName));
-    const groups = Array.from(document.querySelectorAll<HTMLElement>(
-      '[data-workshop] > .wk-nav, .wk-collection-toolbar, .wk-grid, .wk-breadcrumb, .wk-gallery, .wk-config > *'));
-    revealDuration = motionReduced ? 160 : REVEAL;
-    containers.forEach(element => {
-      const animation = element.animate([{opacity: 0}, {opacity: 1}], {
-        duration: revealDuration, fill: 'both', easing: 'cubic-bezier(.2,0,.2,1)'
+  function playWhenVisible() {
+    if (frame || !pending.size || document.visibilityState === 'hidden') return;
+    // Let the first visible frame paint before starting the module choreography.
+    frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(now => {
+        frame = 0;
+        if (document.visibilityState === 'hidden') return;
+        if (visibleAt === null) visibleAt = now;
+        else if (hiddenAt !== null) visibleAt += now-hiddenAt;
+        hiddenAt = null;
+        const elapsed = now-visibleAt;
+        pending.forEach(animation => {
+          const item = animations.get(animation);
+          if (!item) return;
+          if (!item.launched) {
+            animation.effect?.updateTiming({delay: Math.max(0,item.startAt-elapsed)});
+            item.launched = true;
+          }
+          animation.play();
+        });
+        pending.clear();
       });
-      animation.pause();
-      animations.push(animation);
     });
-    if (!motionReduced) groups.forEach((element, index) => {
-      const delay = Math.min(index * 25, 100);
-      const animation = element.animate([
-        {transform: 'translate3d(0,8px,0)'},
-        {transform: 'translate3d(0,0,0)'}
-      ], {duration: REVEAL - delay, delay, fill: 'both', easing: 'cubic-bezier(.22,1,.36,1)'});
-      animation.pause();
-      animations.push(animation);
+  }
+  function show(element: HTMLElement, startAt: number, duration: number, distance: number, opacity = 0, x = 0) {
+    if (seen.has(element)) return;
+    seen.add(element);
+    if (typeof element.animate !== 'function') return;
+    const keyframes: Keyframe[] = reduced
+      ? [{opacity: 0}, {opacity: 1}]
+      : [{opacity, transform: `translate3d(${x}px,${distance}px,0)`}, {opacity: 1, transform: 'translate3d(0,0,0)'}];
+    const scheduled = reduced ? Math.min(startAt,180) : startAt;
+    const animation = element.animate(keyframes, {
+      delay: scheduled,
+      duration: reduced ? 260 : duration,
+      easing: reduced ? 'linear' : 'cubic-bezier(.2,.6,.3,1)',
+      fill: 'both'
     });
+    animation.id = 'workshop-reveal';
+    animation.pause();
+    animation.currentTime = 0;
+    element.dataset.workshopReveal = 'true';
     html.dataset.workshopIntro = 'reveal';
+    animations.set(animation, {element, startAt: scheduled, launched: false});
+    pending.add(animation);
+    animation.onfinish = () => {
+      animation.cancel();
+      animations.delete(animation);
+      pending.delete(animation);
+      delete element.dataset.workshopReveal;
+      if (!animations.size) delete html.dataset.workshopIntro;
+    };
+    playWhenVisible();
   }
-  function tick(now: number) {
-    if (!phase) return;
-    const elapsed = now - started;
-    // One continuous pulse, independent of navigation/content readiness. Slow
-    // responses must never hold peak speed or restart acceleration on arrival.
-    const pulse = elapsed < RAMP ? ease(elapsed / RAMP) : 1 - ease((elapsed - RAMP) / SETTLE);
-    speed(NORMAL + (FAST - NORMAL) * pulse);
-    if (phase === 'warp') {
-      if (root?.isConnected && elapsed >= RAMP) reveal(now);
-      // A failed/cancelled navigation must not leave the old page invisible.
-      else if (elapsed > 8000) { finish(); return; }
+  function refresh(element: HTMLElement) {
+    if (element !== root || !element.isConnected) return;
+    const elapsed = visibleAt === null ? 0 : Math.max(0,(hiddenAt ?? performance.now())-visibleAt);
+    const group = (selector: string, delay: number, duration: number, distance: number, x = 0) =>
+      element.querySelectorAll<HTMLElement>(selector).forEach(node => show(node, delay, duration, distance, 0, x));
+
+    if (!compact) {
+      group(':scope > .wk-nav > .wk-brand', 0, 560, 0, -24);
+      group(':scope > .wk-nav > .wk-nav-back', 160, 560, 0, 24);
     }
-    if (phase === 'reveal') {
-      const time = now - revealing;
-      animations.forEach(animation => { animation.currentTime = time; });
-      if (time >= revealDuration && elapsed >= RAMP + SETTLE) { finish(); return; }
-    }
-    frame = requestAnimationFrame(tick);
-  }
-  function start() {
-    finish();
-    motionReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    phase = 'warp';
-    started = performance.now();
-    html.dataset.workshopIntro = 'warp';
-    lock();
-    frame = requestAnimationFrame(tick);
+    group('.wk-collection-toolbar', compact ? 0 : 300, compact ? 260 : 500, compact ? 8 : 18);
+    group('.wk-breadcrumb', compact ? 0 : 220, compact ? 260 : 420, compact ? 6 : 10);
+    const cardsStart = Math.max(compact ? 40 : 480,elapsed);
+    element.querySelectorAll<HTMLElement>('.wk-grid > .wk-card').forEach((card, index) =>
+      show(card, cardsStart + Math.min(index * (compact ? 50 : 110),compact ? 100 : 220), compact ? 360 : 640, compact ? 12 : 30));
+
+    const detailStart = Math.max(compact ? 0 : 320,elapsed);
+    group('.wk-gallery', detailStart, compact ? 320 : 560, compact ? 8 : 20);
+    group('.wk-config > h1', detailStart + (compact ? 0 : 90), compact ? 320 : 480, compact ? 8 : 14);
+    group('.wk-config > .wk-description', detailStart + (compact ? 35 : 170), compact ? 320 : 500, compact ? 8 : 14);
+    element.querySelectorAll<HTMLElement>('.wk-config-section').forEach((section, index) =>
+      show(section, detailStart + (compact ? 70 : 240) + Math.min(index * (compact ? 35 : 70),compact ? 70 : 140), compact ? 320 : 500, compact ? 8 : 16));
+    group('.wk-price-box, .wk-stock-facts', detailStart + (compact ? 105 : 380), compact ? 300 : 460, compact ? 8 : 14);
+    group('.wk-contact-button', detailStart + (compact ? 140 : 460), compact ? 280 : 430, compact ? 8 : 10);
   }
   w.WorkshopIntro = {
-    active: () => phase !== null,
+    version: VERSION,
+    active: () => animations.size > 0,
     navigate(to: string, from: string) {
-      if (isWorkshop(to) && !isWorkshop(from)) { start(); return true; }
-      finish();
-      return false;
+      cancel();
+      nextCompact = isCollection(from) && isCollection(to);
+      return isWorkshop(to);
     },
     enter(element: HTMLElement) {
-      if (!phase) return;
-      if (element.dataset.workshop === 'admin') { finish(); return; }
-      root = element;
-      lock();
+      if (element.dataset.workshop === 'admin') { cancel(); return; }
+      if (element !== root) {
+        const internalVisit = nextCompact;
+        cancel();
+        compact = internalVisit;
+        root = element;
+        reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        html.dataset.workshopEntry = 'true';
+      }
+      refresh(element);
     },
-    cancel: finish
+    refresh,
+    cancel
   };
-  window.addEventListener('pagehide', finish);
-  if (isWorkshop(location.href)) start();
+  window.addEventListener('pagehide', cancel);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      if (visibleAt !== null && hiddenAt === null) hiddenAt = performance.now();
+      animations.forEach((_element, animation) => {
+        animation.pause();
+        pending.add(animation);
+      });
+    } else playWhenVisible();
+  });
+  if (isWorkshop(location.href)) html.dataset.workshopEntry = 'true';
 })();
