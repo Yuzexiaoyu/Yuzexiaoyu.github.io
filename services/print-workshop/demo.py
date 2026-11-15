@@ -1,4 +1,4 @@
-"""Procedural demo assets, never represented as real printed goods."""
+"""Procedural assets and initial collection for the workshop."""
 import json
 import math
 import struct
@@ -72,7 +72,14 @@ def poster(warm=False):
     <path d="M225 137 C225 200 168 214 190 292 L224 398 Q300 425 376 398 L410 292 C432 214 375 200 375 137Z" fill="url(#v)"/>
     <g clip-path="url(#shape)" stroke="#152b23" opacity=".16" fill="none" stroke-width="3">{strokes}</g>
     <ellipse cx="300" cy="137" rx="75" ry="18" fill="{light}"/><ellipse cx="300" cy="137" rx="66" ry="12" fill="{base}"/>
-    <text x="30" y="465" font-family="sans-serif" font-size="12" letter-spacing="4" fill="#82988e">FORM STUDY / DEMO</text></svg>'''.encode()
+    </svg>'''.encode()
+
+
+TITLES = {"work": "扭纹花器", "product": "青绿扭纹花器"}
+DESCRIPTIONS = {
+    "work": "沿瓶身旋转的细纹与收拢的瓶口，勾勒出柔和的曲线。适合搭配干花，也可单独摆放在书桌或书架上。",
+    "product": "青绿色瓶身带有流动的扭纹，圆润的轮廓为桌面添一点柔和色彩。可搭配干花，或作为书架上的小摆件。",
+}
 
 
 def seed(store):
@@ -84,16 +91,25 @@ def seed(store):
         with store.connect() as db:
             db.execute("INSERT OR IGNORE INTO metadata VALUES ('demo_seeded','1')")
         return
-    colors = [store.save_color({"name": name, "hex": color}) for name, color in
+    colors = [store.save_color({"name": name, "hex": color, "material": "PLA"}) for name, color in
               [("鼠尾草绿", "#87B89E"), ("云雾白", "#E9E5DA"), ("石墨黑", "#454A50"),
                ("陶土橘", "#C28465"), ("雾霭蓝", "#8AABCD"), ("丁香紫", "#B5A0CC")]]
-    model = store.save_asset("示例-扭纹花器.glb", vase_glb())
-    for kind, name, warm in [("work", "形态练习 · 光与纹理", True), ("product", "扭纹花器", False)]:
-        cover = store.save_asset(f"示例-{kind}.svg", poster(warm), trusted_demo=True)
-        store.save_entry({"kind": kind, "name": name, "status": "published", "is_demo": True,
-                          "description": "这是一件用于体验工坊的程序生成演示模型，并非实际售卖商品。\n" + ("可以试试旋转模型、切换颜色，或调整填充比例观察报价变化。" if kind == "product" else "可以旋转、缩放模型，或切换图片欣赏形态与纹理。") + "\n真实作品、价格和颜色请在管理后台添加或替换。",
-                          "image_ids": [cover["id"]], "model_id": model["id"],
-                          "color_ids": [c["id"] for c in colors] if kind == "product" else [],
-                          "min_price": 20 if kind == "product" else 0, "max_price": 100 if kind == "product" else 0})
+    model = store.save_asset("扭纹花器.glb", vase_glb())
+    for kind, warm in [("work", True), ("product", False)]:
+        name = TITLES[kind]
+        cover = store.save_asset(f"{name}.svg", poster(warm), trusted_demo=True)
+        image_ids = [cover["id"]]
+        if kind == "work":
+            image_ids.append(store.save_asset(f"{name}-配色.svg", poster(False), trusted_demo=True)["id"])
+        store.save_entry({"kind": kind, "name": name, "status": "published", "is_demo": False,
+                          "description": DESCRIPTIONS[kind],
+                          "material": "PLA" if kind == "product" else "",
+                          "image_ids": image_ids, "model_id": model["id"],
+                          "color_ids": [c["id"] for c in colors] if kind == "work" else [],
+                          "min_price": 20 if kind == "work" else 0, "max_price": 100 if kind == "work" else 0,
+                          "fixed_price": 39 if kind == "product" else None,
+                          "weight_g": 120 if kind == "product" else None,
+                          "min_weight_g": 60 if kind == "work" else None,
+                          "max_weight_g": 180 if kind == "work" else None})
     with store.connect() as db:
         db.execute("INSERT OR IGNORE INTO metadata VALUES ('demo_seeded','1')")

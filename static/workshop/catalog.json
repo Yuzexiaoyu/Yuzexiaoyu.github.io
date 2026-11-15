@@ -2,26 +2,39 @@
   "version": 1,
   "entries": [
     {
-      "description": "这是一件用于体验工坊的程序生成演示模型，并非实际售卖商品。\n可以旋转、缩放模型，或切换图片欣赏形态与纹理。\n真实作品、价格和颜色请在管理后台添加或替换。",
-      "id": "8551df31cd844b4bb26193f353755542",
-      "is_demo": true,
-      "kind": "work",
+      "description": "青绿色瓶身带有流动的扭纹，圆润的轮廓为桌面添一点柔和色彩。可搭配干花，或作为书架上的小摆件。",
+      "fixed_price": 39,
+      "id": "38682d52aabd49c3834e9baf00250a4c",
+      "is_demo": false,
+      "kind": "product",
+      "material": "PLA",
       "max_price": 0,
+      "max_weight_g": null,
       "min_price": 0,
-      "name": "形态练习 · 光与纹理",
-      "revision": 2,
+      "min_weight_g": null,
+      "name": "青绿扭纹花器",
+      "revision": 7,
       "status": "published",
-      "updated_at": "2026-11-11T21:47:18+0800",
+      "updated_at": "2026-11-14T21:57:33+0800",
+      "weight_g": 120,
       "images": [
         {
-          "id": "f422ffbb875dead9f9cdceacb28a54055d85777165a1719890f7bc306f5fdda1",
+          "id": "b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958",
           "name": "预览图片",
-          "url": "/workshop/media/f422ffbb875dead9f9cdceacb28a54055d85777165a1719890f7bc306f5fdda1.svg",
+          "url": "/workshop/media/b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958.svg",
           "kind": "image",
-          "size": 1798
+          "size": 1679
         }
       ],
-      "videos": [],
+      "videos": [
+        {
+          "id": "42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80",
+          "name": "预览视频",
+          "url": "/workshop/media/42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80.webm",
+          "kind": "video",
+          "size": 39420
+        }
+      ],
       "model": {
         "id": "beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067",
         "name": "3D 预览",
@@ -32,26 +45,46 @@
       "colors": []
     },
     {
-      "description": "这是一件用于体验工坊的程序生成演示模型，并非实际售卖商品。\n可以试试旋转模型、切换颜色，或调整填充比例观察报价变化。\n真实作品、价格和颜色请在管理后台添加或替换。",
-      "id": "38682d52aabd49c3834e9baf00250a4c",
-      "is_demo": true,
-      "kind": "product",
+      "description": "沿瓶身旋转的细纹与收拢的瓶口，勾勒出柔和的曲线。适合搭配干花，也可单独摆放在书桌或书架上。",
+      "fixed_price": null,
+      "id": "8551df31cd844b4bb26193f353755542",
+      "is_demo": false,
+      "kind": "work",
+      "material": "",
       "max_price": 100,
+      "max_weight_g": 180,
       "min_price": 20,
+      "min_weight_g": 60,
       "name": "扭纹花器",
-      "revision": 1,
+      "revision": 7,
       "status": "published",
-      "updated_at": "2026-11-11T20:19:36+0800",
+      "updated_at": "2026-11-14T21:35:54+0800",
+      "weight_g": null,
       "images": [
         {
-          "id": "c16a221b572452e975595ca14f0f6c75979dbccf2bcccf97ab7a88918d29d42c",
+          "id": "3209e71c436048919ba063d8c6f698415de05b21b044b6af34b8d860bf8e7ea8",
           "name": "预览图片",
-          "url": "/workshop/media/c16a221b572452e975595ca14f0f6c75979dbccf2bcccf97ab7a88918d29d42c.svg",
+          "url": "/workshop/media/3209e71c436048919ba063d8c6f698415de05b21b044b6af34b8d860bf8e7ea8.svg",
           "kind": "image",
-          "size": 1798
+          "size": 1679
+        },
+        {
+          "id": "b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958",
+          "name": "预览图片",
+          "url": "/workshop/media/b3dd4bcd081836d1e89043b58af5bcdf1255cc02cbb15b6823cac3be44c65958.svg",
+          "kind": "image",
+          "size": 1679
         }
       ],
-      "videos": [],
+      "videos": [
+        {
+          "id": "42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80",
+          "name": "预览视频",
+          "url": "/workshop/media/42c978c7e160e57e513c0e0286ae237f400c550ff7e4067825993ca86f4cfe80.webm",
+          "kind": "video",
+          "size": 39420
+        }
+      ],
       "model": {
         "id": "beef6d16416cf86ce2b5b6a1ea81c86094bbeb5ccc1719f307572b21487bf067",
         "name": "3D 预览",
@@ -64,37 +97,43 @@
           "id": "50b221af27c24d559f6d2d25bc9753f9",
           "name": "鼠尾草绿",
           "hex": "#87B89E",
-          "active": 1
+          "active": 1,
+          "material": "PLA"
         },
         {
           "id": "dfb9e58f3f44402b912e49b750581077",
           "name": "云雾白",
           "hex": "#E9E5DA",
-          "active": 1
+          "active": 1,
+          "material": "PLA"
         },
         {
           "id": "240e12f8842b42c4b01f715fb8285368",
           "name": "石墨黑",
           "hex": "#454A50",
-          "active": 1
+          "active": 1,
+          "material": "PLA"
         },
         {
           "id": "d5b50bae094c4d1bbde7a55f9de893db",
           "name": "陶土橘",
           "hex": "#C28465",
-          "active": 1
+          "active": 1,
+          "material": "PLA"
         },
         {
           "id": "45c3b5f9eb89451a811c9fbafb2c4331",
           "name": "雾霭蓝",
           "hex": "#8AABCD",
-          "active": 1
+          "active": 1,
+          "material": "PLA"
         },
         {
           "id": "1ec9379b09c64e929fd69539a9218313",
           "name": "丁香紫",
           "hex": "#B5A0CC",
-          "active": 1
+          "active": 1,
+          "material": "PLA"
         }
       ]
     }

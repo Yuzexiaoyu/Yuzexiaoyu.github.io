@@ -1,52 +1,41 @@
 body.template-workshop {
   .m-header { background: rgba(0,0,0,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   .container.main-container.flex.on-phone--column { padding: 0 0 28px !important; }
-  .wk-shell { width: calc(100% - 32px); font-size: 14px; }
+  .wk-shell { width: calc(100% - 32px); font-size: 15px; }
   .wk-shell:not([data-workshop="admin"]) > .wk-nav { display: none; }
+  .wk-nav { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
+  .wk-nav nav { flex-wrap: wrap; gap: 10px; }
   .wk-eyebrow { font-size: 8px; letter-spacing: 1.5px; margin-bottom: 15px; }
   .wk-text-link { min-height: 36px; }
   .wk-collection { padding-top: 14px; }
-  .wk-collection-heading { display: none; }
   .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
   .wk-tabs { width: 100%; }
-  .wk-tabs button { flex: 1; justify-content: center; font-size: 13px; min-height: 44px; padding: 10px; }
-  .wk-toolbar-note { display: none; }
+  .wk-tabs button { flex: 1; justify-content: center; font-size: 14px; min-height: 44px; padding: 10px; }
   .wk-search { padding: 0 12px; border: 1px solid #293d30; border-radius: 7px; margin-top: 8px; }
   .wk-search input { width: 100%; min-height: 42px; font-size: 16px; }
   .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 12px; }
   .wk-card { border-radius: 13px; }
   .wk-card-image { aspect-ratio: .9; }
   .wk-card-info { display: block; padding: 11px 12px 14px; }
-  .wk-card-info h2 { font-size: 13px; margin-top: 3px; }
-  .wk-card-kicker { font-size: 6px; letter-spacing: .6px; }
+  .wk-card-info h2 { font-size: 15px; }
   .wk-card-price { font-size: 17px; display: block; margin-top: 7px; }
-  .wk-card-price small { display: inline; margin-left: 6px; font-size: 9px; }
-  .wk-card-number, .wk-card-open { display: none; }
+  .wk-card-price small { display: inline; margin-left: 6px; font-size: 13px; }
   .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
-  .wk-3d-label { bottom: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
   .wk-empty { padding: 35px 18px; }
-  .wk-breadcrumb { margin: 17px 0; gap: 15px; font-size: 10px; }
+  .wk-breadcrumb { margin: 17px 0; gap: 15px; font-size: 13px; }
   .wk-detail-grid { display: flex; flex-direction: column; gap: 22px; padding: 0 0 88px; }
-  .wk-stage { aspect-ratio: 1.08; border-radius: 10px; }
   .wk-gallery-tools { padding: 10px 0; }
   .wk-gallery-tools button { min-height: 44px; }
-  .wk-thumbnails button { width: 48px; height: 48px; }
-  .wk-view-hint { font-size: 9px; }
   .wk-config { padding: 0; }
   .wk-config h1 { font-size: 29px; margin: 14px 0; }
-  .wk-description { font-size: 13px; }
   .wk-swatch { width: 44px; height: 44px; }
-  .wk-label-row h2 { font-size: 13px; }
-  .wk-label-row > span { font-size: 12px; }
   .wk-config-section { margin-top: 22px; padding-top: 20px; }
-  .wk-infill-number input { font-size: 18px; min-height: 44px; }
   input.wk-range { margin: 19px 0; height: 5px; }
   .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; }
   .wk-range::-moz-range-thumb { width: 18px; height: 18px; }
   .wk-contact-button { position: fixed; z-index: 60; left: 16px; right: 16px; bottom: Max(14px,env(safe-area-inset-bottom)); width: calc(100% - 32px); min-height: 50px; box-shadow: 0 0 0 8px #0c1115e6,0 -12px 35px #0c1115; font-size: 14px; }
   .wk-price-note { text-align: left; }
   .wk-mobile-price { display: block; margin-right: auto; font-size: 20px; }
-  .wk-muted { font-size: 11px; }
   .wk-dialog { width: calc(100% - 24px); padding: 27px 20px 20px; }
   .wk-dialog textarea { font-size: 16px; height: 180px; }
   .wk-dialog h2 { font-size: 23px; }
@@ -73,7 +62,7 @@ body.template-workshop {
   .wk-row-actions { flex: 1 1 100%; justify-content: flex-end; }
   .wk-row-actions button { min-height: 38px; font-size: 12px; padding: 5px 10px; }
   .wk-color-form { flex-wrap: wrap; gap: 10px; }
-  .wk-color-form input[name=name] { flex: 1; width: 150px; font-size: 16px; }
+  .wk-color-form input[name=name], .wk-color-form input[name=material] { flex: 1; width: 150px; font-size: 16px; }
   .wk-color-list { grid-template-columns: 1fr; }
   .wk-color-card input[name=name] { font-size: 16px; }
   .wk-settings-card { padding: 20px; }

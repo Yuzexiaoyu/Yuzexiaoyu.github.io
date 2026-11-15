@@ -1,9 +1,11 @@
 export type Asset = {id: string; name: string; url: string | null; kind: string; size: number};
-export type Color = {id: string; name: string; hex: string; active: number};
-export type Entry = {id?: string; revision?: number; name: string; description: string; kind: 'work'|'product'; status: 'draft'|'published'|'archived'; min_price: number; max_price: number; color_ids: string[]; image_ids: string[]; video_ids: string[]; model_id: string|null; source_id: string|null; images: Asset[]; videos: Asset[]; model: Asset|null; source?: Asset|null; colors: Color[]; is_demo: boolean};
+export type Color = {id: string; name: string; hex: string; active: number; material: string};
+export type Entry = {id?: string; revision?: number; name: string; description: string; material: string; kind: 'work'|'product'; status: 'draft'|'published'|'archived'; min_price: number; max_price: number; fixed_price: number|null; weight_g: number|null; min_weight_g: number|null; max_weight_g: number|null; color_ids: string[]; image_ids: string[]; video_ids: string[]; model_id: string|null; source_id: string|null; images: Asset[]; videos: Asset[]; model: Asset|null; source?: Asset|null; colors: Color[]; is_demo: boolean};
 export type Settings = {name: string; qq_asset: string|null; qq_image: Asset|null};
 export const escapeHTML = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export const quote = (low: number, high: number, infill: number) => Math.floor((2 * (low * 85 + (high - low) * (infill - 15)) + 85) / 170);
+export const weightAt = (low: number|null|undefined, high: number|null|undefined, infill: number) => low == null || high == null ? null : quote(Math.round(low * 100), Math.round(high * 100), infill) / 100;
+export const grams = (value: number|null) => value == null ? '—' : `${value.toLocaleString('zh-CN', {maximumFractionDigits: 2})} g`;
 export const money = (price: number) => `¥${price.toLocaleString('zh-CN')}`;
 export function setStatus(node: HTMLElement | null, message: string, error = false) { if(node) {node.textContent = message; node.classList.toggle('is-error', error);} }
 export async function api<T>(url: string, signal?: AbortSignal, options: RequestInit = {}): Promise<T> {

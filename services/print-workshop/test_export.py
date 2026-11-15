@@ -22,7 +22,7 @@ class ExportTests(unittest.TestCase):
         self.color = self.store.save_color({"name": "测试绿", "hex": "#87B89E"})
         self.product = self.store.save_entry({"name": "Published product", "kind": "product", "status": "published",
             "image_ids": [self.image["id"]], "video_ids": [self.video["id"]], "model_id": self.model["id"], "source_id": self.original["id"],
-            "color_ids": [self.color["id"]], "min_price": 20, "max_price": 105})
+            "color_ids": [self.color["id"]], "fixed_price": 39, "weight_g": 120})
 
     def tearDown(self):
         self.temp.cleanup()
@@ -38,6 +38,7 @@ class ExportTests(unittest.TestCase):
             self.assertNotIn(private, raw)
         self.assertEqual(len(list((self.output / "media").iterdir())), 3)
         self.assertEqual(verify_snapshot(self.output), payload)
+        self.assertEqual((payload["entries"][0]["fixed_price"], payload["entries"][0]["weight_g"]), (39, 120))
         self.assertTrue((self.store.media / f'{self.original["id"]}.3mf').exists())
 
     def test_unpublishing_removes_previous_public_content_and_unused_assets(self):
@@ -47,6 +48,17 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(payload["entries"], [])
         self.assertEqual(list((self.output / "media").iterdir()), [])
 
+    def test_configurable_weights_and_multiple_images_are_exported_in_order(self):
+        second = self.store.save_asset('second.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>', trusted_demo=True)
+        work = self.store.save_entry({'name':'Configurable', 'kind':'work', 'status':'published',
+            'image_ids':[self.image['id'], second['id']], 'color_ids':[self.color['id']],
+            'min_weight_g':60, 'max_weight_g':180})
+        payload = export_public(self.store.folder, self.output)
+        exported = next(entry for entry in payload['entries'] if entry['id'] == work['id'])
+        self.assertEqual((exported['min_weight_g'], exported['max_weight_g']), (60, 180))
+        self.assertEqual([image['id'] for image in exported['images']], [self.image['id'], second['id']])
+        verify_snapshot(self.output)
+
     def test_broken_local_asset_preserves_previous_valid_export(self):
         export_public(self.store.folder, self.output)
         before = (self.output / "catalog.json").read_bytes()
@@ -54,6 +66,19 @@ class ExportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             export_public(self.store.folder, self.output)
         self.assertEqual((self.output / "catalog.json").read_bytes(), before)
+        verify_snapshot(self.output)
+
+    def test_material_export_keeps_color_and_stock_sources_separate(self):
+        self.store.save_entry(dict(self.product, material="TPU"), self.product["id"])
+        self.store.save_color(dict(self.color, material="PETG", active=True), self.color["id"])
+        self.store.save_entry({"name":"configurable", "kind":"work", "status":"published",
+            "image_ids":[self.image["id"]], "color_ids":[self.color["id"]], "material":"ignored"})
+        payload = export_public(self.store.folder, self.output)
+        work = next(entry for entry in payload["entries"] if entry["kind"] == "work")
+        stock = next(entry for entry in payload["entries"] if entry["kind"] == "product")
+        self.assertEqual(work["material"], "")
+        self.assertEqual(work["colors"][0]["material"], "PETG")
+        self.assertEqual(stock["material"], "TPU")
         verify_snapshot(self.output)
 
     def test_rejects_missing_database_and_unrelated_output_folder(self):

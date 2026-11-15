@@ -7,6 +7,7 @@ import html
 import hmac
 import io
 import json
+import math
 import mimetypes
 import os
 import re
@@ -18,6 +19,7 @@ import subprocess
 import time
 import uuid
 import zipfile
+from decimal import Decimal, ROUND_HALF_UP
 from contextlib import contextmanager
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -49,6 +51,27 @@ def price(low, high, infill):
     return (numerator * 2 + 85) // 170
 
 
+def weight_endpoint(value, name):
+    if (isinstance(value, bool) or not isinstance(value, (int, float))
+            or not math.isfinite(value) or not 0 < value <= 1_000_000):
+        raise Problem(f"{name}须为大于 0、不超过 1000000 的克数")
+    decimal = Decimal(str(value))
+    if decimal != decimal.quantize(Decimal("0.01")):
+        raise Problem(f"{name}最多保留两位小数")
+    return decimal
+
+
+def weight_at(low, high, infill):
+    integer(infill, "填充比例", 15, 100)
+    if low is None or high is None:
+        return None
+    lower, upper = weight_endpoint(low, "15% 重量"), weight_endpoint(high, "100% 重量")
+    if upper < lower:
+        raise Problem("100% 重量须不小于 15% 重量")
+    value = lower + (upper - lower) * Decimal(infill - 15) / Decimal(85)
+    return float(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
 def short_text(value, label, limit=160, required=False):
     if not isinstance(value, str) or len(value.strip()) > limit:
         raise Problem(f"{label}格式不正确或超过 {limit} 字")
@@ -74,12 +97,15 @@ class Store:
                 (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT NOT NULL,
                  kind TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL);
                 CREATE TABLE IF NOT EXISTS colors
-                (id TEXT PRIMARY KEY, name TEXT NOT NULL, hex TEXT NOT NULL, active INTEGER NOT NULL);
+                (id TEXT PRIMARY KEY, name TEXT NOT NULL, hex TEXT NOT NULL, active INTEGER NOT NULL,
+                 material TEXT NOT NULL DEFAULT '');
                 CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS events
                 (id INTEGER PRIMARY KEY, at TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL);
             """)
+            if "material" not in {row["name"] for row in db.execute("PRAGMA table_info(colors)")}:
+                db.execute("ALTER TABLE colors ADD COLUMN material TEXT NOT NULL DEFAULT ''")
             db.execute("INSERT OR IGNORE INTO settings VALUES (1, ?)",
                        (json.dumps({"name": "雨泽小鱼的工坊", "qq_asset": None}),))
 
@@ -119,6 +145,11 @@ class Store:
     def entry_view(self, db, row, admin=False):
         p = json.loads(row["payload"])
         p.update(id=row["id"], revision=row["revision"])
+        p.setdefault("fixed_price", None)
+        p.setdefault("weight_g", None)
+        p.setdefault("min_weight_g", None)
+        p.setdefault("max_weight_g", None)
+        p.setdefault("material", "")
         p["images"] = [self.asset_view(db, a) for a in p.get("image_ids", [])]
         p["videos"] = [self.asset_view(db, a) for a in p.get("video_ids", [])]
         p["model"] = self.asset_view(db, p.get("model_id"))
@@ -152,18 +183,35 @@ class Store:
         if kind not in ("work", "product") or status not in ("draft", "published", "archived"):
             raise Problem("请选择正确的栏目与状态")
         payload = {"kind": kind, "status": status,
-                   "name": short_text(data.get("name", ""), "名称", 80, True),
-                   "description": short_text(data.get("description", ""), "说明", 5000),
+                   "name": short_text(data.get("name", ""), "标题", 80, True),
+                   "description": short_text(data.get("description", ""), "介绍", 5000),
+                   "material": short_text(data.get("material", ""), "材质", 80) if kind == "product" else "",
                    "image_ids": data.get("image_ids", []), "video_ids": data.get("video_ids", []),
                    "model_id": data.get("model_id") or None, "source_id": data.get("source_id") or None,
                    "color_ids": data.get("color_ids", []),
                    "min_price": data.get("min_price", 0), "max_price": data.get("max_price", 0),
+                   "fixed_price": data.get("fixed_price"), "weight_g": data.get("weight_g"),
+                   "min_weight_g": data.get("min_weight_g"), "max_weight_g": data.get("max_weight_g"),
                    "is_demo": data.get("is_demo") is True}
+        if kind == "work":
+            payload["fixed_price"] = payload["weight_g"] = None
+            price(payload["min_price"], payload["max_price"], 15)
+            for key, label in (("min_weight_g", "15% 重量"), ("max_weight_g", "100% 重量")):
+                if payload[key] is not None:
+                    weight_endpoint(payload[key], label)
+            weight_at(payload["min_weight_g"], payload["max_weight_g"], 15)
+        else:
+            payload.update(color_ids=[], min_price=0, max_price=0, min_weight_g=None, max_weight_g=None)
+            if payload["fixed_price"] is not None:
+                integer(payload["fixed_price"], "现货售价", 0, PRICE_LIMIT)
+            weight = payload["weight_g"]
+            if weight is not None and (isinstance(weight, bool) or not isinstance(weight, (int, float))
+                                       or not math.isfinite(weight) or not 0 < weight <= 1_000_000):
+                raise Problem("现货重量须为大于 0、不超过 1000000 的克数")
         for key, limit in (("image_ids", 12), ("video_ids", 6), ("color_ids", 80)):
             if not isinstance(payload[key], list) or len(payload[key]) > limit or any(not isinstance(x, str) for x in payload[key]):
                 raise Problem("图片、视频或颜色列表格式不正确")
             payload[key] = list(dict.fromkeys(payload[key]))
-        price(payload["min_price"], payload["max_price"], 15)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone() if entry_id else None
@@ -186,8 +234,12 @@ class Store:
             if status == "published":
                 if not payload["image_ids"]:
                     raise Problem("上架前请至少上传一张图片")
-                if kind == "product" and (not payload["model_id"] or not payload["color_ids"]):
-                    raise Problem("商品上架前请补充 GLB 预览模型和可用颜色；3MF 原件可先保存为草稿")
+                if kind == "work" and not payload["color_ids"]:
+                    raise Problem("可选上架前请勾选可用颜色")
+                if kind == "work" and ((payload["min_weight_g"] is None) != (payload["max_weight_g"] is None)):
+                    raise Problem("请同时填写 15% 和 100% 的重量")
+                if kind == "product" and (payload["fixed_price"] is None or payload["weight_g"] is None):
+                    raise Problem("现货上架前请填写固定售价和重量")
             entry_id = entry_id or uuid.uuid4().hex
             revision = old["revision"] + 1 if old else 1
             payload["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -216,17 +268,20 @@ class Store:
             raise Problem("颜色启用状态不正确")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            if color_id and not db.execute("SELECT 1 FROM colors WHERE id=?", (color_id,)).fetchone():
+            old = db.execute("SELECT * FROM colors WHERE id=?", (color_id,)).fetchone() if color_id else None
+            if color_id and not old:
                 raise Problem("颜色不存在", 404)
+            material = short_text(data.get("material", old["material"] if old else ""), "材质", 80)
             if color_id and not active:
                 used = [json.loads(r[0])["name"] for r in db.execute("SELECT payload FROM entries")
                         if color_id in json.loads(r[0]).get("color_ids", [])]
                 if used:
                     raise Problem("此颜色正被引用，请先从内容中取消选择：" + "、".join(used[:5]), 409)
             color_id = color_id or uuid.uuid4().hex
-            db.execute("INSERT OR REPLACE INTO colors VALUES (?,?,?,?)", (color_id, name, color.upper(), int(active)))
+            db.execute("INSERT OR REPLACE INTO colors(id,name,hex,active,material) VALUES (?,?,?,?,?)",
+                       (color_id, name, color.upper(), int(active), material))
             self.event(db, "save-color", color_id)
-        return {"id": color_id, "name": name, "hex": color.upper(), "active": int(active)}
+        return {"id": color_id, "name": name, "hex": color.upper(), "active": int(active), "material": material}
 
     def settings(self):
         with self.connect() as db:
@@ -427,6 +482,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/quote":
             query = parse_qs(parsed.query)
             p = store.get_entry(query.get("id", [""])[0])
+            if p["kind"] == "product":
+                return self.json_response({"entry": p, "price": p["fixed_price"],
+                                           "weight_g": p["weight_g"], "material": p["material"], "quantity": 1})
             try:
                 raw = query.get("infill", [""])[0]
                 if not re.fullmatch(r"[0-9]+", raw):
@@ -436,9 +494,10 @@ class Handler(SimpleHTTPRequestHandler):
                 raise Problem("请填写有效填充整数")
             color_id = query.get("color", [""])[0]
             color = next((c for c in p["colors"] if c["id"] == color_id), None)
-            if p["kind"] != "product" or not color:
+            if p["kind"] != "work" or not color:
                 raise Problem("商品或颜色已不可选，请刷新详情")
-            return self.json_response({"entry": p, "color": color, "infill": infill,
+            return self.json_response({"entry": p, "color": color, "infill": infill, "material": color["material"],
+                                       "weight_g": weight_at(p.get("min_weight_g"), p.get("max_weight_g"), infill),
                                        "price": price(p["min_price"], p["max_price"], infill), "quantity": 1})
         if path.startswith("/api/"):
             raise Problem("接口不存在", 404)
@@ -548,7 +607,7 @@ def main():
     parser.add_argument("--data-dir", type=Path, default=ROOT / ".local/print-workshop/data")
     parser.add_argument("--site-dir", type=Path, default=ROOT / ".local/print-workshop/site")
     parser.add_argument("--build", action="store_true")
-    parser.add_argument("--demo", action="store_true", help="Seed clearly labelled samples only when the database is empty")
+    parser.add_argument("--demo", action="store_true", help="Add the initial workshop collection only when the database is empty")
     args = parser.parse_args()
     url = f"http://127.0.0.1:{args.port}"
     store = Store(args.data_dir)

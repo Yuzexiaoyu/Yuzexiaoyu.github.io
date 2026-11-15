@@ -1,4 +1,4 @@
-import {api, quote, Entry, Settings} from './workshop-shared';
+import {api, quote, weightAt, Entry, Settings} from './workshop-shared';
 
 type Catalog = {version: number; entries: Entry[]; settings: Settings};
 type Entries = {entries: Entry[]};
@@ -66,9 +66,10 @@ export async function publicApi<T>(url: string, signal?: AbortSignal): Promise<T
   const entry = catalog.entries.find(item => item.id === id && item.status === 'published');
   if (!entry) throw new Error('内容不存在或已下架');
   if (!quoting) return entry as T;
+  if (entry.kind === 'product') return {entry, price: entry.fixed_price, weight_g: entry.weight_g, material: entry.material || '', quantity: 1} as T;
   const color = entry.colors.find(item => item.id === request.searchParams.get('color') && item.active);
   const infill = Number(request.searchParams.get('infill'));
-  if (entry.kind !== 'product' || !color) throw new Error('请选择商品的可用颜色');
+  if (!color) throw new Error('请选择可选条目的可用颜色');
   if (!Number.isInteger(infill) || infill < 15 || infill > 100) throw new Error('请输入 15～100 的整数百分比');
-  return {entry, color, infill, price: quote(entry.min_price, entry.max_price, infill)} as T;
+  return {entry, color, infill, material: color.material || '', price: quote(entry.min_price, entry.max_price, infill), weight_g: weightAt(entry.min_weight_g, entry.max_weight_g, infill)} as T;
 }

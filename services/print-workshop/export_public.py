@@ -11,7 +11,7 @@ from pathlib import Path
 
 from server import ROOT, Store
 
-ENTRY_FIELDS = {"id", "revision", "name", "description", "kind", "status", "min_price", "max_price", "is_demo", "updated_at"}
+ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "min_price", "max_price", "fixed_price", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at"}
 ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)")
 
 

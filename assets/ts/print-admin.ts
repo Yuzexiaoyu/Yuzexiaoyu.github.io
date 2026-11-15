@@ -1,4 +1,4 @@
-import {api, abortError, escapeHTML as e, quote, money, setStatus, Entry, Color, Asset, Settings} from './workshop-shared';
+import {api, abortError, escapeHTML as e, quote, weightAt, grams, money, setStatus, Entry, Color, Asset, Settings} from './workshop-shared';
 
 export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   let token='';let entries:Entry[]=[];let colors:Color[]=[];let settings:Settings;
@@ -8,7 +8,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   const notice=root.querySelector<HTMLElement>('[data-admin-notice]')!;
   const editorNotice=root.querySelector<HTMLElement>('[data-editor-notice]')!;
   const getField=(name:string)=>form.elements.namedItem(name) as HTMLInputElement;
-  const blank=():Entry=>({name:'',description:'',kind:'work',status:'draft',min_price:0,max_price:0,color_ids:[],image_ids:[],video_ids:[],model_id:null,source_id:null,images:[],videos:[],model:null,source:null,colors:[],is_demo:false});
+  const blank=():Entry=>({name:'',description:'',material:'',kind:'work',status:'draft',min_price:0,max_price:0,fixed_price:null,weight_g:null,min_weight_g:null,max_weight_g:null,color_ids:[],image_ids:[],video_ids:[],model_id:null,source_id:null,images:[],videos:[],model:null,source:null,colors:[],is_demo:false});
   const statuses={draft:'草稿',published:'已上架',archived:'已下架'};
   const write=<T>(path:string,method:string,data:unknown)=>api<T>(path,signal,{method,headers:{'Content-Type':'application/json','X-Workshop-Token':token},body:JSON.stringify(data)});
   const upload=(file:File)=>api<Asset>('/api/admin/assets',signal,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(file.name),'X-Workshop-Token':token},body:file});
@@ -17,10 +17,10 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     const status=root.querySelector<HTMLSelectElement>('[data-admin-filter]')!.value;
     const selected=entries.filter(p=>p.name.toLowerCase().includes(query)&&(status==='all'||p.status===status));
     root.querySelector<HTMLElement>('[data-admin-stats]')!.innerHTML=[['工坊内容',entries.length],['已上架',entries.filter(p=>p.status==='published').length],['草稿',entries.filter(p=>p.status==='draft').length],['可用颜色',colors.filter(c=>c.active).length]].map(([label,value])=>`<div><span>${label}</span><strong>${String(value).padStart(2,'0')}</strong></div>`).join('');
-    root.querySelector<HTMLElement>('[data-admin-list]')!.innerHTML=selected.length?`<div class="wk-table-head"><span>作品 / 商品</span><span>栏目</span><span>报价</span><span>状态</span><span>操作</span></div>`+selected.map(p=>`<div class="wk-admin-row"><div class="wk-admin-title">${p.images[0]?`<img src="${e(p.images[0].url)}" alt="">`:'<span class="wk-admin-no-image">◇</span>'}<div><strong>${e(p.name)}</strong><small>${p.is_demo?'演示内容 · ':''}${p.model?'3D 预览已就绪':p.source?'3MF 已保存 · 待补 GLB':'图片内容'}</small></div></div><span class="wk-row-kind">${p.kind==='work'?'可选':'现货'}</span><span class="wk-row-price">${p.kind==='product'?`${money(p.min_price)}–${money(p.max_price)}`:'—'}</span><span class="wk-state is-${p.status}">${statuses[p.status]}</span><div class="wk-row-actions"><button type="button" data-edit="${e(p.id)}">编辑</button><button type="button" data-toggle-entry="${e(p.id)}">${p.status==='published'?'下架':'上架'}</button><button type="button" data-delete-entry="${e(p.id)}" class="wk-danger">删除</button></div></div>`).join(''):'<div class="wk-empty"><span class="wk-empty-mark">◇</span><h2>给新的想法留个位置</h2><p>点击“新建内容”，添加一件作品或商品。</p></div>';
+    root.querySelector<HTMLElement>('[data-admin-list]')!.innerHTML=selected.length?`<div class="wk-table-head"><span>作品 / 商品</span><span>栏目</span><span>报价</span><span>状态</span><span>操作</span></div>`+selected.map(p=>`<div class="wk-admin-row"><div class="wk-admin-title">${p.images[0]?`<img src="${e(p.images[0].url)}" alt="">`:'<span class="wk-admin-no-image">◇</span>'}<div><strong>${e(p.name)}</strong><small>${p.is_demo?'演示内容 · ':''}${p.model?'3D 预览已就绪':p.source?'3MF 已保存 · 待补 GLB':'图片内容'}</small></div></div><span class="wk-row-kind">${p.kind==='work'?'可选':'现货'}</span><span class="wk-row-price">${p.kind==='work'?`${money(p.min_price)}–${money(p.max_price)}`:money(p.fixed_price??0)}</span><span class="wk-state is-${p.status}">${statuses[p.status]}</span><div class="wk-row-actions"><button type="button" data-edit="${e(p.id)}">编辑</button><button type="button" data-toggle-entry="${e(p.id)}">${p.status==='published'?'下架':'上架'}</button><button type="button" data-delete-entry="${e(p.id)}" class="wk-danger">删除</button></div></div>`).join(''):'<div class="wk-empty"><span class="wk-empty-mark">◇</span><h2>给新的想法留个位置</h2><p>点击“新建内容”，添加一件作品或商品。</p></div>';
   }
   function renderColors(){
-    root.querySelector<HTMLElement>('[data-color-list]')!.innerHTML=colors.length?colors.map(c=>`<form data-edit-color="${e(c.id)}" class="wk-color-card"><input type="color" name="hex" value="${e(c.hex)}" aria-label="${e(c.name)}的颜色"><input name="name" value="${e(c.name)}" required maxlength="30" aria-label="颜色名称"><label class="wk-check"><input name="active" type="checkbox" ${c.active?'checked':''}>启用</label><button type="submit" class="wk-button wk-secondary">保存</button></form>`).join(''):'<p class="wk-empty">还没有色卡，先添加几种实际可提供的颜色。</p>';
+    root.querySelector<HTMLElement>('[data-color-list]')!.innerHTML=colors.length?colors.map(c=>`<form data-edit-color="${e(c.id)}" class="wk-color-card"><input type="color" name="hex" value="${e(c.hex)}" aria-label="${e(c.name)}的颜色"><input name="name" value="${e(c.name)}" required maxlength="30" aria-label="颜色名称"><label class="wk-field wk-color-material">材质<input name="material" value="${e(c.material)}" maxlength="80" placeholder="如 PLA、PETG"></label><label class="wk-check"><input name="active" type="checkbox" ${c.active?'checked':''}>启用</label><button type="submit" class="wk-button wk-secondary">保存</button></form>`).join(''):'<p class="wk-empty">还没有色卡，先添加几种实际可提供的颜色。</p>';
   }
   function renderQQ(){root.querySelector<HTMLElement>('[data-qq-preview]')!.innerHTML=settings.qq_image?`<img src="${e(settings.qq_image.url)}" alt="当前 QQ 二维码">`:'<div class="wk-qr-placeholder"><span>▦</span><p>还没有联系二维码</p></div>';}
   async function refresh(){
@@ -36,13 +36,26 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     root.querySelector<HTMLElement>('[data-model-name]')!.textContent=editing.model?.name||'尚未添加 GLB';
     root.querySelector<HTMLElement>('[data-source-name]')!.textContent=editing.source?`${editing.source.name} · 原件已保存，未执行转换`:'尚未保存 3MF';
   }
-  function renderEditorColors(){root.querySelector<HTMLElement>('[data-editor-colors]')!.innerHTML=colors.filter(c=>c.active).map(c=>`<label class="wk-color-choice"><input type="checkbox" data-product-color="${e(c.id)}" ${editing?.color_ids.includes(c.id)?'checked':''}><span style="background:${e(c.hex)}"></span>${e(c.name)}</label>`).join('')||'<p class="wk-muted">还没有公共色卡，请先保存草稿，再到“公共色卡”添加。</p>';}
-  function editorType(){const product=getField('kind').value==='product';const fields=root.querySelector<HTMLFieldSetElement>('[data-product-fields]')!;fields.hidden=!product;fields.disabled=!product;}
-  function samplePrice(){const low=Number(getField('min_price').value),high=Number(getField('max_price').value);root.querySelector<HTMLElement>('[data-price-example]')!.textContent=Number.isInteger(low)&&Number.isInteger(high)&&high>=low&&low>=0?`50% 填充显示 ${money(quote(low,high,50))}，顾客可按 1% 调整。`:'最高价应不低于最低价，请填写非负整数元。';}
+  function renderEditorColors(){root.querySelector<HTMLElement>('[data-editor-colors]')!.innerHTML=colors.filter(c=>c.active).map(c=>`<label class="wk-color-choice"><input type="checkbox" data-editor-color="${e(c.id)}" ${editing?.color_ids.includes(c.id)?'checked':''}><span style="background:${e(c.hex)}"></span>${e(c.name)}${c.material?` · ${e(c.material)}`:''}</label>`).join('')||'<p class="wk-muted">还没有公共色卡，请先保存草稿，再到“公共色卡”添加。</p>';}
+  function editorType(){
+    const configurable=getField('kind').value==='work';
+    const options=root.querySelector<HTMLFieldSetElement>('[data-configurable-fields]')!;
+    const stock=root.querySelector<HTMLFieldSetElement>('[data-stock-fields]')!;
+    options.hidden=!configurable;options.disabled=!configurable;
+    stock.hidden=configurable;stock.disabled=configurable;
+    stock.querySelectorAll<HTMLInputElement>('input[name=fixed_price],input[name=weight_g]').forEach(input=>input.required=!configurable&&getField('status').value==='published');
+  }
+  function samplePrice(){
+    const low=Number(getField('min_price').value),high=Number(getField('max_price').value);
+    root.querySelector<HTMLElement>('[data-price-example]')!.textContent=Number.isInteger(low)&&Number.isInteger(high)&&high>=low&&low>=0?`50% 填充显示 ${money(quote(low,high,50))}，顾客可按 1% 调整。`:'最高价应不低于最低价，请填写非负整数元。';
+    const rawLow=getField('min_weight_g').value,rawHigh=getField('max_weight_g').value;
+    const light=Number(rawLow),solid=Number(rawHigh);
+    root.querySelector<HTMLElement>('[data-weight-example]')!.textContent=rawLow===''&&rawHigh===''?'':rawLow!==''&&rawHigh!==''&&light>0&&solid>=light?`50% 填充重量 ${grams(weightAt(light,solid,50))}。`:'请填写两端重量，100% 重量应不低于 15% 重量。';
+  }
   function openEditor(entry?:Entry){
     editing=entry?JSON.parse(JSON.stringify(entry)):blank();editorSerial++;dirty=false;saving=false;
     if(editing){editing.video_ids=editing.video_ids||[];editing.videos=editing.videos||[];}
-    form.reset();for(const name of ['name','kind','status','description','min_price','max_price'])getField(name).value=String((editing as any)[name]);
+    form.reset();for(const name of ['name','kind','status','description','material','min_price','max_price','fixed_price','weight_g','min_weight_g','max_weight_g'])getField(name).value=String((editing as any)[name]??'');
     getField('is_demo').checked=editing!.is_demo;
     root.querySelector<HTMLElement>('#entry-editor-title')!.textContent=entry?'编辑内容':'新建内容';
     setStatus(editorNotice,'');renderAssets();renderEditorColors();editorType();samplePrice();updateSaveButton();dialog.showModal();
@@ -89,8 +102,8 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   root.querySelector('[data-remove-source]')!.addEventListener('click',()=>{if(editing){editing.source=null;editing.source_id=null;markDirty();renderAssets();}},{signal});
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(!editing||pending||saving)return;
-    const data={...editing,name:getField('name').value,description:getField('description').value,kind:getField('kind').value,status:getField('status').value,min_price:Number(getField('min_price').value),max_price:Number(getField('max_price').value),is_demo:getField('is_demo').checked,color_ids:Array.from(root.querySelectorAll<HTMLInputElement>('[data-product-color]:checked')).map(n=>n.dataset.productColor!)};
-    if(data.kind==='work'){data.color_ids=[];data.min_price=0;data.max_price=0;}
+    const data={...editing,name:getField('name').value,description:getField('description').value,material:getField('material').value.trim(),kind:getField('kind').value,status:getField('status').value,min_price:Number(getField('min_price').value),max_price:Number(getField('max_price').value),fixed_price:getField('fixed_price').value.trim()===''?null:Number(getField('fixed_price').value),weight_g:getField('weight_g').value.trim()===''?null:Number(getField('weight_g').value),min_weight_g:getField('min_weight_g').value.trim()===''?null:Number(getField('min_weight_g').value),max_weight_g:getField('max_weight_g').value.trim()===''?null:Number(getField('max_weight_g').value),is_demo:getField('is_demo').checked,color_ids:Array.from(root.querySelectorAll<HTMLInputElement>('[data-editor-color]:checked')).map(n=>n.dataset.editorColor!)};
+    if(data.kind==='product'){data.color_ids=[];data.min_price=0;data.max_price=0;data.min_weight_g=null;data.max_weight_g=null;}else{data.fixed_price=null;data.weight_g=null;data.material='';}
     saving=true;updateSaveButton();setStatus(editorNotice,'正在保存…');
     try{const saved=await write<Entry>(editing.id?`/api/admin/entries/${editing.id}`:'/api/admin/entries',editing.id?'PUT':'POST',data);if(signal.aborted)return;editing=saved;dirty=false;dialog.close();await refresh();setStatus(notice,`“${saved.name}”已保存到本机${saved.status==='published'?'，本地工坊中可见':''}。发布网站后，图片与视频将通过 R2 CDN 加载。`);}
     catch(error){if(!abortError(error))setStatus(editorNotice,(error as Error).message,true);}
@@ -98,11 +111,11 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   },{signal});
   root.querySelector('[data-color-form]')!.addEventListener('submit',async event=>{
     event.preventDefault();const f=event.currentTarget as HTMLFormElement;const button=f.querySelector<HTMLButtonElement>('button')!;button.disabled=true;
-    try{const data=new FormData(f);await write('/api/admin/colors','POST',{name:data.get('name'),hex:data.get('hex'),active:true});f.reset();await refresh();setStatus(notice,'色卡已添加，可在商品编辑器中勾选。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
+    try{const data=new FormData(f);await write('/api/admin/colors','POST',{name:data.get('name'),hex:data.get('hex'),material:data.get('material'),active:true});f.reset();await refresh();setStatus(notice,'色卡已添加，可在可选条目编辑器中勾选。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
   },{signal});
   root.querySelector('[data-color-list]')!.addEventListener('submit',async event=>{
     event.preventDefault();const f=event.target as HTMLFormElement;if(!f.matches('[data-edit-color]'))return;const button=f.querySelector<HTMLButtonElement>('button')!;button.disabled=true;
-    try{const data=new FormData(f);await write(`/api/admin/colors/${f.dataset.editColor}`,'PUT',{name:data.get('name'),hex:data.get('hex'),active:data.get('active')==='on'});await refresh();setStatus(notice,'色卡已更新。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
+    try{const data=new FormData(f);await write(`/api/admin/colors/${f.dataset.editColor}`,'PUT',{name:data.get('name'),hex:data.get('hex'),material:data.get('material'),active:data.get('active')==='on'});await refresh();setStatus(notice,'色卡已更新。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
   },{signal});
   const qqInput=root.querySelector<HTMLInputElement>('[data-qq-upload]')!;
   qqInput.addEventListener('change',async()=>{const file=qqInput.files?.[0];qqInput.value='';if(!file)return;qqInput.disabled=true;try{const asset=await upload(file);settings=await write<Settings>('/api/admin/settings','PUT',{qq_asset:asset.id});renderQQ();setStatus(notice,'QQ 二维码已保存。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{qqInput.disabled=false;}},{signal});

@@ -806,8 +806,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var toPath = '';
     try { toPath = ((visit && visit.to && visit.to.url) || '').split('?')[0].split('#')[0]; } catch (e) {}
     var workshopEntering = window.WorkshopIntro && window.WorkshopIntro.navigate(visit.to.url, visit.from.url);
-    if (workshopEntering) {
-      // Workshop owns the complete acceleration/hold/reveal sequence.
+    if (workshopEntering || /^\/prints(?:\/|$)/.test(toPath)) {
+      // Entrance owns its speed pulse; internal workshop visits stay at rest.
     } else if (/^\/novel\/?$/.test(toPath) && typeof window.__playBookshelfIntro === 'function') {
       window.__playBookshelfIntro({ early: true });
     } else if (typeof window.setWarpSpeed === 'function') {
