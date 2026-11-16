@@ -617,3 +617,12 @@
 
 - E134：`assets/scss/mobile/_print-workshop.scss`。
 - E135：`.local/print-workshop/qa/compact-selection/results.json`、`catalog.png`、`detail.png`。
+
+## 2026-11-16：进入工坊后预加载物品详情
+
+[已验证] 列表绘制后空闲时预取前四件物品的详情 HTML，写入 Swup 缓存；最多预热两个首段视频，超过 8 MiB 的视频只取元数据。指针、键盘聚焦或触摸卡片时优先预热该物品；切换分类及离开列表时取消尚未开始的后台任务。详情页直接接用预热的原生视频元素，不重新建立播放器；3D 仍按需加载，界面样式保持原样。（E137）
+
+[已验证] 仅执行相关手机／桌面检查：人为延迟详情 HTML 650ms，点击前已收到并缓存详情，点击前后 HTML 请求均为一次；视频从列表中的暂停缓冲元素转入详情，readyState 为 4，自动播放及图片切换正常，未请求 3D 文件，零脚本错误。两套本地构建通过。（E138）
+
+- E137：`assets/ts/workshop-preload.ts` 的 `preloadCatalogEntries`、`warmPage`、`warmVideo`、`takePreloadedVideo`；`assets/ts/print-workshop.ts` 的列表调度及详情视频接用。
+- E138：`.local/print-workshop/qa/catalog-preload/check.cjs`、`results.json` 及实际构建输出。
