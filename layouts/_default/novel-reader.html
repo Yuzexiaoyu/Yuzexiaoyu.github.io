@@ -1262,7 +1262,7 @@ window.__initNovelReader = function() {
       });
     });
     var homeLink = toolbar.querySelector('.reader-home-btn');
-    homeLink.textContent = '返回首页'; settings.appendChild(homeLink);
+    homeLink.remove();
     root.appendChild(settings);
     var settingsBtn = document.createElement('button'); settingsBtn.type = 'button'; settingsBtn.id = 'm-reader-settings-toggle'; settingsBtn.className = 'toolbar-btn';
     settingsBtn.setAttribute('aria-label','阅读设置'); settingsBtn.title = '阅读设置'; settingsBtn.setAttribute('aria-expanded','false');

@@ -45,7 +45,6 @@ body.template-novel-reader .container.main-container.flex.on-phone--column { pad
 .m-reader-settings .dropdown-item > * { display: none; }
 .m-reader-settings .dropdown-item::after { content: attr(data-reader-label); font-size: 14px; white-space: nowrap; }
 .m-reader-settings .dropdown-item.active { color: var(--reader-accent); background: var(--reader-bg); box-shadow: 0 1px 5px #0002; }
-.m-reader-settings .reader-home-btn { width: 100%; height: 40px; padding: 8px 0 0; border: 0; border-top: 1px solid var(--reader-border); border-radius: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; box-sizing: border-box; }
 .m-reader-settings .theme-dots { display: flex; width: 100%; justify-content: space-between; }
 .m-reader-settings .theme-dots button { width: 44px; height: 44px; padding: 0; border: 12px solid var(--reader-bg); border-radius: 50%; background-clip: padding-box; }
 .m-reader-settings .theme-dots .active { outline: 1px solid var(--reader-accent); outline-offset: -6px; }

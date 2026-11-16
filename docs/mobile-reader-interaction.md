@@ -28,3 +28,12 @@
 
 - E155：`assets/scss/mobile/_bookshelf.scss`。
 - E156：`.local/bookshelf-four/verification.json`、`preview.jpg`。
+
+## 2026-11-16：收紧书架标题并移除设置首页入口
+
+[已实现] 手机书架标题改为左对齐的 20px 常规文字，取消蓝色渐变与背景光晕，隐藏英文副标题，保留简短的作者／卷数信息，收紧分类与封面的间距。阅读设置不再放置返回首页链接；原主页入口仍在手机阅读器清理时复原，桌面代码路径不受影响。（E158）
+
+[已验证] 320／390px 下书架标题区均为 94px 高、无横向溢出，仍一行四卷；设置中链接数量为零，六个阅读选项保留。桌面英文副标题和阅读器首页按钮仍可见。两套构建通过，内置预览已核对书架和完整设置面板。（E159）
+
+- E158：`assets/scss/mobile/_bookshelf.scss`、`assets/scss/mobile/_reader.scss`、`layouts/_default/novel-reader.html` 的手机首页入口处理。
+- E159：`.local/bookshelf-compact/verification.json`、`preview.jpg`、`settings.jpg`。
