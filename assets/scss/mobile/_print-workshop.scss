@@ -11,15 +11,15 @@ body.template-workshop {
   .wk-collection { padding-top: 14px; }
   .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
   .wk-tabs { width: 100%; }
-  .wk-tabs button { flex: 1; justify-content: center; font-size: 14px; min-height: 44px; padding: 10px; }
+  .wk-tabs button { flex: 1; justify-content: center; font-size: 14px; min-height: 34px; padding: 5px 10px; }
   .wk-search { padding: 0 12px; border: 1px solid #293d30; border-radius: 7px; margin-top: 8px; }
   .wk-search input { width: 100%; min-height: 42px; font-size: 16px; }
-  .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 12px; }
+  .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 12px; min-height: 0; }
   .wk-card { border-radius: 13px; }
-  .wk-card-image { aspect-ratio: .9; }
-  .wk-card-info { display: block; padding: 11px 12px 14px; }
+  .wk-card-image { aspect-ratio: 1.35; }
+  .wk-card-info { display: block; padding: 9px 10px 10px; }
   .wk-card-info h2 { font-size: 15px; }
-  .wk-card-price { font-size: 17px; display: block; margin-top: 7px; }
+  .wk-card-price { font-size: 17px; display: block; margin-top: 4px; }
   .wk-card-price small { display: inline; margin-left: 6px; font-size: 13px; }
   .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
   .wk-empty { padding: 35px 18px; }
@@ -41,10 +41,10 @@ body.template-workshop {
   .wk-stage:has(> model-viewer:not([hidden]))::before { left: 0; }
   .wk-stage:has(> model-viewer:not([hidden]))::after { right: 0; }
   .wk-gallery-tools { flex-wrap: nowrap; padding: 6px 0; }
-  .wk-view-switch { flex-wrap: wrap; overflow: visible; }
+  .wk-view-switch { width: 100%; flex-wrap: wrap; overflow: visible; }
   .wk-gallery-tools [data-reset-view] { position: absolute; top: 6px; right: 8px; z-index: 2; }
   .wk-gallery-tools button { min-height: 44px; }
-  .wk-view-switch button { padding-inline: 8px; }
+  .wk-view-switch button { flex: 1 1 auto; min-height: 32px; padding: 4px 8px; }
   .wk-config { display: flex; flex-direction: column; padding: 0; }
   .wk-config h1 { order: 0; font-size: 29px; margin: 0 0 6px; }
   .wk-description { order: 3; margin: 16px 0 0; }
@@ -56,7 +56,7 @@ body.template-workshop {
   .wk-config-section:has(.wk-swatches) h2, .wk-material > span:first-child { flex-shrink: 0; }
   [data-color-name] { min-width: 0; overflow-wrap: anywhere; text-align: right; }
   .wk-material { grid-column: 2; grid-row: 1; min-width: 0; max-width: 140px; gap: 8px; margin: 0; }
-  .wk-swatches { grid-column: 1 / -1; grid-row: 2; gap: 8px clamp(4px,1.2vw,9px); }
+  .wk-swatches { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; gap: 8px clamp(4px,1.2vw,9px); }
   input.wk-range { display: block; margin: 0; height: 44px; background: transparent; touch-action: none; }
   .wk-range::-webkit-slider-runnable-track { height: 5px; border-radius: 10px; background: linear-gradient(to right,#a2d3bc var(--fill,0%),#344b3c var(--fill,0%)); }
   .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; margin-top: -9px; }

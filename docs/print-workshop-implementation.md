@@ -608,3 +608,12 @@
 - E131：`assets/scss/mobile/_print-workshop.scss`。
 - E132：`.local/print-workshop/qa/slider-document-end/results.json`、`regression/results.json`、`preview.json`、`preview.jpg`；`scripts/verify-workshop.cjs` 的媒体选择换行断言。
 - 用户要求：后续减少测试，只执行与改动直接相关的必要检查。
+
+## 2026-11-16：手机选择区满宽与矮卡片
+
+[已验证] 媒体选择条铺满展示区，按钮分配整行空间，高度降为 32px；主页分类按钮为 34px；颜色分散铺满整行。主页卡片图片比例改为 1.35，收紧文字区内边距，并取消手机网格的 220px 最小高度。仅修改手机独立样式，保留原字体、配色及展示区手势。（E134）
+
+[已验证] 按用户要求仅核对相关布局：320／390px 宽度下选择条满宽、颜色一行、无横向溢出，媒体按钮为 32px；卡片分别约 179／204px 高。构建通过，截图及读数见 `.local/print-workshop/qa/compact-selection/`。（E135）
+
+- E134：`assets/scss/mobile/_print-workshop.scss`。
+- E135：`.local/print-workshop/qa/compact-selection/results.json`、`catalog.png`、`detail.png`。
