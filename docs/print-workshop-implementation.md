@@ -644,3 +644,12 @@
 
 - E143：`assets/scss/mobile/_print-workshop.scss` 的 `@supports (-moz-appearance: none)`。
 - E144：`.local/print-workshop/qa/firefox-layout/check.py`、`baseline.json`、`results.json`、`chrome-control.json`、`baseline/`、`fixed/`。
+
+## 2026-11-16：移除 3D 加载时闪出的商品图片
+
+[已验证] 用户确认闪图发生在切换到 3D 时。原模型组件把第一张商品图片设为 `poster`；手机滑向模型时，也把同一图片作为相邻媒体。这两处会在模型完成前显示商品图片。现移除模型的图片 poster，模型方向的滑动占位也不再绑定图片，加载时保留原来的提示及展示区背景。（E146）
+
+[已验证] 仅执行相关手机／桌面检查，并暂缓 GLB 响应观察加载状态：模型 poster 为空、视频和商品图片均隐藏；手机滑向模型时，相邻图片层隐藏且无图片 URL。释放模型响应后 3D 正常加载，图片与模型往返正常，零脚本错误。两套构建通过。（E147）
+
+- E146：`assets/ts/print-workshop.ts` 的模型标记与手机 `posters` 映射。
+- E147：`.local/print-workshop/qa/media-flash/check.cjs`、`baseline.json`、`results.json`。

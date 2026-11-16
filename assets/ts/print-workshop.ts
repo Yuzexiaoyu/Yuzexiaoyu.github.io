@@ -71,7 +71,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         ${videos.length?`<video class="wk-stage-video" data-stage-video ${preloadedVideo?'':`src="${e(videos[0].url)}"`} poster="${e(entry.images[0]?.url)}" ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} autoplay muted playsinline preload="auto"></video>`:''}
         ${mobile&&videos.length?'<div class="wk-video-replay" data-video-replay-layer hidden><button type="button" data-video-replay aria-label="重新播放视频"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div>':''}
         <img class="wk-stage-image" data-stage-image src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" ${videos.length?'hidden':''}>
-        ${entry.model?`<model-viewer data-viewer poster="${e(entry.images[0]?.url)}" alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
+        ${entry.model?`<model-viewer data-viewer alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
       </div>
       <div class="wk-gallery-tools">
         <div class="wk-view-switch" role="group" aria-label="媒体选择">
@@ -183,7 +183,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     },{signal}));
     if(mobile){
       const mediaButtons=Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]'));
-      const posters=mediaButtons.map(button=>entry.images[button.dataset.view==='photo'?Number(button.dataset.mediaIndex):0]?.url);
+      const posters=mediaButtons.map(button=>button.dataset.view==='model'?null:entry.images[button.dataset.view==='photo'?Number(button.dataset.mediaIndex):0]?.url);
       revealMediaButton=initMobileGallerySwipe(container.querySelector<HTMLElement>('.wk-stage')!,mediaButtons,posters,signal);
     }
     if(viewer){
