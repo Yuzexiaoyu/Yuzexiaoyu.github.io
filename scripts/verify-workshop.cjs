@@ -442,12 +442,13 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await page.route('**/workshop/catalog.json',route=>route.fulfill({json:fixture}));
       await page.goto(base+'/prints/detail/?id='+item.id,{waitUntil:'load'});await ready(page);
       const buttons=page.locator('[data-view]');assert.equal(await buttons.count(),19);
-      const layout=await buttons.evaluateAll(elements=>elements.map(element=>{const rect=element.getBoundingClientRect();return {text:element.textContent.trim(),x:rect.x,width:rect.width,top:rect.top};}));
-      assert.equal(new Set(layout.map(button=>button.top)).size,1,'mobile media buttons stay in one horizontal row');
+      const layout=await buttons.evaluateAll(elements=>elements.map(element=>{const rect=element.getBoundingClientRect();return {text:element.textContent.trim(),x:rect.x,width:rect.width,top:rect.top,height:rect.height};}));
+      assert.ok(new Set(layout.map(button=>button.top)).size>1,'many mobile media buttons wrap into visible rows');
       const strip=await page.locator('.wk-view-switch').evaluate(element=>{
         const rect=element.getBoundingClientRect();return {width:rect.width,scrollWidth:element.scrollWidth,x:rect.x};
       });
-      assert.ok(strip.scrollWidth>strip.width,'extra media buttons are horizontally scrollable');
+      assert.ok(strip.scrollWidth<=strip.width+1,'media choices must not require horizontal scrolling');
+      assert.ok(layout.every(button=>button.top>=0&&button.top+button.height<=844),'all 19 media choices fit in the initial phone viewport');
       assert.ok(strip.x>=0&&strip.x+strip.width<=390);
       for(const button of await buttons.all()){
         await button.scrollIntoViewIfNeeded();
@@ -463,7 +464,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       assert.equal(await page.locator('.wk-thumbnails').count(),0);
       assert.ok((await state(page)).scrollWidth<=390);assert.deepEqual(errors,[]);
       await page.screenshot({path:path.join(out,'mobile-all-media-buttons.png'),fullPage:true});
-      results.push({case:'mobile all 19 media buttons reachable in one row and selectable',layout,strip,errors});await page.close();
+      results.push({case:'mobile all 19 media buttons wrap without horizontal scrolling and remain selectable',layout,strip,errors});await page.close();
     }
     for(const item of [work,product]){
       const {page,errors,requests}=await setup(browser,true);

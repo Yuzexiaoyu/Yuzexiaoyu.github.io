@@ -2,6 +2,7 @@ body.template-workshop {
   .m-header { background: rgba(0,0,0,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   .container.main-container.flex.on-phone--column { min-height: calc(100svh - var(--m-header-height)); padding: 0 0 28px !important; }
   .wk-shell { width: calc(100% - 32px); font-size: 15px; }
+  .wk-shell[data-workshop="detail"] { padding-bottom: 0; }
   .wk-shell:not([data-workshop="admin"]) > .wk-nav { display: none; }
   .wk-nav { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
   .wk-nav nav { flex-wrap: wrap; gap: 10px; }
@@ -23,7 +24,8 @@ body.template-workshop {
   .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
   .wk-empty { padding: 35px 18px; }
   .wk-breadcrumb { margin: 8px 0; gap: 15px; font-size: 13px; }
-  .wk-detail-grid { display: flex; flex-direction: column; gap: 8px; padding: 0 0 Max(88px,calc(env(safe-area-inset-bottom) + 74px)); }
+  .wk-breadcrumb > [data-detail-breadcrumb] { display: none; }
+  .wk-detail-grid { display: flex; flex-direction: column; gap: 8px; padding: 0 0 env(safe-area-inset-bottom,0px); }
   // Reserve space for configuration without changing the media or control appearance.
   .wk-gallery { position: relative; }
   .wk-stage { height: clamp(180px,calc(100svh - 610px),300px); aspect-ratio: auto; touch-action: pan-y pinch-zoom; }
@@ -39,9 +41,10 @@ body.template-workshop {
   .wk-stage:has(> model-viewer:not([hidden]))::before { left: 0; }
   .wk-stage:has(> model-viewer:not([hidden]))::after { right: 0; }
   .wk-gallery-tools { flex-wrap: nowrap; padding: 6px 0; }
-  .wk-view-switch { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; }
+  .wk-view-switch { flex-wrap: wrap; overflow: visible; }
   .wk-gallery-tools [data-reset-view] { position: absolute; top: 6px; right: 8px; z-index: 2; }
   .wk-gallery-tools button { min-height: 44px; }
+  .wk-view-switch button { padding-inline: 8px; }
   .wk-config { display: flex; flex-direction: column; padding: 0; }
   .wk-config h1 { order: 0; font-size: 29px; margin: 0 0 6px; }
   .wk-description { order: 3; margin: 16px 0 0; }
@@ -53,16 +56,19 @@ body.template-workshop {
   .wk-config-section:has(.wk-swatches) h2, .wk-material > span:first-child { flex-shrink: 0; }
   [data-color-name] { min-width: 0; overflow-wrap: anywhere; text-align: right; }
   .wk-material { grid-column: 2; grid-row: 1; min-width: 0; max-width: 140px; gap: 8px; margin: 0; }
-  .wk-swatches { grid-column: 1 / -1; grid-row: 2; }
-  input.wk-range { margin: 12px 0; height: 5px; }
-  .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; }
+  .wk-swatches { grid-column: 1 / -1; grid-row: 2; gap: 8px clamp(4px,1.2vw,9px); }
+  input.wk-range { display: block; margin: 0; height: 44px; background: transparent; touch-action: none; }
+  .wk-range::-webkit-slider-runnable-track { height: 5px; border-radius: 10px; background: linear-gradient(to right,#a2d3bc var(--fill,0%),#344b3c var(--fill,0%)); }
+  .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; margin-top: -9px; }
+  .wk-range::-moz-range-track { height: 5px; border-radius: 10px; background: #344b3c; }
+  .wk-range::-moz-range-progress { height: 5px; border-radius: 10px; background: #a2d3bc; }
   .wk-range::-moz-range-thumb { width: 18px; height: 18px; }
   .wk-price-box { order: 2; margin: 10px 0 0; padding-top: 10px; align-items: baseline; }
   .wk-price-box > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
   .wk-unit { padding-bottom: 0; }
   .wk-stock-facts { order: 2; margin: 10px 0 0; }
-  .wk-config > .wk-feedback { order: 4; }
-  .wk-contact-button { position: fixed; z-index: 60; left: 16px; right: 16px; bottom: Max(14px,env(safe-area-inset-bottom)); width: calc(100% - 32px); min-height: 50px; box-shadow: 0 0 0 8px #0c1115e6,0 -12px 35px #0c1115; font-size: 14px; }
+  .wk-config > .wk-feedback { order: 5; }
+  .wk-contact-button { order: 4; position: static; width: 100%; min-height: 50px; margin-top: 20px; box-shadow: none; font-size: 14px; }
   .wk-price-note { text-align: left; }
   .wk-mobile-price { display: block; margin-right: auto; font-size: 20px; }
   .wk-dialog { width: calc(100% - 24px); padding: 27px 20px 20px; }

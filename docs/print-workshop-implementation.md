@@ -598,3 +598,13 @@
 
 - E128：`assets/ts/print-workshop.ts` 的手机视频标记、`syncVideoReplay`、`playVideo`；`assets/ts/mobile-workshop-gallery.ts` 的重播层同步及手势目标；`assets/scss/mobile/_print-workshop.scss` 的视频指针行为和中央按钮。
 - E129：`scripts/verify-workshop.cjs`、`scripts/verify-workshop-drag.cjs`；`.local/print-workshop/qa/video-replay/results.json`、`regression/results.json`、`preview.json`、`preview.jpg`，以及实际构建、导出和哈希检查输出。
+
+## 2026-11-16：手机端选择区、滑块与文末按钮
+
+[已验证] 滑块触摸高度扩大为 44px，保留细轨道与原滑钮，拖动不带动页面。按用户确认，清单按钮随页面滚动，放在介绍后的内容末尾；六个颜色在 320–430px 宽度内一行显示，媒体按钮紧凑排列、超量换行，不再横向滚动。展示区手势保留；返回行仅显示返回工坊。运行时仅修改手机独立样式，桌面样式与业务逻辑保持原样。（E131）
+
+[已验证] 6 组相关触摸／布局检查和 25 组既有回归通过；构建、公开导出与差异检查通过。原 1 秒测试片段的播放区间等待曾超时，最终用 3 秒专用夹具完成相同断言，重播检查逻辑保持原样。内置手机预览已刷新。（E132）
+
+- E131：`assets/scss/mobile/_print-workshop.scss`。
+- E132：`.local/print-workshop/qa/slider-document-end/results.json`、`regression/results.json`、`preview.json`、`preview.jpg`；`scripts/verify-workshop.cjs` 的媒体选择换行断言。
+- 用户要求：后续减少测试，只执行与改动直接相关的必要检查。
