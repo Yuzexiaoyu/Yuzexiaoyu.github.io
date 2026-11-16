@@ -69,6 +69,16 @@ body.template-workshop {
   .wk-stock-facts { order: 2; margin: 10px 0 0; }
   .wk-config > .wk-feedback { order: 5; }
   .wk-contact-button { order: 4; position: static; width: 100%; min-height: 50px; margin-top: 20px; box-shadow: none; font-size: 14px; }
+  @supports (-moz-appearance: none) {
+    // Keep Firefox colors in one row, allowing proportional shrinkage when needed.
+    .wk-swatches { min-width: 0; flex-wrap: nowrap; align-items: center; }
+    .wk-swatch { flex: 0 1 44px; min-width: 0; height: auto; aspect-ratio: 1; appearance: none; }
+    .wk-swatch > span { height: auto; aspect-ratio: 1; }
+    // Preserve the full document height and leave room above Firefox's bottom toolbar.
+    .wk-detail-grid > .wk-gallery, .wk-detail-grid > .wk-config { flex: 0 0 auto; min-width: 0; }
+    .wk-config > * { flex-shrink: 0; }
+    .wk-shell[data-workshop="detail"] { padding-bottom: calc(48px + env(safe-area-inset-bottom,0px)); }
+  }
   .wk-price-note { text-align: left; }
   .wk-mobile-price { display: block; margin-right: auto; font-size: 20px; }
   .wk-dialog { width: calc(100% - 24px); padding: 27px 20px 20px; }

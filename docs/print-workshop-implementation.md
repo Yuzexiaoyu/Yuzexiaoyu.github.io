@@ -635,3 +635,12 @@
 
 - E140：`.local/print-workshop/qa/catalog-return/check.cjs`、`baseline.json`。
 - E141：`layouts/partials/footer/components/script.html` 的工坊 `cache:set` 别名和初始 HTML 缓存；`.local/print-workshop/qa/catalog-return/results.json`。
+
+## 2026-11-16：安卓版 Firefox 工坊布局兼容
+
+[已实现] 用户确认问题出现在安卓版 Firefox。仅在手机工坊的 Gecko 特性查询中关闭颜色换行，允许色块等比例收缩，保留圆形；阻止详情模块及配置项被 flex 压缩，并给详情末尾增加 48px 与安全区留白。桌面及其他浏览器不启用这些覆盖。（E143）
+
+[已验证] 使用本机 Firefox 160 的 Gecko 引擎、安卓 UA 和 280／320／390px 视口检查：修改前 280px 下六色为两行，修改后三种宽度均为一行，色块宽高相等；按钮完整高度为 52px，页面滚到底后距视口底部由 28px 增加到 76px，底缘可点击且无横向溢出。Chrome 手机对照仍为原来的 44px 色块、0px 详情额外留白，Firefox 专用规则未命中。此检查不模拟安卓原生浏览器底栏，用户设备的实际遮挡未在本机复现。（E144）
+
+- E143：`assets/scss/mobile/_print-workshop.scss` 的 `@supports (-moz-appearance: none)`。
+- E144：`.local/print-workshop/qa/firefox-layout/check.py`、`baseline.json`、`results.json`、`chrome-control.json`、`baseline/`、`fixed/`。
