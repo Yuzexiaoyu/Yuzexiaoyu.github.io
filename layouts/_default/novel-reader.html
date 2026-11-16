@@ -143,6 +143,7 @@ window.__initNovelReader = function() {
   var mobileLayoutRunning = false;
   var mobileLayoutPending = false;
   var mobilePagination = null;
+  var mobileSwipe = null;
   var readerResizeObserver = null;
   function readerListen(target, name, handler, options) {
     target.addEventListener(name, handler, options);
@@ -154,6 +155,7 @@ window.__initNovelReader = function() {
     ++loadToken; ++mobileRequest;
     if (mobileFetch) mobileFetch.abort();
     if (mobilePagination) mobilePagination.cancel();
+    if (mobileSwipe) mobileSwipe.destroy();
     mobileListeners.forEach(function(off) { off(); });
     mobileTimers.forEach(function(id) { clearTimeout(id); clearInterval(id); });
     if (readerResizeObserver) readerResizeObserver.disconnect();
@@ -978,6 +980,7 @@ window.__initNovelReader = function() {
   function applyTransform() {
     if (!contentEl) return;
     currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
+    if (mobileSwipe) mobileSwipe.reset();
     contentEl.style.transform = 'translateX(' + (-currentPage * spreadWidth) + 'px)';
     highlightTocByPage();
     updateProgress();
@@ -1247,9 +1250,12 @@ window.__initNovelReader = function() {
     var homeLink = toolbar.querySelector('.reader-home-btn');
     homeLink.textContent = '返回首页'; settings.appendChild(homeLink);
     root.appendChild(settings);
-    var settingsBtn = document.createElement('button'); settingsBtn.type = 'button'; settingsBtn.className = 'toolbar-btn'; settingsBtn.textContent = '设置'; settingsBtn.setAttribute('aria-expanded','false');
+    var settingsBtn = document.createElement('button'); settingsBtn.type = 'button'; settingsBtn.id = 'm-reader-settings-toggle'; settingsBtn.className = 'toolbar-btn';
+    settingsBtn.setAttribute('aria-label','阅读设置'); settingsBtn.title = '阅读设置'; settingsBtn.setAttribute('aria-expanded','false');
+    settings.id = 'm-reader-settings'; settingsBtn.setAttribute('aria-controls',settings.id);
+    settingsBtn.innerHTML = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>';
     toolbar.insertBefore(settingsBtn,tocToggle);
-    settingsBtn.addEventListener('click',function() { settings.hidden = !settings.hidden; settingsBtn.setAttribute('aria-expanded',String(!settings.hidden)); });
+    settingsBtn.addEventListener('click',function() { if(mobileSwipe)mobileSwipe.reset(); settings.hidden = !settings.hidden; settingsBtn.setAttribute('aria-expanded',String(!settings.hidden)); });
     var pager = document.createElement('div'); pager.className = 'm-reader-pager';
     pager.innerHTML = '<button type="button" aria-label="上一页">上一页</button><span aria-live="polite"></span><button type="button" aria-label="下一页">下一页</button>';
     root.appendChild(pager);
@@ -1262,11 +1268,20 @@ window.__initNovelReader = function() {
     progressObserver.observe(progressText, { childList: true });
     mobileListeners.push(function() { progressObserver.disconnect(); pager.remove(); toolbar.insertBefore(themeGroup,tocToggle); toolbar.insertBefore(mobileFontGroup,tocToggle); toolbar.insertBefore(homeLink,tocToggle); settings.remove(); settingsBtn.remove(); back.remove(); });
     var back = document.createElement('a'); back.href = '/novel/'; back.textContent = '书架';
-    back.className = 'toolbar-btn'; back.setAttribute('aria-label', '返回书架');
+    back.className = 'toolbar-btn m-reader-back'; back.setAttribute('aria-label', '返回书架');
+    back.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg><span>书架</span>';
+    [volPrev,volNext].forEach(function(button,index) {
+      button.setAttribute('aria-label',index?'下一卷':'上一卷');
+      button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="'+(index?'m9 5 7 7-7 7':'m15 5-7 7 7 7')+'"/></svg>';
+    });
     toolbar.insertBefore(back, toolbar.firstChild);
     readerListen(document, 'keydown', function(e) {
       if (disposed || !root.isConnected) return;
-      if (e.key === 'Escape') { closeToc(); closeMobileDropdowns(); return; }
+      if (e.key === 'Escape') {
+        if (tocDrawer.classList.contains('open')) closeToc();
+        if (!settings.hidden) { settings.hidden=true; settingsBtn.setAttribute('aria-expanded','false'); settingsBtn.focus(); }
+        closeMobileDropdowns(); return;
+      }
       if (tocDrawer.classList.contains('open')) {
         if (e.key === 'Tab') {
           var focusable = Array.from(tocDrawer.querySelectorAll('button,a[href]')).filter(function(el) { return el.getClientRects().length; });
@@ -1282,20 +1297,25 @@ window.__initNovelReader = function() {
       if (e.key === 'Home') { e.preventDefault(); gotoPage(0); }
       if (e.key === 'End') { e.preventDefault(); gotoPage(totalPages - 1); }
     });
-    var gesture = null;
-    readerListen(viewportEl, 'touchstart', function(e) {
-      if (e.touches.length !== 1 || e.target.closest('a,button,input,select,textarea,pre,table,[data-m-scrollable]')) { gesture = null; return; }
-      var t = e.touches[0];
-      gesture = t.clientX > 24 && t.clientX < window.innerWidth - 24 && !String(window.getSelection()) ? { x:t.clientX, y:t.clientY, time:Date.now() } : null;
-    }, { passive: true });
-    readerListen(viewportEl, 'touchmove', function(e) { if (e.touches.length !== 1) gesture = null; }, {passive:true});
-    readerListen(viewportEl, 'touchcancel', function() { gesture = null; }, {passive:true});
-    readerListen(viewportEl, 'touchend', function(e) {
-      var start = gesture; gesture = null;
-      if (!start || e.touches.length || !e.changedTouches.length || String(window.getSelection()) || Date.now()-start.time>650 || (window.visualViewport && window.visualViewport.scale>1.05)) return;
-      var t=e.changedTouches[0], dx=t.clientX-start.x, dy=t.clientY-start.y;
-      if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.7) { if(dx<0)nextPage();else prevPage(); }
-    }, {passive:true});
+    var swipeOptions = {
+      page:function(){return currentPage;},count:function(){return totalPages;},width:function(){return spreadWidth;},
+      ready:function(){return !disposed && !mobileLayoutRunning && loadingEl.style.display==='none' && !tocDrawer.classList.contains('open') && settings.hidden;},
+      goTo:gotoPage
+    };
+    if (mobilePagination.bindSwipe) mobileSwipe = mobilePagination.bindSwipe(swipeOptions);
+    else {
+      // A tab open before deployment can retain the previous mobile bundle during Swup visits.
+      var legacySwipe = null;
+      readerListen(viewportEl,'touchstart',function(e) {
+        var t=e.touches[0]; legacySwipe=e.touches.length===1 && swipeOptions.ready() && !String(window.getSelection()) && !e.target.closest('a,button,input,select,textarea') ? {x:t.clientX,y:t.clientY} : null;
+      },{passive:true});
+      readerListen(viewportEl,'touchcancel',function(){legacySwipe=null;},{passive:true});
+      readerListen(viewportEl,'touchend',function(e) {
+        var start=legacySwipe;legacySwipe=null;if(!start || e.touches.length || !e.changedTouches.length || !swipeOptions.ready())return;
+        var t=e.changedTouches[0],dx=t.clientX-start.x,dy=t.clientY-start.y;
+        if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.3){if(dx<0)nextPage();else prevPage();}
+      },{passive:true});
+    }
     readerListen(contentEl, 'click', function(e) {
       var a=e.target.closest('a[href]'); if(!a)return;
       var href=a.getAttribute('href')||'';
@@ -1313,7 +1333,12 @@ window.__initNovelReader = function() {
         el.classList.toggle('m-open',open); el.querySelector('button').setAttribute('aria-expanded',String(open));
       });
     });
-    readerListen(document,'click',function(e) { if(!e.target.closest('.reader-dropdown'))closeMobileDropdowns(); });
+    readerListen(document,'click',function(e) {
+      if (!settings.hidden && !settings.contains(e.target) && !settingsBtn.contains(e.target)) {
+        settings.hidden=true; settingsBtn.setAttribute('aria-expanded','false');
+      }
+      if(!e.target.closest('.reader-dropdown'))closeMobileDropdowns();
+    });
     fontMenu.addEventListener('click',closeMobileDropdowns); lineMenu.addEventListener('click',closeMobileDropdowns);
   }
 

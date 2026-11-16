@@ -1,3 +1,5 @@
+import {createMobileReaderSwipe} from './mobile-reader-swipe';
+
 /* Original chapter clones are the source of truth. Reflow never rebuilds from split pages. */
 export function createMobilePagination(content: HTMLElement, viewport: HTMLElement) {
   type Anchor = {block:string;offset:number;scroll?:number};
@@ -143,5 +145,5 @@ export function createMobilePagination(content: HTMLElement, viewport: HTMLEleme
     const i=pages.findIndex(page=>(chapter===undefined||Number(page.dataset.mChapter)===chapter) && (page.id===id || !!page.querySelector(`#${CSS.escape(id)}`)));
     return i<0?null:i;
   }
-  return {paginate,capture,restore,target,cancel:()=>{version++;operation?.abort();}};
+  return {paginate,capture,restore,target,bindSwipe:(options:Parameters<typeof createMobileReaderSwipe>[2])=>createMobileReaderSwipe(content,viewport,options),cancel:()=>{version++;operation?.abort();}};
 }
