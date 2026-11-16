@@ -626,3 +626,12 @@
 
 - E137：`assets/ts/workshop-preload.ts` 的 `preloadCatalogEntries`、`warmPage`、`warmVideo`、`takePreloadedVideo`；`assets/ts/print-workshop.ts` 的列表调度及详情视频接用。
 - E138：`.local/print-workshop/qa/catalog-preload/check.cjs`、`results.json` 及实际构建输出。
+
+## 2026-11-16：详情返回工坊复用分类页面缓存
+
+[已验证] `/prints/`、`/prints/?tab=work`、`/prints/?tab=product` 使用相同页面骨架，但原先独立缓存。初次进入不带参数的工坊，或在列表中切换分类后，详情中的返回链接未命中已有缓存。注入 1800ms 的返回请求延迟时，手机和桌面的两种分类均出现重新请求，返回约 2.22 秒。（E140）
+
+[已验证] 工坊页面写入 Swup 缓存时同步登记三个地址，仍保留不同导航 URL 以正确恢复分类。直接进入工坊时将当前 HTML 写入缓存，关闭该页多余的初始预取请求。返回按钮与浏览器后退均复用缓存；无样式或动画改动。相同慢网检查中四种组合均零返回 HTML 请求，完成时间约 0.42 秒。两套构建通过。（E141）
+
+- E140：`.local/print-workshop/qa/catalog-return/check.cjs`、`baseline.json`。
+- E141：`layouts/partials/footer/components/script.html` 的工坊 `cache:set` 别名和初始 HTML 缓存；`.local/print-workshop/qa/catalog-return/results.json`。

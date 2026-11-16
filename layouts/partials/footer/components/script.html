@@ -781,11 +781,27 @@ document.addEventListener('DOMContentLoaded', function() {
     plugins: [
       new SwupPreloadPlugin({
         throttle: 100,
+        preloadInitialPage: !document.querySelector('[data-workshop="catalog"]'),
       })
     ]
   });
 
   swupReady = true;
+  // Category tabs only change client-side state; all three URLs use the same HTML shell.
+  // Keep distinct navigation URLs so returning still selects the correct category.
+  swup.hooks.on('cache:set', function(_visit, args) {
+    var page = args.page;
+    if (new URL(page.url, location.origin).pathname !== '/prints/') return;
+    ['/prints/', '/prints/?tab=work', '/prints/?tab=product'].forEach(function(url) {
+      if (url !== page.url) swup.cache.update(url, {html: page.html});
+    });
+  });
+  // Reuse the catalog already on screen instead of fetching it again just to cache it.
+  if (document.querySelector('[data-workshop="catalog"]')) {
+    swup.cache.set(location.pathname + location.search, {
+      html: '<!doctype html>' + document.documentElement.outerHTML
+    });
+  }
   // Warm the workshop HTML on mobile too; its script/data/covers load separately.
   swup.preload('/prints/').catch(function(){});
 
