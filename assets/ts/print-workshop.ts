@@ -52,6 +52,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     let entry = await api<Entry>(`/api/entry/${encodeURIComponent(id)}`,signal);
     if(signal.aborted)return;
     const configurable=entry.kind==='work';
+    const mobile=document.documentElement.dataset.ui==='mobile';
     const videos=entry.videos||[];
     document.title=`${entry.name} · 雨泽小鱼的工坊`;
     root.querySelector<HTMLElement>('[data-detail-breadcrumb]')!.textContent=`${configurable?'可选':'现货'} / ${entry.name}`;
@@ -62,7 +63,8 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     if(!Number.isInteger(infill)||infill<15||infill>100)infill=15;
     container.innerHTML=`<div class="wk-detail-grid"><div class="wk-gallery">
       <div class="wk-stage">
-        ${videos.length?`<video class="wk-stage-video" data-stage-video src="${e(videos[0].url)}" poster="${e(entry.images[0]?.url)}" controls autoplay muted playsinline preload="auto"></video>`:''}
+        ${videos.length?`<video class="wk-stage-video" data-stage-video src="${e(videos[0].url)}" poster="${e(entry.images[0]?.url)}" ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} autoplay muted playsinline preload="auto"></video>`:''}
+        ${mobile&&videos.length?'<div class="wk-video-replay" data-video-replay-layer hidden><button type="button" data-video-replay aria-label="重新播放视频"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div>':''}
         <img class="wk-stage-image" data-stage-image src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" ${videos.length?'hidden':''}>
         ${entry.model?`<model-viewer data-viewer poster="${e(entry.images[0]?.url)}" alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
       </div>
@@ -98,11 +100,38 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const viewer=container.querySelector<any>('[data-viewer]');
     const stageImage=container.querySelector<HTMLImageElement>('[data-stage-image]')!;
     const stageVideo=container.querySelector<HTMLVideoElement>('[data-stage-video]');
+    const replayLayer=container.querySelector<HTMLElement>('[data-video-replay-layer]');
+    const replayButton=container.querySelector<HTMLButtonElement>('[data-video-replay]');
     const loading=container.querySelector<HTMLElement>('[data-viewer-loading]');
     const failed=container.querySelector<HTMLElement>('[data-viewer-failed]');
     let viewerReady=false;let viewerFailed=false;
     let imageIndex=0;let videoIndex=0;
+    let videoNeedsPlay=false,videoPlayAttempt=0;
     let revealMediaButton: (()=>void)|undefined;
+    const syncVideoReplay=()=>{
+      if(!stageVideo||!replayLayer)return;
+      replayLayer.hidden=stageVideo.hidden||(!stageVideo.ended&&!videoNeedsPlay);
+      replayButton!.setAttribute('aria-label',stageVideo.ended?'重新播放视频':'播放视频');
+    };
+    const playVideo=(restart=true)=>{
+      if(!stageVideo)return;
+      const attempt=++videoPlayAttempt;videoNeedsPlay=false;
+      if(restart)stageVideo.currentTime=0;
+      syncVideoReplay();
+      void stageVideo.play().catch(()=>{
+        if(signal.aborted||attempt!==videoPlayAttempt||stageVideo.hidden)return;
+        videoNeedsPlay=true;syncVideoReplay();
+      });
+    };
+    if(stageVideo&&replayLayer){
+      stageVideo.addEventListener('ended',syncVideoReplay,{signal});
+      stageVideo.addEventListener('playing',()=>{videoNeedsPlay=false;syncVideoReplay();},{signal});
+      stageVideo.addEventListener('pause',()=>{
+        videoNeedsPlay=stageVideo.paused&&!stageVideo.hidden&&stageVideo.readyState>=2;
+        syncVideoReplay();
+      },{signal});
+      replayButton!.addEventListener('click',()=>playVideo(stageVideo.ended),{signal});
+    }
     const paint=()=>{if(configurable&&viewer?.model&&color) for(const material of viewer.model.materials){const pbr=material.pbrMetallicRoughness;pbr.baseColorTexture?.setTexture(null);pbr.setBaseColorFactor(color.hex);}};
     const viewerError=()=>{
       if(signal.aborted)return;
@@ -119,7 +148,8 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       const model=view==='model'&&!!viewer;
       if(viewer)viewer.hidden=!model;
       stageImage.hidden=view!=='photo';
-      if(stageVideo){stageVideo.hidden=view!=='video';if(view!=='video')stageVideo.pause();}
+      if(stageVideo){stageVideo.hidden=view!=='video';if(view!=='video'){videoPlayAttempt++;stageVideo.pause();}}
+      syncVideoReplay();
       container.querySelectorAll<HTMLElement>('[data-view]').forEach(n=>{
         const active=n.dataset.view===view&&(view==='model'||Number(n.dataset.mediaIndex)===(view==='photo'?imageIndex:videoIndex));
         n.classList.toggle('is-active',active);
@@ -139,12 +169,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       if(view==='photo'){imageIndex=index;stageImage.src=entry.images[index].url!;}
       if(view==='video'&&stageVideo&&videoIndex!==index){videoIndex=index;stageVideo.src=videos[index].url!;}
       selectView(view);
-      if(view==='video'&&stageVideo){
-        stageVideo.currentTime=0;
-        void stageVideo.play().catch(()=>{});
-      }
+      if(view==='video')playVideo();
     },{signal}));
-    if(document.documentElement.dataset.ui==='mobile'){
+    if(mobile){
       const mediaButtons=Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]'));
       const posters=mediaButtons.map(button=>entry.images[button.dataset.view==='photo'?Number(button.dataset.mediaIndex):0]?.url);
       revealMediaButton=initMobileGallerySwipe(container.querySelector<HTMLElement>('.wk-stage')!,mediaButtons,posters,signal);
@@ -158,8 +185,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     selectView(videos.length?'video':'photo');
     if(stageVideo){
       stageVideo.muted=true;
-      // Keep native controls usable if autoplay is blocked or navigation interrupts playback.
-      void stageVideo.play().catch(()=>{});
+      playVideo(false);
     }
     const range=container.querySelector<HTMLInputElement>('[data-infill-range]');
     const contact=container.querySelector<HTMLButtonElement>('[data-contact]')!;

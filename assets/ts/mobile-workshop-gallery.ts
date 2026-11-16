@@ -2,7 +2,7 @@
 export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonElement[], posters: (string|null|undefined)[], signal: AbortSignal) {
   const strip = buttons[0]?.parentElement;
   const active = () => buttons.find(button => button.getAttribute('aria-pressed') === 'true');
-  const media = Array.from(stage.querySelectorAll<HTMLElement>(':scope > .wk-stage-image,:scope > .wk-stage-video,:scope > model-viewer,:scope > .wk-viewer-loading,:scope > .wk-viewer-failed'));
+  const media = Array.from(stage.querySelectorAll<HTMLElement>(':scope > .wk-stage-image,:scope > .wk-stage-video,:scope > .wk-video-replay,:scope > model-viewer,:scope > .wk-viewer-loading,:scope > .wk-viewer-failed'));
   const preview = document.createElement('img');
   preview.className = 'wk-swipe-preview';
   preview.alt = ''; preview.setAttribute('aria-hidden','true'); preview.decoding = 'async'; preview.draggable = false;
@@ -78,7 +78,8 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
       ],{duration,easing:'cubic-bezier(.22,.61,.36,1)',fill:'both'});
       animation.id = 'workshop-gallery-snap'; run.animations.push(animation);
     };
-    media.filter(element => !element.hidden).forEach(element => animate(element,0));
+    const videoVisible=!!stage.querySelector('video:not([hidden])');
+    media.filter(element => !element.hidden||(videoVisible&&element.matches('.wk-video-replay'))).forEach(element => animate(element,0));
     if (!preview.hidden) animate(preview,neighborSide*width);
     void Promise.all(run.animations.map(animation => animation.finished)).then(finish,()=>{});
   };
@@ -104,10 +105,9 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
     if (event.touches.length !== 1) {abandon(); return;}
     const target = event.target as Element;
     // Model drags belong to the viewer. Its transparent edge areas target the stage.
-    if (target.closest('model-viewer,button,a,input,select,textarea')) return;
+    const buttonTarget=target.closest('button');
+    if (target.closest('model-viewer,a,input,select,textarea')||(buttonTarget&&!buttonTarget.hasAttribute('data-video-replay'))) return;
     const touch = event.touches[0], frame = stage.getBoundingClientRect();
-    const video = stage.querySelector<HTMLVideoElement>('video:not([hidden])');
-    if (video?.controls && touch.clientY >= frame.bottom - 56) return;
     const button = active(); if (!button) return;
     const resumed = takeOver();
     visualButton = button; width = frame.width;

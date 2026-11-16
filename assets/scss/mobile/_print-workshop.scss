@@ -27,6 +27,10 @@ body.template-workshop {
   // Reserve space for configuration without changing the media or control appearance.
   .wk-gallery { position: relative; }
   .wk-stage { height: clamp(180px,calc(100svh - 610px),300px); aspect-ratio: auto; touch-action: pan-y pinch-zoom; }
+  .wk-stage-video { pointer-events: none; }
+  .wk-video-replay { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
+  .wk-video-replay > button { display: grid; place-items: center; width: 60px; height: 60px; padding: 0; border: 1px solid #bfdcca88; border-radius: 50%; color: #d3e8dd; background: #0c1318cc; pointer-events: auto; }
+  .wk-video-replay svg { width: 28px; height: 28px; }
   .wk-stage.is-swiping > .wk-swipe-current { transform: translate3d(var(--wk-swipe-x,0px),0,0); will-change: transform; }
   .wk-swipe-preview { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; background: #0b1214; transform: translate3d(var(--wk-swipe-neighbor-x,100%),0,0); will-change: transform; pointer-events: none; }
   // Keep center drags available for 3D rotation; reserve invisible edges for media swipes.

@@ -587,3 +587,14 @@
 
 - E125：`assets/ts/mobile-workshop-gallery.ts` 的 `paint`、`settle`、`takeOver`；`assets/ts/print-workshop.ts` 的相邻封面映射；`assets/scss/mobile/_print-workshop.scss` 的拖动平移层。
 - E126：`scripts/verify-workshop-drag.cjs`、`scripts/verify-workshop.cjs`；`.local/print-workshop/qa/follow-drag/results.json`、`held-drag-no-preference.png`、`regression/results.json`，以及实际构建、导出、哈希和差异检查输出。
+
+## 2026-11-16：手机视频全区域滑动与中央重播
+
+[已验证] 手机视频移除原生控制栏，并让触摸落在展示区，取消原先底部 56px 的手势保留区。画面和底部均可跟手切换媒体。视频结束后显示居中的播放图标，点击后从头重播；播放中隐藏，切换图片或模型也隐藏。自动播放受阻或播放暂停时保留中央播放入口。桌面继续使用原来的原生视频控件。（E128）
+
+[已验证] 重播按钮所在区域也支持左右滑动，按钮与视频一起移动，取消手势后复位；拖动不会误触播放。重播层在释放动画中保持与视频同步，播放结果回调按请求编号及页面 AbortSignal 判断是否仍有效。（E128）
+
+[已验证] 25 组浏览器回归及 5 组手势／视频检查通过。新增验证两类商品的控制栏关闭、中央位置、点击和键盘重播、播放中按钮隐藏、按钮上的拖动、取消后保持结束状态、拖动不重播、视频底部逐点跟手。内置浏览器实测中央按钮点击后从 `0.0146s` 播放、controls 为 false、再次结束时按钮中心偏移为 0。两套构建、生产压缩构建、公开导出与差异检查通过；桌面主样式及移动入口哈希保持 E119 基线。（E129）
+
+- E128：`assets/ts/print-workshop.ts` 的手机视频标记、`syncVideoReplay`、`playVideo`；`assets/ts/mobile-workshop-gallery.ts` 的重播层同步及手势目标；`assets/scss/mobile/_print-workshop.scss` 的视频指针行为和中央按钮。
+- E129：`scripts/verify-workshop.cjs`、`scripts/verify-workshop-drag.cjs`；`.local/print-workshop/qa/video-replay/results.json`、`regression/results.json`、`preview.json`、`preview.jpg`，以及实际构建、导出和哈希检查输出。

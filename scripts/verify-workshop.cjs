@@ -65,7 +65,8 @@ function sameFrames(frames) {
 async function automaticVideoState(page) {
   await page.waitForFunction(()=>{const video=document.querySelector('[data-stage-video]');return video&&video.currentTime>0&&video.played.length>0;});
   const playback=await page.locator('[data-stage-video]').evaluate(video=>({autoplay:video.autoplay,muted:video.muted,playsInline:video.playsInline,controls:video.controls,time:video.currentTime,duration:video.duration,paused:video.paused,ended:video.ended}));
-  assert.equal(playback.autoplay,true);assert.equal(playback.muted,true);assert.equal(playback.playsInline,true);assert.equal(playback.controls,true);
+  assert.equal(playback.autoplay,true);assert.equal(playback.muted,true);assert.equal(playback.playsInline,true);
+  assert.equal(playback.controls,(await page.locator('html').getAttribute('data-ui'))!=='mobile');
   return playback;
 }
 
@@ -324,7 +325,9 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
         const restarts=[await restartVideoFromButton(page,0)];
         await page.locator('[data-stage-video]').evaluate(async video=>{video.currentTime=video.duration-0.05;await video.play();});
         await page.waitForFunction(()=>document.querySelector('[data-stage-video]').ended);
+        if(mobile)assert.ok(await page.locator('[data-video-replay]').isVisible());
         await page.locator('[data-view="video"][data-media-index="0"]').click();
+        if(mobile)assert.equal(await page.locator('[data-video-replay]').isVisible(),false);
         assert.equal(await page.locator('[data-stage-video]').evaluate(video=>video.paused||video.ended),false);
         assert.ok(await page.locator('[data-stage-video]').evaluate(video=>video.currentTime<video.duration/2));
         await page.locator('[data-stage-video]').evaluate(async video=>{video.currentTime=0;await video.play();});
@@ -469,7 +472,8 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       const frames=[await galleryFrame(page)];
       await swipeStage(page,'left',{short:true});assert.equal((await selected()).view,'video');
       await swipeStage(page,'left',{cancel:true});assert.equal((await selected()).view,'video');
-      await swipeStage(page,'left',{controls:true});assert.equal((await selected()).view,'video');
+      await swipeStage(page,'left',{controls:true});assert.deepEqual(await selected(),{view:'photo',index:0});
+      await swipeStage(page,'right',{controls:true});assert.equal((await selected()).view,'video');
       await swipeStage(page,'left');assert.deepEqual(await selected(),{view:'photo',index:0});
       assert.equal(await page.locator('[data-stage-video]').evaluate(video=>video.paused),true);
       for(let index=1;index<item.images.length;index++){
@@ -495,7 +499,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       if(scrollable)await page.waitForFunction(()=>scrollY>0);
       else assert.equal(await page.evaluate(()=>scrollY),0);
       assert.deepEqual(errors,[]);
-      results.push({case:'mobile '+item.kind+' swipe media, preserve video controls, vertical scroll and 3D rotation',frames,errors});
+      results.push({case:'mobile '+item.kind+' full video surface swipes, vertical scroll and 3D rotation',frames,errors});
       await page.close();
     }
     {
