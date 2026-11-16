@@ -10,3 +10,12 @@
 
 - E149：`assets/ts/mobile-reader-swipe.ts`、`assets/ts/mobile-reader.ts` 的 `bindSwipe`；`layouts/_default/novel-reader.html` 的移动输入绑定和顶部按钮；`assets/scss/mobile/_reader.scss`。
 - E150：`.local/reader-swipe/check.cjs`、`results.json`、`firefox-check.py`、`firefox-results.json`、`panel.json`、`preview.jpg`。
+
+## 2026-11-16：设置直选与移除底部翻页按钮
+
+[已修复] 原设置面板的字号／行距下拉展开后，会把同一行的其他控件一起拉高。手机改为主题、字号、行距三行固定布局，字号和行距三个选项始终可见；当前选项高亮并同步 `aria-pressed`，返回首页为单独的 40px 行。移除手机页脚的上一页／下一页按钮及事件，仅保留居中页码，继续使用滑动翻页。（E152）
+
+[已验证] 320／390px 下六个选项同时可见、均为 40px 高，无横向溢出；选择大字号和宽松行距后面板高度不变，实际等待重新分页结束后，真实触摸仍能翻到下一页。页脚按钮数量为零，零脚本错误；桌面仍显示原字号下拉入口。内置预览已展示新的设置布局。（E153）
+
+- E152：`layouts/_default/novel-reader.html` 的手机设置分组、选中语义、页码标记与清理逻辑；`assets/scss/mobile/_reader.scss` 的直选行和页脚样式。
+- E153：`.local/reader-settings/check.cjs`、`results.json`、`settings-320.jpg`、`settings-390.jpg`、`preview.jpg`。
