@@ -1,4 +1,4 @@
-# 移动小说阅读器：交互与顶部栏
+# 移动小说界面：阅读器与书架
 
 ## 2026-11-16
 
@@ -19,3 +19,12 @@
 
 - E152：`layouts/_default/novel-reader.html` 的手机设置分组、选中语义、页码标记与清理逻辑；`assets/scss/mobile/_reader.scss` 的直选行和页脚样式。
 - E153：`.local/reader-settings/check.cjs`、`results.json`、`settings-320.jpg`、`settings-390.jpg`、`preview.jpg`。
+
+## 2026-11-16：手机书架四列
+
+[已实现] 隐藏手机书架标题区左上角的返回按钮，所有手机宽度统一每行四卷，缩小横向间距；桌面样式及返回入口保持原样。（E155）
+
+[已验证] 320／390px 下首行均为四卷，无横向溢出，手机返回按钮隐藏、桌面仍可见。两套构建与差异检查通过；内置预览已刷新。（E156）
+
+- E155：`assets/scss/mobile/_bookshelf.scss`。
+- E156：`.local/bookshelf-four/verification.json`、`preview.jpg`。
