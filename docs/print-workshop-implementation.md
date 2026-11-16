@@ -578,3 +578,12 @@
 
 - E122：`assets/ts/mobile-workshop-gallery.ts`、`assets/ts/print-workshop.ts` 的手机模式初始化／媒体按钮同步、`assets/scss/mobile/_print-workshop.scss` 的触摸行为及模型边缘区域。
 - E123：`scripts/verify-workshop.cjs` 的真实触摸检查；`.local/print-workshop/qa/mobile-swipe/regression/results.json`，以及实际构建、导出、哈希和差异检查输出。
+
+## 2026-11-16：展示区跟手拖动与松手吸附
+
+[已验证] 手机展示区在拖动中实时平移当前媒体，同时露出相邻媒体的图片或封面；松手后按距离与速度吸附到相邻项，短滑回弹，首尾有阻尼。连续触摸可从尚未结束的吸附位置接手，反向拖动保持连续。释放动画只使用 transform，时长 140–260ms；减少动态效果模式保留直接拖动，省略释放动画。沿用现有视频与模型实例，相邻项仅预载图片／封面，未添加播放器或提前加载模型。（E125）
+
+[已验证] 3 组新增真实触摸检查覆盖拖动中的逐点位移与反向、相邻图片位置、松手动画、短慢滑回弹、连续接手、边界阻尼、外部按钮打断和页面销毁；25 组原有浏览器回归通过。两种移动模式均检查了显示区尺寸稳定及零脚本错误。生产压缩构建、本地工作室构建、公开导出与差异检查通过；桌面主样式和移动入口 SHA-256 仍与 E119 基线一致。测试使用独立 Chrome 的真实触摸输入。（E126）
+
+- E125：`assets/ts/mobile-workshop-gallery.ts` 的 `paint`、`settle`、`takeOver`；`assets/ts/print-workshop.ts` 的相邻封面映射；`assets/scss/mobile/_print-workshop.scss` 的拖动平移层。
+- E126：`scripts/verify-workshop-drag.cjs`、`scripts/verify-workshop.cjs`；`.local/print-workshop/qa/follow-drag/results.json`、`held-drag-no-preference.png`、`regression/results.json`，以及实际构建、导出、哈希和差异检查输出。

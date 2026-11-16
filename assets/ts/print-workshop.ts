@@ -145,7 +145,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       }
     },{signal}));
     if(document.documentElement.dataset.ui==='mobile'){
-      revealMediaButton=initMobileGallerySwipe(container.querySelector<HTMLElement>('.wk-stage')!,Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]')),signal);
+      const mediaButtons=Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]'));
+      const posters=mediaButtons.map(button=>entry.images[button.dataset.view==='photo'?Number(button.dataset.mediaIndex):0]?.url);
+      revealMediaButton=initMobileGallerySwipe(container.querySelector<HTMLElement>('.wk-stage')!,mediaButtons,posters,signal);
     }
     if(viewer){
       viewer.addEventListener('load',()=>{if(signal.aborted)return;viewerReady=true;viewerFailed=false;loading!.hidden=true;failed!.hidden=true;paint();},{signal});

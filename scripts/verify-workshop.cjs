@@ -94,6 +94,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[from]});
     for(let step=1;step<=8;step++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:from.x+(to.x-from.x)*step/8,y:from.y+(to.y-from.y)*step/8}]});
     await cdp.send('Input.dispatchTouchEvent',{type:cancel?'touchCancel':'touchEnd',touchPoints:[]});
+    await page.waitForFunction(()=>!document.querySelector('.wk-stage')?.classList.contains('is-swiping'));
   }finally{await cdp.detach();}
 }
 
