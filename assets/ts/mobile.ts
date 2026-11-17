@@ -184,7 +184,7 @@ function initMobilePage(): void {
     nav.querySelector('.m-nav-close')?.addEventListener('click', close, {signal});
     nav.addEventListener('toggle', () => {
       summary.setAttribute('aria-expanded', String(nav.open));
-      if (nav.classList.contains('m-home-navigation')) summary.setAttribute('aria-label', nav.open ? '关闭导航' : '打开导航');
+      summary.setAttribute('aria-label', nav.open ? '关闭导航' : '打开导航');
       if (nav.open) nav.querySelector<HTMLButtonElement>('button')?.focus();
     }, {signal});
     document.addEventListener('click', e => {

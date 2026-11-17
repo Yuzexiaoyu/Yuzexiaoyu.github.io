@@ -15,19 +15,17 @@
       {{ end }}
     </div>
   </div>
-  <details class="m-navigation{{ if .IsHome }} m-home-navigation{{ end }}">
-    <summary aria-label="打开导航"{{ if .IsHome }} aria-controls="m-home-navigation-panel" aria-expanded="false"{{ end }}>{{ if .IsHome }}<svg class="m-home-menu-open" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><svg class="m-home-menu-dismiss" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>{{ else }}菜单{{ end }}</summary>
-    <nav aria-label="网站导航"{{ if .IsHome }} id="m-home-navigation-panel"{{ end }}>
-      {{ if .IsHome }}
-      <div class="m-home-menu-header"><span>网站导航</span><button class="m-nav-close" type="button" aria-label="关闭菜单"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-      {{ else }}
-      <button class="m-nav-close" type="button">关闭菜单 ✕</button>
-      {{ end }}
+  <details class="m-navigation">
+    <summary aria-label="打开导航" aria-controls="m-site-navigation-panel" aria-expanded="false"><svg class="m-menu-open" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><svg class="m-menu-dismiss" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></summary>
+    <nav aria-label="网站导航" id="m-site-navigation-panel">
+      <div class="m-menu-header"><span>网站导航</span><button class="m-nav-close" type="button" aria-label="关闭菜单"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
       {{ range .Site.Menus.main }}
-      <a href="{{ .URL }}"{{ if .Params.newTab }} target="_blank" rel="noopener"{{ end }}{{ if and $.IsHome (eq .URL $.Site.Home.RelPermalink) }} aria-current="page"{{ end }}>{{ if $.IsHome }}<span class="m-home-menu-icon" aria-hidden="true">{{ partial "helper/icon" (default "link" .Params.Icon) }}</span><span class="m-home-menu-label">{{ index (split .Name " | ") 0 }}</span><span class="m-home-menu-arrow" aria-hidden="true">{{ partial "helper/icon" "chevron-right" }}</span>{{ else }}{{ .Name }}{{ end }}</a>
+      {{ if ne .URL "/archives/" }}
+      {{- $exact := or (eq $.RelPermalink .URL) ($.IsMenuCurrent "main" .) -}}
+      {{- $section := and (ne .URL "/") (hasPrefix $.RelPermalink .URL) -}}
+      {{- $active := or $exact $section ($.HasMenuCurrent "main" .) -}}
+      <a href="{{ .URL }}"{{ if .Params.newTab }} target="_blank" rel="noopener"{{ end }}{{ if $active }} aria-current="{{ if $exact }}page{{ else }}location{{ end }}"{{ end }}><span class="m-menu-icon" aria-hidden="true">{{ partial "helper/icon" (default "link" .Params.Icon) }}</span><span class="m-menu-label">{{ index (split .Name " | ") 0 }}</span><span class="m-menu-arrow" aria-hidden="true">{{ partial "helper/icon" "chevron-right" }}</span></a>
       {{ end }}
-      {{ range where .Site.RegularPages "Layout" "search" }}
-      <a href="{{ .RelPermalink }}">{{ if $.IsHome }}<span class="m-home-menu-icon" aria-hidden="true">{{ partial "helper/icon" "search" }}</span><span class="m-home-menu-label">{{ .Title }}</span><span class="m-home-menu-arrow" aria-hidden="true">{{ partial "helper/icon" "chevron-right" }}</span>{{ else }}{{ .Title }}{{ end }}</a>
       {{ end }}
     </nav>
   </details>

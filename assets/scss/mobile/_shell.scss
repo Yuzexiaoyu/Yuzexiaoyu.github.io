@@ -25,14 +25,33 @@ main.main, main.main.full-width { width: 100%; min-width: 0; max-width: 100%; pa
 .m-social { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .m-social a { display: flex; align-items: center; justify-content: center; width: 32px; height: 40px; color: #dbe5f0; border-radius: 8px; }
 .m-social svg { width: 18px; height: 18px; }
-.m-navigation { flex: 0 0 auto; }
 .m-navigation summary, .m-header button, .m-header nav a { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; color: #e6edf3; cursor: pointer; }
-.m-navigation summary { list-style: none; border: 1px solid #30363d; }
-.m-navigation summary::-webkit-details-marker { display: none; }
-.m-navigation[open]::before { content: ''; position: fixed; inset: var(--m-header-height) 0 0; background: #0009; }
-.m-navigation nav { position: absolute; right: var(--m-page-gutter); top: 100%; width: Min(340px, calc(100vw - 2 * var(--m-page-gutter))); max-height: calc(85vh - var(--m-header-height)); max-height: calc(85dvh - var(--m-header-height)); overflow-y: auto; overscroll-behavior: contain; padding: 12px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; box-sizing: border-box; box-shadow: 0 12px 40px #0008; }
-.m-navigation nav a { border-bottom: 1px solid #30363d; }
-.m-nav-close { width: 100%; background: transparent; border: 0; justify-content: flex-end; position: sticky; top: -12px; background: #161b22; }
+.m-header:has(.m-navigation[open]) { background: #0b1117; }
+.m-navigation {
+  flex: 0 0 auto;
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary { width: 44px; min-width: 44px; height: 44px; padding: 0; justify-content: center; border: 1px solid #b4c6d621; border-radius: 12px; background: #c4d6e80a; color: #d5e2ed; box-sizing: border-box; }
+  summary:hover, &[open] summary { background: #a4c9e512; border-color: #b4c6d638; color: #eef5fc; }
+  summary .m-menu-dismiss { display: none; }
+  &[open] summary .m-menu-open { display: none; }
+  &[open] summary .m-menu-dismiss { display: block; }
+  &[open]::before { content: ''; position: fixed; inset: var(--m-header-height) 0 0; background: #03070bb3; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  nav { position: absolute; right: var(--m-page-gutter); overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; top: calc(100% + 8px); width: Min(320px,calc(100vw - 2 * var(--m-page-gutter))); max-height: calc(100svh - var(--m-header-height) - 24px - env(safe-area-inset-bottom,0px)); max-height: calc(100dvh - var(--m-header-height) - 24px - env(safe-area-inset-bottom,0px)); padding: 8px; border: 1px solid #b4c6d621; border-radius: 16px; background: #10161c; box-shadow: 0 18px 50px #0008; }
+  .m-menu-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px 6px 12px; margin-bottom: 4px; border-bottom: 1px solid #d0dfed0d; color: #94a8b9; font-size: 13px; font-weight: 500; }
+  .m-nav-close { position: static; top: auto; width: 40px; min-width: 40px; min-height: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; justify-content: center; color: #9db0bf; }
+  .m-nav-close:hover { background: #ffffff08; color: #e6edf3; }
+  nav a { display: grid; grid-template-columns: 20px minmax(0,1fr) 14px; align-items: center; gap: 12px; min-height: 50px; padding: 10px 12px; border: 0; border-radius: 10px; color: #c9d5df; font-size: 15px; line-height: 1.45; box-sizing: border-box; }
+  nav a:hover { background: #ffffff08; color: #f0f6fc; }
+  nav a[aria-current] { color: #e4f1fc; background: #58a6ff12; }
+  .m-menu-icon, .m-menu-arrow { display: flex; align-items: center; justify-content: center; color: #8da7bc; }
+  .m-menu-icon svg { width: 20px; height: 20px; }
+  .m-menu-arrow svg { width: 14px; height: 14px; }
+  nav a[aria-current] .m-menu-icon { color: #86bce9; }
+  .m-menu-arrow { opacity: .5; }
+  .m-menu-label { min-width: 0; overflow-wrap: anywhere; }
+}
+
 a, button, summary, input, select { -webkit-tap-highlight-color: rgba(88,166,255,.25); }
 :focus-visible { outline: 2px solid #58a6ff !important; outline-offset: 3px; }
 [id] { scroll-margin-top: calc(var(--m-header-height) + 16px); }
