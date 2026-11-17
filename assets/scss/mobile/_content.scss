@@ -72,10 +72,14 @@ body .article-list--compact { grid-template-columns: minmax(0,1fr) !important; }
     width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px;
     background: transparent; color: #acbdcb; cursor: pointer;
   }
-  .widget { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px 12px; margin: 0; }
+  .widget { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 6px 12px 12px; margin: 0; }
   .widget > .widget-icon, .widget > .widget-title { display: none; }
-  .widget--toc { padding: 0; background: transparent; box-shadow: none; border: 0; }
-  #TableOfContents { max-height: none; overflow: visible; padding: 0; font-size: 15px; }
+  .widget--toc { flex: 1 1 auto; min-height: 0; padding: 0; background: transparent; box-shadow: none; border: 0; }
+  #TableOfContents {
+    flex: 1 1 auto; min-height: 0; max-height: none; overflow-x: hidden; overflow-y: auto;
+    overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+    padding: 0; font-size: 15px;
+  }
   #TableOfContents li { margin: 0; padding: 0; }
   #TableOfContents li > ol, #TableOfContents li > ul { margin: 0; padding-left: 16px; }
   #TableOfContents a {

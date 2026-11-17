@@ -8,3 +8,12 @@
 
 - E170：`assets/ts/mobile.ts` 的 `initMobileToc()`；仅由 `html[data-ui="mobile"]` 引入的 `assets/scss/mobile/_content.scss`。
 - E171：`.local/mobile-toc/verification.json`、`preview.jpg` 及实际 Hugo 构建、差异检查输出。
+
+## 2026-11-17：修复目录无法滑动
+
+[已修复] 原来的外层 widget 标记为可滚动，但其 flex 子容器收缩并裁剪内容，外层没有产生滚动范围。改为逐层允许收缩，在 `#TableOfContents` 本身建立唯一的纵向滚动区；标题和关闭按钮不滚动，目录滚动不传递给正文。桌面样式未修改。（E175）
+
+[已验证] 390×844 和 320×568 下用浏览器触摸输入拖动目录，列表分别由 0 滚动至 54px、193px，正文及目录标题位置保持不变。滑动后点击章节仍能跳转并自动收起。生产构建及差异检查通过。（E176）
+
+- E175：`assets/scss/mobile/_content.scss` 中 `.m-toc .widget`、`.widget--toc`、`#TableOfContents` 的 flex 高度与滚动设置。
+- E176：`.local/mobile-toc-scroll/verification.json`，实际 `Input.dispatchTouchEvent` 手势与 Hugo 构建、差异检查结果。
