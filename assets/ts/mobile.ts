@@ -159,6 +159,73 @@ function initHomeSwipe(signal: AbortSignal): void {
   }, { once: true });
 }
 
+function initMobileToc(signal: AbortSignal): void {
+  const toc = document.getElementById('TableOfContents');
+  const widget = toc?.closest<HTMLElement>('.widget');
+  if (!toc || !widget) return;
+
+  let details = widget.closest<HTMLDetailsElement>('.m-toc');
+  if (!details) {
+    details = document.createElement('details');
+    details.className = 'm-toc';
+    details.innerHTML = `
+      <summary aria-label="打开文章目录" aria-controls="m-article-toc" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>
+        </svg><span>目录</span>
+      </summary>
+      <section class="m-toc-panel" id="m-article-toc" aria-label="文章目录">
+        <div class="m-toc-heading"><span>文章目录</span>
+          <button class="m-toc-close" type="button" aria-label="关闭文章目录">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </section>`;
+    widget.before(details);
+    details.querySelector('.m-toc-panel')!.append(widget);
+  }
+  const floatingToc = details;
+  const summary = floatingToc.querySelector('summary')!;
+  const sync = () => {
+    summary.setAttribute('aria-expanded', String(floatingToc.open));
+    summary.setAttribute('aria-label', floatingToc.open ? '关闭文章目录' : '打开文章目录');
+  };
+  const close = (restoreFocus = false) => {
+    floatingToc.open = false;
+    sync();
+    if (restoreFocus) summary.focus({ preventScroll: true });
+  };
+  close();
+  floatingToc.addEventListener('toggle', () => {
+    sync();
+    if (floatingToc.open) document.querySelector<HTMLDetailsElement>('.m-navigation')?.removeAttribute('open');
+  }, { signal });
+  floatingToc.querySelector('.m-toc-close')?.addEventListener('click', () => close(true), { signal });
+  document.addEventListener('click', event => {
+    if (floatingToc.open && !floatingToc.contains(event.target as Node)) close();
+  }, { signal });
+  document.addEventListener('keydown', event => {
+    if (floatingToc.open && event.key === 'Escape') {
+      event.preventDefault();
+      close(true);
+    }
+  }, { signal });
+  toc.addEventListener('click', event => {
+    const a = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
+    if (!a) return;
+    const target = document.getElementById(decodeURIComponent(a.hash.slice(1)));
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    close(true);
+    history.replaceState(history.state, '', a.hash);
+    requestAnimationFrame(() => {
+      if (!signal.aborted) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, { signal, capture: true });
+  signal.addEventListener('abort', () => close(), { once: true });
+}
+
 function destroyMobilePage(): void {
   pageController?.abort(); pageController = null;
   pageObserver?.disconnect(); pageObserver = null;
@@ -207,23 +274,7 @@ function initMobilePage(): void {
     if (header) root.style.setProperty('--m-header-height', `${header.getBoundingClientRect().height}px`);
   });
   if (header) pageObserver.observe(header);
-  const toc = document.getElementById('TableOfContents');
-  const widget = toc?.closest('.widget');
-  if (widget && !widget.closest('.m-toc')) {
-    const details = document.createElement('details'); details.className = 'm-toc';
-    const summary = document.createElement('summary'); summary.textContent = '文章目录';
-    widget.before(details); details.append(summary,widget);
-  }
-  toc?.addEventListener('click', e => {
-    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
-    if (!a) return;
-    const target = document.getElementById(decodeURIComponent(a.hash.slice(1)));
-    if (!target) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    toc.closest<HTMLDetailsElement>('.m-toc')!.open = false;
-    history.replaceState(history.state, '', a.hash);
-    requestAnimationFrame(() => target.scrollIntoView({block:'start',behavior:'smooth'}));
-  }, {signal,capture:true});
+  initMobileToc(signal);
   initHomeSwipe(signal);
   document.querySelectorAll<HTMLElement>('#local-pagination a').forEach(a => { a.tabIndex = 0; a.setAttribute('role','button'); });
   document.getElementById('local-pagination')?.addEventListener('keydown', e => {

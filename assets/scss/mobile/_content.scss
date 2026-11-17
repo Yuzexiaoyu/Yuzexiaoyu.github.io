@@ -33,13 +33,59 @@ body .article-list--compact { grid-template-columns: minmax(0,1fr) !important; }
 .article-list--compact .article-details { min-width: 0; }
 .article-list--compact .article-title { font-size: 20px; }
 .article-list--tile { grid-template-columns: repeat(auto-fit, minmax(Min(100%, 160px),1fr)); }
-.right-sidebar:has(#TableOfContents) { display: block !important; position: static; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; order: -1; }
-.m-toc { width: 100%; border: 1px solid #30363d; border-radius: 10px; padding: 0 12px; box-sizing: border-box; }
-.m-toc summary { cursor: pointer; min-height: 44px; line-height: 44px; }
-.m-toc .widget { max-height: Min(60vh, 480px); overflow-y: auto; overscroll-behavior: contain; }
-#TableOfContents { max-height: none; padding: 0 8px 12px; font-size: 15px; }
-#TableOfContents a { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
-#TableOfContents .toc-toggle { min-width: 44px; min-height: 44px; }
+.article-toc { display: none; }
+.right-sidebar:has(> .m-toc) {
+  display: block !important; position: fixed;
+  inset: auto Max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) auto;
+  z-index: 120; width: auto !important; max-width: calc(100vw - 32px) !important;
+  padding: 0 !important; margin: 0 !important;
+  > :not(.m-toc) { display: none; }
+}
+.m-toc {
+  position: relative;
+  summary {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 76px; height: 44px; padding: 0 12px; box-sizing: border-box;
+    border: 1px solid #b4c6d62b; border-radius: 22px; background: #131e28;
+    color: #e1edf7; box-shadow: 0 4px 18px #0006; font-size: 14px; line-height: 1;
+    cursor: pointer; list-style: none; user-select: none;
+    &::-webkit-details-marker { display: none; }
+    svg { flex: 0 0 auto; }
+  }
+  &[open] summary { background: #1b2c3b; border-color: #8eb8dc70; }
+  .m-toc-panel {
+    position: absolute; right: 0; bottom: calc(100% + 10px);
+    display: flex; flex-direction: column; overflow: hidden;
+    width: Min(344px,calc(100vw - 32px)); max-height: Min(60vh,480px);
+    max-height: Min(60dvh,480px,calc(100dvh - var(--m-header-height) - 94px - env(safe-area-inset-bottom,0px)));
+    box-sizing: border-box; border: 1px solid #b4c6d626; border-radius: 16px;
+    background: #101820; box-shadow: 0 12px 36px #0009;
+  }
+  &:not([open]) .m-toc-panel { display: none; }
+  .m-toc-heading {
+    display: flex; align-items: center; justify-content: space-between;
+    flex: 0 0 auto; min-height: 48px; padding: 0 6px 0 16px;
+    color: #e1edf7; border-bottom: 1px solid #b4c6d61a; font-size: 15px; font-weight: 600;
+  }
+  .m-toc-close {
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px;
+    background: transparent; color: #acbdcb; cursor: pointer;
+  }
+  .widget { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px 12px; margin: 0; }
+  .widget > .widget-icon, .widget > .widget-title { display: none; }
+  .widget--toc { padding: 0; background: transparent; box-shadow: none; border: 0; }
+  #TableOfContents { max-height: none; overflow: visible; padding: 0; font-size: 15px; }
+  #TableOfContents li { margin: 0; padding: 0; }
+  #TableOfContents li > ol, #TableOfContents li > ul { margin: 0; padding-left: 16px; }
+  #TableOfContents a {
+    display: flex; align-items: center; min-height: 44px; width: 100%; padding: 8px 10px;
+    box-sizing: border-box; overflow-wrap: anywhere; color: #c6d4df; font-size: 15px !important; line-height: 1.5;
+  }
+  #TableOfContents li:has(> ol) > a { padding-right: 44px; }
+  #TableOfContents li.active-class > a { color: #8dc3ef; margin-left: 0; padding-left: 10px; border-left: 0; border-radius: 8px; background: #58a6ff12; }
+  #TableOfContents .toc-toggle { min-width: 44px; min-height: 44px; top: 0; left: auto; right: 0; transform: none; }
+}
 .mermaid-zoom-btn { opacity: 1 !important; min-width: 44px; min-height: 44px; }
 .mermaid-toolbar button, .mermaid-modal-close { opacity: 1 !important; min-width: 44px; min-height: 44px; }
 .mermaid-modal-close { top: Max(8px,env(safe-area-inset-top,0px)); right: Max(8px,env(safe-area-inset-right,0px)); }
