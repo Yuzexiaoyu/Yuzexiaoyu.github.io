@@ -1,5 +1,4 @@
 body.template-workshop {
-  .m-header { background: rgba(0,0,0,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   .container.main-container.flex.on-phone--column { min-height: calc(100svh - var(--m-header-height)); padding: 0 0 28px !important; }
   .wk-shell { width: calc(100% - 32px); font-size: 15px; }
   .wk-shell[data-workshop="detail"] { padding-bottom: 0; }

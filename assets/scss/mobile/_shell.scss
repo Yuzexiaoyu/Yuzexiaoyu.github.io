@@ -16,7 +16,7 @@ main.main, main.main.full-width { width: 100%; min-width: 0; max-width: 100%; pa
   display: flex !important; align-items: center; justify-content: space-between; flex-wrap: nowrap;
   gap: 8px; position: sticky; top: 0; z-index: 110;
   padding: calc(8px + env(safe-area-inset-top, 0px)) var(--m-page-gutter) 8px;
-  background: transparent; border-bottom: 0;
+  background: #0b1117; border-bottom: 0;
 }
 .m-heading { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
 .m-brand { display: flex; align-items: center; gap: 6px; color: #f0f6fc; min-width: 0; flex: 0 1 auto; font-size: 15px; line-height: 1.4; }
@@ -26,7 +26,6 @@ main.main, main.main.full-width { width: 100%; min-width: 0; max-width: 100%; pa
 .m-social a { display: flex; align-items: center; justify-content: center; width: 32px; height: 40px; color: #dbe5f0; border-radius: 8px; }
 .m-social svg { width: 18px; height: 18px; }
 .m-navigation summary, .m-header button, .m-header nav a { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; color: #e6edf3; cursor: pointer; }
-.m-header:has(.m-navigation[open]) { background: #0b1117; }
 .m-navigation {
   flex: 0 0 auto;
   summary { list-style: none; }

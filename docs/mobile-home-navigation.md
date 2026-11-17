@@ -8,3 +8,12 @@
 
 - E164：`layouts/partials/mobile/header.html`、`assets/scss/mobile/_shell.scss`、`assets/ts/mobile.ts`；主页独立菜单样式已从 `assets/scss/mobile/_home.scss` 移除。
 - E165：`.local/site-menu/verification.json`、`final-verification.json`、`preview.jpg` 及实际构建、浏览器检查结果。
+
+## 2026-11-17：页头始终不透明
+
+[已修复] 原来只在菜单展开时设置实色页头，菜单收起后又恢复透明。共享页头默认背景改为 `#0b1117`，移除展开状态的重复覆盖；工坊不再使用半透明页头及背景模糊，继承共享实色背景。修改仅限移动样式。（E167）
+
+[已验证] 更新日志、工坊、书架、首页在菜单关闭时背景均为不含透明通道的 RGB 色；内置预览已核对滚动后的更新日志，站名后不再透出正文。两套构建及差异检查通过。（E168）
+
+- E167：`assets/scss/mobile/_shell.scss`、`assets/scss/mobile/_print-workshop.scss`。
+- E168：`.local/header-opaque/verification.json`、`preview.jpg`。
