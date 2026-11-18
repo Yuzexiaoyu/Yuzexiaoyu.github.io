@@ -89,6 +89,20 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     assert.equal(await page.locator('.m-toc').getAttribute('open'),null);
     assert.ok(await page.locator('.article-content pre').count());
     assert.ok(await page.locator('.copyCodeButton').first().isVisible());
+    await goto('/p/数据结构之线性表/');
+    const block = page.locator('.article-content .highlight').first();
+    const toggle = block.getByRole('button', {name:'自动换行'});
+    const code = block.locator('code[data-lang]');
+    const source = await code.textContent();
+    const overflow = () => code.evaluate(el => el.parentElement.scrollWidth - el.parentElement.clientWidth);
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+    assert.equal(await overflow(), 0);
+    await toggle.tap();
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+    assert.ok(await overflow() > 0);
+    await toggle.tap();
+    assert.equal(await overflow(), 0);
+    assert.equal(await code.textContent(), source);
   });
   await check('T08-T09 compact home and mobile music removal',async()=>{
     await goto('/');

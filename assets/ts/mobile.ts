@@ -8,6 +8,47 @@ let pageObserver: ResizeObserver | null = null;
 
 function isMobile(): boolean { return w.__isMobileUI?.() === true; }
 
+function initPostCode(signal: AbortSignal): void {
+  const content = document.querySelector<HTMLElement>('.blog-post .main-article .article-content');
+  if (!content) return;
+
+  // Plain pre/code blocks can contain diagrams whose columns carry meaning.
+  // Start those in their original layout; highlighted source starts wrapped.
+  content.querySelectorAll<HTMLElement>('pre > code').forEach(code => {
+    if (code.closest('.highlight, .post-plain-code, .mermaid')) return;
+    const pre = code.parentElement!;
+    const block = document.createElement('div');
+    block.className = 'post-plain-code code-nowrap';
+    pre.before(block);
+    block.append(pre);
+  });
+  content.querySelectorAll<HTMLElement>('.highlight, .post-plain-code').forEach(block => {
+    if (block.querySelector(':scope > .code-tools')) return;
+    const tools = document.createElement('div');
+    tools.className = 'code-tools';
+    const language = block.querySelector<HTMLElement>('code[data-lang]')?.dataset.lang;
+    if (language) {
+      const label = document.createElement('span');
+      label.className = 'code-language';
+      label.textContent = language.toUpperCase();
+      tools.append(label);
+    }
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'code-wrap';
+    toggle.textContent = '自动换行';
+    toggle.setAttribute('aria-pressed', String(!block.classList.contains('code-nowrap')));
+    tools.append(toggle);
+    block.prepend(tools);
+  });
+  content.addEventListener('click', event => {
+    const toggle = (event.target as Element).closest<HTMLButtonElement>('button.code-wrap');
+    if (!toggle) return;
+    const block = toggle.closest<HTMLElement>('.highlight, .post-plain-code')!;
+    toggle.setAttribute('aria-pressed', String(!block.classList.toggle('code-nowrap')));
+  }, {signal});
+}
+
 function initHomeSwipe(signal: AbortSignal): void {
   const main = document.querySelector<HTMLElement>('body.home-page main.main');
   const viewport = main?.querySelector<HTMLElement>('.m-home-viewport');
@@ -276,6 +317,7 @@ function initMobilePage(): void {
   });
   if (header) pageObserver.observe(header);
   initMobileToc(signal);
+  initPostCode(signal);
   initHomeSwipe(signal);
   document.querySelectorAll<HTMLElement>('#local-pagination a').forEach(a => { a.tabIndex = 0; a.setAttribute('role','button'); });
   document.getElementById('local-pagination')?.addEventListener('keydown', e => {

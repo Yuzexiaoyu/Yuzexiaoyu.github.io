@@ -5,6 +5,7 @@ html[data-ui="mobile"] {
   --m-header-height: 64px;
   @import "mobile/shell";
   @import "mobile/content";
+  @import "mobile/post";
   @import "mobile/home";
   @import "mobile/bookshelf";
   @import "mobile/reader";

@@ -1,0 +1,116 @@
+&[data-scheme="dark"] .blog-post .main-article {
+  --pre-background-color: #151c24;
+  --post-code-toolbar: #1c2631;
+  .highlight .chroma { background-color: var(--pre-background-color); }
+  .highlight .c, .highlight .cm, .highlight .c1 { color: #a6b5c4 !important; }
+}
+
+.blog-post {
+  .main-container { --m-page-gutter: clamp(8px, 2.5vw, 18px); }
+
+  .main-article {
+    --card-padding: clamp(12px, 3.2vw, 20px);
+
+    .article-details { padding: 12px var(--card-padding) !important; gap: 7px; }
+    .article-title-wrapper { gap: 3px; }
+    .article-title { font-size: 21px; line-height: 1.3; }
+    .article-subtitle { font-size: 14px; line-height: 1.45; }
+    .article-time { line-height: 1.4; }
+
+    // Both layers share a grid cell so a long title can expand the cover.
+    &.has-image .article-header { display: grid; min-height: clamp(136px, 38vw, 192px); }
+    &.has-image .article-image,
+    &.has-image .article-details { grid-area: 1 / 1; }
+    &.has-image .article-image { height: auto; }
+    &.has-image .article-image a { position: absolute; inset: 0; }
+    &.has-image .article-details { position: relative; align-self: end; }
+
+    .article-content {
+      margin: 0;
+      padding: 12px var(--card-padding) 16px !important;
+      font-size: 15px;
+      line-height: 1.65;
+
+      p, ul, ol { margin-block: .65em; }
+      ul, ol { padding-inline-start: 1.5em; }
+      li > ul, li > ol { margin-block: .2em; }
+      h1, h2, h3, h4, h5, h6 {
+        margin: 1em 0 .35em;
+        padding-inline-start: .45em;
+        line-height: 1.35;
+        border-inline-start-width: 2px;
+        .header-anchor { left: calc(-1 * var(--card-padding)); }
+      }
+      h1 { font-size: 1.42em; }
+      h2 { font-size: 1.28em; }
+      h3 { font-size: 1.14em; }
+      h4, h5, h6 { font-size: 1em; }
+      h3, h4, h5, h6 { padding-inline-start: 0; border: 0; }
+      hr { margin: 1.25em auto; }
+      blockquote { margin-block: .7em !important; padding: 6px 10px; }
+      > :first-child { margin-top: 0; }
+      > :last-child { margin-bottom: 0; }
+    }
+
+    .article-content .highlight,
+    .article-content .post-plain-code,
+    .article-content pre:not(.mermaid) {
+      box-sizing: border-box;
+      width: 100%;
+      margin: .7em 0;
+      border-radius: 8px;
+    }
+    .article-content pre:not(.mermaid) {
+      padding: 9px 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      tab-size: 4;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: normal;
+      code { font: inherit; word-break: inherit; }
+    }
+    .article-content .highlight,
+    .article-content .post-plain-code {
+      position: relative;
+      padding: 0;
+      border: 1px solid var(--card-separator-color);
+      overflow: hidden;
+      > .chroma { padding: 9px 10px; }
+      pre:not(.mermaid) { margin: 0; }
+      .chroma pre:not(.mermaid) { padding: 0; }
+      .lntable { margin: 0; }
+      .lntd:first-child:not(:last-child) { display: none; }
+      .lntd:last-child { flex: 1; min-width: 0; }
+      &.code-nowrap {
+        pre:not(.mermaid) { white-space: pre; overflow-x: auto; }
+        .lntd:first-child:not(:last-child) { display: block; user-select: none; }
+      }
+    }
+    .code-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-inline: 10px 3px;
+      background: var(--post-code-toolbar, var(--pre-background-color));
+      color: var(--pre-text-color);
+      border-bottom: 1px solid var(--card-separator-color);
+      font: 12px/1.3 var(--base-font-family);
+      .code-language { margin-inline-end: auto; font: 600 12px/1 var(--code-font-family); }
+      [aria-pressed="true"] { box-shadow: inset 0 -2px currentColor; }
+    }
+    .highlight .code-tools { padding-inline-end: 58px; }
+    .code-wrap, .highlight .copyCodeButton {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 0 8px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      color: var(--pre-text-color);
+      font: 12px/1.3 var(--base-font-family);
+      cursor: pointer;
+    }
+    .highlight .copyCodeButton { top: 0; right: 3px; }
+  }
+}
