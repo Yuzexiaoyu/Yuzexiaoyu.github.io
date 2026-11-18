@@ -47,6 +47,7 @@ function initHomeSwipe(signal: AbortSignal): void {
       section.inert = index !== currentIndex;
       section.setAttribute('aria-hidden', String(index !== currentIndex));
     });
+    w.__pagePreload?.refresh();
   };
   const settle = (index: number, animate = true) => {
     cancelAnimationFrame(frame);

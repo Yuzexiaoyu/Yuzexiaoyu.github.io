@@ -161,95 +161,6 @@ setupTocAutoCollapse();
 
 var swup;
 
-// ──── 预加载级联 ────
-// Phase 1: 头像 + 卡片图（在 head 里通过 <link rel="preload"> 已启动，浏览器自动管理）
-// Phase 2: 侧边栏导航链接（HTML，走 Swup cache 或 link prefetch）
-// Phase 3: 小说封面（image 资源）
-// Phase 4: 小说 EPUB（fetch 资源，按顺序逐个，避免占满带宽）
-
-function __prefetchLink(url, asType, crossOrigin) {
-  return new Promise(function(res) {
-    var link = document.createElement('link');
-    link.rel = 'prefetch';
-    if (asType) link.as = asType;
-    if (crossOrigin) link.crossOrigin = crossOrigin;
-    link.addEventListener('load', res, { once: true });
-    link.addEventListener('error', res, { once: true });
-    link.href = url;
-    document.head.appendChild(link);
-    setTimeout(res, 8000);
-  });
-}
-
-// 图片预取：用 new Image() 代替 <link rel=prefetch as=image>。
-// prefetch 是 no-cors 请求，R2 偶尔 503 时返回 HTML 错误页，浏览器 ORB 检测到
-// opaque 响应与 as=image 不匹配就拦截，控制台刷屏。new Image() 走的是 <img> 原生
-// 加载通道，ORB 不适用于 <img> 元素，失败只是静默 onerror，不会弹警告。
-// 且 <img> 与页面上的真实 <img> 请求模式完全一致 → 缓存互通。
-function __preloadImage(url) {
-  return new Promise(function(resolve) {
-    var img = new Image();
-    img.onload = function() { resolve(); };
-    img.onerror = function() { resolve(); };
-    img.src = url;
-    setTimeout(resolve, 10000);
-  });
-}
-
-// EPUB 预取：用 fetch() 替代 <link rel=prefetch>。
-// prefetch 在 crossorigin=anonymous 时行为不确定（有些浏览器发 OPTIONS 预检、
-// 有些忽略跨域 prefetch、有些缓存不与后续 fetch() 互通）。fetch() 是简单 CORS GET，
-// 不发预检，与阅读器里 fetch(epubUrl) 请求模式完全一致 → 缓存必然互通。
-// 消费 body 以确保完整下载写入 HTTP 缓存，最多重试 2 次（针对瞬时 503）。
-function __prefetchEpub(url, retries) {
-  retries = retries || 0;
-  return new Promise(function(resolve) {
-    fetch(url, { mode: 'cors', credentials: 'omit' })
-      .then(function(resp) {
-        if (!resp.ok) {
-          // 503 / 5xx → 退避重试
-          if (retries < 2 && resp.status >= 500) {
-            return new Promise(function(r) {
-              setTimeout(function() { r(__prefetchEpub(url, retries + 1)); }, 800 * (retries + 1));
-            }).then(resolve);
-          }
-          return resolve();
-        }
-        // 消费 body 确保完整响应进入 HTTP 缓存，读完后 resolve
-        return resp.arrayBuffer().then(function() { resolve(); });
-      })
-      .catch(function() {
-        if (retries < 2) {
-          setTimeout(function() { __prefetchEpub(url, retries + 1).then(resolve); }, 800 * (retries + 1));
-        } else {
-          resolve();
-        }
-      });
-    setTimeout(resolve, 20000);
-  });
-}
-function __pool(tasks, limit) {
-  limit = limit || 4;
-  var results = [];
-  var running = 0;
-  var cursor = 0;
-  return new Promise(function(resolve) {
-    function pump() {
-      if (cursor >= tasks.length && running === 0) return resolve(results);
-      while (running < limit && cursor < tasks.length) {
-        var i = cursor++;
-        running++;
-        Promise.resolve(tasks[i]()).then(function(r) {
-          results[i] = r; running--; pump();
-        }).catch(function(r) {
-          results[i] = r; running--; pump();
-        });
-      }
-    }
-    pump();
-  });
-}
-
 // 随机定好"下次书架入场要播的那一个动画"，存到 window.__nextBookshelfAnim。
 // 预热和播放都读这个变量，保证预热的 URL == 播放的 URL（缓存才命中）。
 // 已定且对应预热 video 仍在 → 不重复改选（避免预热白费）。
@@ -283,7 +194,13 @@ function __warmVideo(url) {
       v.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;';
       v.addEventListener('canplaythrough', function () { res(); }, { once: true });
       v.addEventListener('loadeddata', function () { res(); }, { once: true });
-      v.addEventListener('error', function () { res(); }, { once: true });
+      v.addEventListener('error', function () {
+        if (window.__warmVideoEl === v) {
+          window.__warmVideoEl = null;
+          v.remove();
+        }
+        res();
+      }, { once: true });
       v.src = url;
       document.documentElement.appendChild(v);
       window.__warmVideoEl = v;
@@ -293,100 +210,19 @@ function __warmVideo(url) {
   });
 }
 
-function __waitSwup(maxMs) {
-  // 给 Swup 一个上限的等待窗口；若到时还没准备好，phase 2 走原生 prefetch 兜底
-  var deadline = Date.now() + (maxMs || 3000);
-  return new Promise(function(res) {
-    (function check() {
-      if (typeof swup !== 'undefined' && swup && typeof swup.preload === 'function') return res(true);
-      if (Date.now() > deadline) return res(false);
-      setTimeout(check, 100);
-    })();
-  });
+window.__warmNextBookshelfVideo = function() {
+  if (!window.__pagePreload?.allowed() || skipBookshelfIntro() || window.__bookshelfIntroActive) return;
+  var url = __pickNextBookshelfAnim();
+  if (url) return __warmVideo(url);
+};
+
+function scheduleNextBookshelfVideo() {
+  function warm() {
+    if (document.querySelector('.novel-bookshelf')) window.__warmNextBookshelfVideo();
+  }
+  if (typeof window.requestIdleCallback === 'function') requestIdleCallback(warm, { timeout: 8000 });
+  else setTimeout(warm, 3000);
 }
-
-async function runPreloadChain() {
-  if (window.__isMobileUI && window.__isMobileUI()) return;
-  if (window.__preloadChainStarted) return;
-  window.__preloadChainStarted = true;
-  var data = window.__preloadData || {};
-
-  // Phase 1: 已通过 <link rel="preload"> 在 head 中启动，浏览器自动管理
-  // 直接进入 Phase 2，无需等待
-
-  // Phase 2: 侧栏导航链接。只走 swup.preload()（内部 fetch()，不走浏览器 speculative
-  // 子资源预取），Swup 内部去重。不用 <link rel=prefetch as=document> 兜底 —— 它会创建
-  // 第二个独立 HTTP 请求，不与 swup.preload() 共享去重，在 Chromium 还触发 NoState
-  // Prefetch 子资源风暴。Swup 未就绪则跳过，让 SwupPreloadPlugin hover 预取自然接管。
-  // 含书架 /novel/：把书架 HTML 也 swup.preload() 进缓存（仅 HTML 文本，~20KB，不拉子资源），
-  // 点击时命中缓存 → content:replace 几乎立即完成 → 书架在 early 遮罩背后已就绪。
-  var sidebarLinks = Array.from(document.querySelectorAll('#main-menu a[href]'))
-    .filter(function(a) { return a.origin === location.origin && !a.target; })
-    .map(function(a) { return a.href; });
-  if (sidebarLinks.length) {
-    var swupReady = await __waitSwup(3000);
-    if (swupReady) {
-      var sidebarTasks = sidebarLinks.map(function(url) {
-        return function() { return swup.preload(url).catch(function(){}); };
-      });
-      await __pool(sidebarTasks, 2);
-    }
-  }
-
-  // Phase 3 & 4: 小说资源在浏览器空闲时预加载，避免影响关键资源
-  // 使用 requestIdleCallback 确保在主线程空闲时才执行
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(function() {
-      runNovelPreloadChain(data);
-    }, { timeout: 5000 });
-  } else {
-    // 降级方案：延迟 2 秒后执行
-    setTimeout(function() {
-      runNovelPreloadChain(data);
-    }, 2000);
-  }
-}
-
-// 小说资源预加载链（Phase 3/4/5）
-async function runNovelPreloadChain(data) {
-  if (window.__isMobileUI && window.__isMobileUI()) return;
-  if (window.__novelPreloadStarted) return;
-  window.__novelPreloadStarted = true;
-
-  // Phase 3: 书架入场动画（mp4）—— 最高优先级。
-  // 切到 /novel/ 时随机抽 1 个全屏 cut-in 播放，书架内容要等它播完才显现。
-  //
-  // ⚠️ 不能用 <link rel=prefetch as=video> 预热：<video> 播放走的是 Range 媒体请求，
-  // 与 prefetch 的完整请求缓存键/destination 不一致，浏览器不复用 → 点击时仍重新下载
-  // （正是"已预加载却重新加载"的根因）。改用隐藏 <video preload=auto> 预热：它发出的
-  // 请求与真正播放完全相同 → 进同一媒体缓存 → 播放必命中。
-  //
-  // 且动画每次随机播 1 个：在这里就随机定好"下次要播的那一个"（存 window.__nextBookshelfAnim），
-  // 只预热它（~2MB），播放时复用同一 URL → 必命中。无需预热全部 11 个（22MB）。
-  __pickNextBookshelfAnim();
-  if (window.__nextBookshelfAnim) {
-    await __warmVideo(window.__nextBookshelfAnim);
-  }
-
-  // Phase 4: 小说封面（new Image() → 绕过 ORB，图片缓存与页面 <img> 互通）
-  // 并发 8：CDN 走 Cloudflare HTTP/2，57 张图复用单连接多 stream，无 HTTP/1.1 连接惩罚。
-  // 限并发不是为限连接数，而是压平冷边缘同时 miss → 同时回源 R2 的突发（503 根因）。
-  // 8 在「尽快腾空闲窗口给 Phase 5 mp3」与「回源不触发限流」间平衡；勿冲全并发。
-  if (data.novelCovers && data.novelCovers.length) {
-    var coverTasks = data.novelCovers.map(function(url) {
-      return function() { return __preloadImage(url); };
-    });
-    await __pool(coverTasks, 8);
-  }
-
-  // 预加载链全部完成，启用音频 metadata 预加载（仅拉头部几 KB）
-  if (typeof window.__enableAudioPreload === 'function') {
-    window.__enableAudioPreload();
-  }
-}
-
-// 脚本在 body 尾部，DOM 已就绪，立即启动级联（不等 1 秒）
-runPreloadChain();
 
 // ──── 书架进入动画（随机角色 cut-in，每会话只播一次）────
 // 触发点：① Swup 切到 /novel/（page:view 钩子里调用）；② 直接打开/刷新 /novel/（下面 load 里调用）
@@ -539,7 +375,7 @@ window.__playBookshelfIntro = function(opts) {
   }
 
   if (early) {
-    startBookshelfIntro(anims);
+    startBookshelfIntro();
     return;
   }
 
@@ -561,15 +397,15 @@ window.__playBookshelfIntro = function(opts) {
       waited += 100;
       if (loaderHidden() || waited >= 3000) {
         clearInterval(poll);
-        startBookshelfIntro(anims);
+        startBookshelfIntro();
       }
     }, 100);
   } else {
-    startBookshelfIntro(anims);
+    startBookshelfIntro();
   }
 };
 
-function startBookshelfIntro(anims) {
+function startBookshelfIntro() {
   // Also guard delayed loader callbacks before creating a video or pausing music.
   if (skipBookshelfIntro()) {
     window.__bookshelfIntroConsumed = true;
@@ -577,8 +413,16 @@ function startBookshelfIntro(anims) {
     return;
   }
   if (window.__bookshelfIntroActive) return;
+  window.__bookshelfIntroConsumed = true;
+  var video = window.__warmVideoEl;
+  if (!video || video.readyState < 4) {
+    revealBookshelf();
+    if (typeof window.setWarpSpeedSlow === 'function') window.setWarpSpeedSlow();
+    setTimeout(window.__showBookshelfNotice, 400);
+    scheduleNextBookshelfVideo();
+    return;
+  }
   window.__bookshelfIntroActive = true;
-  window.__bookshelfIntroConsumed = true;   // 本次导航已起入场动画，page:view 不再重复触发
 
   // 进入动画期间暂停 BGM + 星空画布，把 GPU/主线程让给全屏 cut-in
   var resumeAudio = false;
@@ -593,61 +437,14 @@ function startBookshelfIntro(anims) {
   // 与全屏视频硬解竞争 GPU 合成器 → 白屏/卡顿）
   if (typeof window.setWarpSpeed === 'function') window.setWarpSpeed(0);
 
-  var src = window.__nextBookshelfAnim || anims[Math.floor(Math.random() * anims.length)];
-
-  // 复用预热过的 <video> 元素：__warmVideo() 在后台用 preload=auto 发了 Range
-  // 媒体请求，数据已进浏览器媒体缓存。直接搬进遮罩复用该元素，同一 URL 命中缓存
-  // → 跳过首帧等待，消除"点完卡一会"的体感延时。
-  var video;
-  if (window.__warmVideoEl && window.__warmVideoEl.src && window.__warmVideoEl.src.indexOf(src) !== -1) {
-    video = window.__warmVideoEl;
-    if (video.parentNode) video.parentNode.removeChild(video);
-    video.style.cssText = '';
-    video.className = 'bookshelf-intro__video';
-    video.muted = false;
-    try { video.currentTime = 0; } catch (e) {}   // 预热可能已 coax 播过，复位到首帧
-  } else {
-    video = document.createElement('video');
-    video.className = 'bookshelf-intro__video';
-    video.src = src;
-  }
+  // Move the already buffered element into the overlay to reuse its media request.
+  video.remove();
+  video.style.cssText = '';
+  video.className = 'bookshelf-intro__video';
+  video.muted = false;
+  try { video.currentTime = 0; } catch (e) {}
   window.__nextBookshelfAnim = null;
   window.__warmVideoEl = null;
-
-  // 视频未完全加载（readyState < 4）→ 跳过动画，直接进书架
-  if (video.readyState < 4) {
-    window.__bookshelfIntroActive = false;
-    // 恢复 BGM（仅当进入动画前在播放）
-    if (resumeAudio) {
-      resumeAudio = false;
-      try { if (window.aplayerInstance) window.aplayerInstance.play(); } catch (e) {}
-    }
-    // 恢复星空粒子画布速度
-    if (typeof window.setWarpSpeedSlow === 'function') window.setWarpSpeedSlow();
-    revealBookshelf();
-    setTimeout(function() {
-      if (typeof window.__showBookshelfNotice === 'function') {
-        window.__showBookshelfNotice();
-      }
-    }, 400);
-    // 预热下一次的入场动画
-    if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
-      var scheduleSkipWarm = function() {
-        var nextUrl = __pickNextBookshelfAnim();
-        if (nextUrl) __warmVideo(nextUrl);
-      };
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(scheduleSkipWarm, { timeout: 8000 });
-      } else {
-        setTimeout(scheduleSkipWarm, 3000);
-      }
-    }
-    return;
-  }
-
-  // 下一次的预热挪到 finish() 里，在当前视频播完后再启动，避免与当前视频的
-  // 缓冲 Range 请求 + 书架封面图加载三方抢 R2 CDN 带宽，导致播放中卡顿。
-  // 这里只提前随机好 URL，预热动作延后。
 
   var overlay = document.createElement('div');
   overlay.id = 'bookshelf-intro';
@@ -709,20 +506,7 @@ function startBookshelfIntro(anims) {
       }
     }, 400);
 
-    // 预热下一次的入场动画。在当前视频播完、overlay 淡出后再启动，避免与当前
-    // 视频的缓冲 Range 请求 + 封面图加载三方抢 R2 CDN 带宽。
-    // 用 requestIdleCallback 等到封面图加载完、浏览器空闲时再开始下载。
-    if (typeof __pickNextBookshelfAnim === 'function' && typeof __warmVideo === 'function') {
-      var scheduleWarm = function() {
-        var nextUrl = __pickNextBookshelfAnim();
-        if (nextUrl) __warmVideo(nextUrl);
-      };
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(scheduleWarm, { timeout: 8000 });
-      } else {
-        setTimeout(scheduleWarm, 3000);
-      }
-    }
+    scheduleNextBookshelfVideo();
   }
 
   function onKeydown() { finish(); }
@@ -780,8 +564,8 @@ document.addEventListener('DOMContentLoaded', function() {
     animationDuration: 0,
     plugins: [
       new SwupPreloadPlugin({
-        throttle: 100,
-        preloadInitialPage: !document.querySelector('[data-workshop="catalog"]'),
+        throttle: 4,
+        preloadInitialPage: !!window.__pagePreload?.allowed() && !document.querySelector('[data-workshop="catalog"]'),
       })
     ]
   });
@@ -802,8 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
       html: '<!doctype html>' + document.documentElement.outerHTML
     });
   }
-  // Warm the workshop HTML on mobile too; its script/data/covers load separately.
-  swup.preload('/prints/').catch(function(){});
+  window.__pagePreload?.start();
 
   // 同页 hash 链接由浏览器原生导航，Swup 不介入
   swup.hooks.replace('link:click', function(visit, _args, defaultHandler) {
@@ -812,6 +595,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   swup.hooks.on('visit:start', function(visit) {
+    window.__pagePreload?.stop();
     // Catalog/detail visits share their shell; keep navigation and mobile chrome mounted.
     var workshopRoute = /^\/prints\/(?:detail\/)?(?:[?#]|$)/;
     var withinWorkshop = workshopRoute.test(visit.from.url) && workshopRoute.test(visit.to.url) && !!document.querySelector('[data-workshop]');
@@ -836,6 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   swup.hooks.on('visit:end', function() {
+    window.__pagePreload?.start();
     if (window.initMobilePage) window.initMobilePage();
     var activePlayer = window.aplayerInstance && window.aplayerInstance.container;
     if (activePlayer) {

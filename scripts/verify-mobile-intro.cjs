@@ -123,6 +123,9 @@ fs.mkdirSync(out, { recursive: true });
       }
       assert.ok(retirement.at(-1).retired > initial.words / 2);
 
+      // Deliberately replay to inspect its final frame. Normal reload retains
+      // this session marker and skips the opening, as covered by preload checks.
+      await page.evaluate(() => sessionStorage.removeItem('__pageLoaderShown'));
       await page.reload({ waitUntil: 'load' });
       await page.clock.fastForward(initial.duration - 1);
       assert.equal(await page.locator('#page-loader').evaluate(element => element.classList.contains('hidden')), false);

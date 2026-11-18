@@ -1,4 +1,5 @@
 import {Entry} from './workshop-shared';
+import {canPreload} from './preload-policy';
 
 const videos = new Map<string, HTMLVideoElement>();
 const pages = new Map<string, Promise<unknown>>();
@@ -52,7 +53,7 @@ export function preloadCatalogEntries(root: HTMLElement, entries: Entry[], signa
   const prioritize = (event: Event) => {
     const card = (event.target as Element).closest<HTMLAnchorElement>('.wk-card');
     const entry = card && items.get(card);
-    if (!entry) return;
+    if (!entry || !canPreload()) return;
     warmVideo(entry);
     void warmPage(card!.href);
   };
@@ -62,7 +63,7 @@ export function preloadCatalogEntries(root: HTMLElement, entries: Entry[], signa
   const run = async () => {
     // Start after the list paints, with bounded media work and one HTML request at a time.
     for (const [index, card] of cards.slice(0, 4).entries()) {
-      if (pending.signal.aborted) return;
+      if (pending.signal.aborted || !canPreload()) return;
       if (index < MAX_WARM_VIDEOS) warmVideo(items.get(card)!);
       await warmPage(card.href);
     }

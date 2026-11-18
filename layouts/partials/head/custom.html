@@ -45,8 +45,10 @@
 <link rel="preload" as="script" href="{{ $mainScript.RelPermalink }}" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/Swup.umd.js" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/index.umd.js" fetchpriority="high">
+{{- if hasPrefix .Layout "print-" -}}
 {{- $workshopScript := resources.Get "ts/print-workshop.ts" | js.Build $mainOpts | fingerprint -}}
 <link rel="preload" as="script" href="{{ $workshopScript.RelPermalink }}">
+{{- end -}}
 
 {{/* 桌面端按需加载播放器样式；移动端不加载音乐资源 */}}
 <script>
@@ -155,15 +157,6 @@ window.__runMermaid = async function() {
 };
 </script>
 
-{{/* 在 page-loader 动画播放期间，用浏览器空闲带宽预加载首页/列表页的文章卡片图片。
-     放在 head 顶部，让浏览器一解析到这里就开始拉图，与 1.5s 动画并行。
-     replace-media-links.py 会把这里的 href 也重写到 R2 CDN。 */}}
-{{/* ──── 预加载级联（Phase 1 / 头像 + 卡片图）────
-     放在 head 顶部，浏览器一解析就开始拉，与 1.5s 进入动画并行。
-     replace-media-links.py 会把这些 href 同步重写到 R2 CDN。 */}}
-{{- $isList := or .IsHome (eq .Kind "section") (eq .Kind "taxonomy") (eq .Kind "term") -}}
-
-{{/* 头像最高优先：每个页面都显示 */}}
 {{- $avatarUrl := "" -}}
 {{- with .Site.Params.sidebar.avatar -}}
   {{- $a := partial "helper/image" (dict "Image" . "Resources" resources) -}}
@@ -181,23 +174,14 @@ window.__runMermaid = async function() {
 <link rel="preload" as="image" href="{{ $avatarUrl }}">
 {{- end }}
 
-{{/* 文章卡片图：仅列表页（书架页不显示文章卡片，跳过以免和开场视频抢带宽）
-     全部用默认优先级预载，不再用 high 抢占关键 JS/CSS（卡片在动画结束后才进入视口）。 */}}
-{{- $cardUrls := slice -}}
-{{- if and $isList (ne .Layout "novel-bookshelf") -}}
-  {{- range first 8 .Site.RegularPages -}}
-    {{- $img := partial "helper/image" (dict "Image" .Params.image "Resources" .Resources) -}}
-    {{- if $img -}}
-      {{- $cardUrls = $cardUrls | append $img.Permalink -}}
+{{/* The first home card is shared by both layouts. Native lazy loading handles the rest. */}}
+{{- if .IsHome -}}
+  {{- range first 1 (partial "helper/pages.html" .) -}}
+    {{- with partial "helper/image" (dict "Image" .Params.image "Resources" .Resources) -}}
+      <link rel="preload" as="image" href="{{ .Permalink }}">
     {{- end -}}
   {{- end -}}
 {{- end -}}
-{{- range $cardUrls }}
-<link rel="preload" as="image" href="{{ . }}">
-{{- end }}
-
-{{/* JS 级联用的 URL 列表：novelCovers / mp3Urls 是后续 phase。
-     Phase 1 (头像+卡片图) 已通过 <link rel="preload"> 启动，无需 JS 重复加载。 */}}
 
 {{- $novelCoverUrls := slice -}}
 {{- range .Site.Data.novels.shelves -}}
@@ -207,7 +191,7 @@ window.__runMermaid = async function() {
 {{- end -}}
 
 {{- $preloadData := dict
-  "novelCovers" $novelCoverUrls
+  "novelCovers" (first 8 $novelCoverUrls)
 -}}
 <script>
 window.__preloadData = {{ $preloadData | jsonify | safeJS }};

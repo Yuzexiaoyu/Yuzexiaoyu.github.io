@@ -8,10 +8,7 @@
     if (!window.__workshopLoad) {
       window.__workshopLoad = new Promise(function(resolve,reject){
         var script=document.createElement('script'); script.src=source;
-        script.onload=function(){
-          window.WorkshopApp.preload(dataSource).catch(function(){});
-          resolve();
-        };
+        script.onload=resolve;
         script.onerror=function(){script.remove();window.__workshopLoad=null;reject(new Error('Workshop bundle failed'));};
         document.head.appendChild(script);
       });
@@ -32,9 +29,14 @@
     });
   };
   window.__destroyWorkshop = function(){if(window.WorkshopApp)window.WorkshopApp.destroy();};
+  window.__warmWorkshop = function(signal){
+    return load().then(function(){
+      if (!signal.aborted && window.__pagePreload.allowed()) {
+        return window.WorkshopApp.preload(dataSource,signal);
+      }
+    });
+  };
   document.addEventListener('DOMContentLoaded',window.__runWorkshop);
   window.addEventListener('pageshow',function(event){if(event.persisted)window.__runWorkshop();});
-  // Start on the blog as well, on both desktop and mobile, before any visit.
-  load().catch(function(){});
 })();
 </script>

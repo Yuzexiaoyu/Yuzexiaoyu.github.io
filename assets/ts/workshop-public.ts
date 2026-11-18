@@ -1,4 +1,5 @@
 import {api, quote, weightAt, Entry, Settings} from './workshop-shared';
+import {canPreload} from './preload-policy';
 
 type Catalog = {version: number; entries: Entry[]; settings: Settings};
 type Entries = {entries: Entry[]};
@@ -23,7 +24,7 @@ function loadSnapshot(refresh = false): Promise<Catalog> {
   return snapshot;
 }
 
-export async function preloadPublicCatalog(source: string): Promise<void> {
+export async function preloadPublicCatalog(source: string, signal?: AbortSignal): Promise<void> {
   let catalog: Entries;
   if (source === 'local') {
     if (!localPreload) localPreload = api<Entries>('/api/catalog').catch(error => { localPreload = null; throw error; });
@@ -31,11 +32,17 @@ export async function preloadPublicCatalog(source: string): Promise<void> {
   } else {
     catalog = await loadSnapshot();
   }
-  for (const entry of catalog.entries) {
+  if (signal?.aborted || !canPreload()) return;
+  // Warm the lead card in each catalog tab. The grid loads the rest on demand.
+  for (const kind of ['work', 'product']) {
+    const entry = catalog.entries.find(item => item.kind === kind);
+    if (!entry) continue;
     const url = entry.images[0]?.url;
     if (!url || covers.has(url)) continue;
     const image = new Image();
     image.decoding = 'async';
+    image.fetchPriority = 'low';
+    image.onerror = () => covers.delete(url);
     image.src = url;
     covers.set(url, image);
   }

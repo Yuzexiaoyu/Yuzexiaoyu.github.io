@@ -2,6 +2,9 @@
  * Scroll-wheel page navigation for paginated list pages.
  * 纯本地分页：所有文章在构建时已渲染到 HTML 中，翻页仅切换 display，零网络请求。
  */
+import { pagePreload } from './page-preload';
+
+(window as any).__pagePreload = pagePreload;
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -92,6 +95,7 @@ function showPage(pageNum: number): void {
   }
 
   window.scrollTo(0, 0);
+  if (document.documentElement.dataset.ui !== 'mobile') pagePreload.refresh();
 }
 
 /* ------------------------------------------------------------------ */
@@ -179,5 +183,7 @@ document.addEventListener('click', handlePaginationClick, true);
 };
 
 if (document.documentElement.dataset.ui === 'mobile') {
-  document.addEventListener('DOMContentLoaded', () => (window as any).__prefetchAdjacent(), {once:true});
+  const restore = (window as any).__prefetchAdjacent;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore, {once:true});
+  else restore();
 }

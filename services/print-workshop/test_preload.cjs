@@ -5,9 +5,10 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const {test} = require('node:test');
 
-const build = '.local/print-workshop/production';
+const build = process.env.HUGO_BUILD_DIR || '.local/print-workshop/production';
 const html = readFileSync(join(build, 'index.html'), 'utf8');
-const bundleUrl = html.match(/href=["']?([^\s"'<>]*\/ts\/print-workshop[^\s"'<>]*\.js)/)[1];
+const workshopHtml = readFileSync(join(build, 'prints/index.html'), 'utf8');
+const bundleUrl = workshopHtml.match(/href=["']?([^\s"'<>]*\/ts\/print-workshop[^\s"'<>]*\.js)/)[1];
 const bundle = readFileSync(join(build, new URL(bundleUrl, 'http://localhost').pathname), 'utf8');
 const fixture = JSON.parse(readFileSync('static/workshop/catalog.json', 'utf8'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -19,7 +20,8 @@ function harness(fetcher = async () => response(fixture)) {
   const location = {origin:'http://localhost', search:''};
   const window = {};
   vm.runInNewContext(bundle, {
-    window, location, URL, URLSearchParams, AbortController,
+    window, location, URL, URLSearchParams, AbortController, navigator:{},
+    requestAnimationFrame:()=>1, cancelAnimationFrame(){},
     document:{querySelector:()=>current},
     fetch:(...args)=>{requests.push(args[0]);return fetcher(...args);},
     Image:class {set src(value){images.push(value);}},
@@ -31,7 +33,7 @@ function harness(fetcher = async () => response(fixture)) {
       location.search = `?tab=${tab}`;
       current = {
         dataset:{workshop:'catalog',workshopSource:source},
-        getAttribute:()=>source,
+        getAttribute:()=>source, addEventListener(){},
         querySelector:selector=>selector==='[data-catalog-grid]'?grid:null,
         querySelectorAll:()=>[],
       };
@@ -41,10 +43,10 @@ function harness(fetcher = async () => response(fixture)) {
   };
 }
 
-test('blog loader fetches the bundle and preloads data without a workshop root', async () => {
+test('blog defers the workshop bundle and data until the scheduler requests them', async () => {
   const source = html.match(/<script id=["']?workshop-loader["']?>([\s\S]*?)<\/script>/)[1];
   const scripts = [], preloads = [];
-  const window = {addEventListener(){}};
+  const window = {addEventListener(){}, __pagePreload:{allowed:()=>true}};
   vm.runInNewContext(source, {
     window,
     document:{
@@ -52,11 +54,13 @@ test('blog loader fetches the bundle and preloads data without a workshop root',
       head:{appendChild:script=>scripts.push(script)},
     },
   });
+  assert.equal(scripts.length, 0);
+  const warm = window.__warmWorkshop(new AbortController().signal);
   assert.equal(scripts.length, 1);
   assert.equal(scripts[0].src, new URL(bundleUrl, 'http://localhost').pathname);
   window.WorkshopApp = {preload:async source=>preloads.push(source)};
   scripts[0].onload();
-  await window.__workshopLoad;
+  await warm;
   assert.deepEqual(preloads, ['static']);
 });
 
