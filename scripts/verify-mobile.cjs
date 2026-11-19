@@ -104,6 +104,48 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     assert.equal(await overflow(), 0);
     assert.equal(await code.textContent(), source);
   });
+  await check('T07 mobile TOC reveals expanded branches', async () => {
+    const tab = await context.newPage();
+    const results = [];
+    try {
+      for (const [width, height, motion] of [[320,568,'no-preference'], [390,844,'reduce']]) {
+        await tab.setViewportSize({width,height});
+        await tab.emulateMedia({reducedMotion:motion});
+        await tab.goto(base+'/p/数据结构之树与二叉树/');
+        await tab.locator('.m-toc summary').tap();
+        const toc = tab.locator('.m-toc #TableOfContents');
+        const toggle = title => toc.getByText(title,{exact:true}).locator('..').locator(':scope > .toc-toggle');
+        const scroll = () => toc.evaluate(el=>el.scrollTop);
+        const bodyY = await tab.evaluate(()=>scrollY);
+        await toggle('哈夫曼树').tap();
+        await tab.waitForFunction(() => {
+          const menu = document.querySelector('.m-toc #TableOfContents');
+          const list = menu.querySelector('li.is-manual-open > ol').getBoundingClientRect();
+          const view = menu.getBoundingClientRect();
+          return list.top >= view.top-1 && list.bottom <= view.bottom+1;
+        }, null, {timeout:3000});
+        const shortListScroll = await scroll();
+        if (width===320) assert.ok(shortListScroll > 0);
+        else assert.equal(shortListScroll,0);
+        await toggle('哈夫曼树').tap();
+        await toggle('二叉树').tap();
+        assert.equal(await scroll(),0);
+        await toggle('代码应用').tap();
+        await tab.waitForFunction(() => {
+          const menu = document.querySelector('.m-toc #TableOfContents');
+          const nested = menu.querySelector('li.is-manual-open li.is-manual-open');
+          const list = nested.querySelector(':scope > ol').getBoundingClientRect();
+          const view = menu.getBoundingClientRect();
+          return list.height <= view.height
+            ? list.top >= view.top-1 && list.bottom <= view.bottom+1
+            : Math.abs(nested.getBoundingClientRect().top-view.top) <= 1;
+        }, null, {timeout:3000});
+        assert.equal(await tab.evaluate(()=>scrollY),bodyY);
+        results.push({width,height,shortListScroll,nestedListScroll:await scroll()});
+      }
+    } finally { await tab.close(); }
+    return results;
+  });
   await check('T08-T09 compact home and mobile music removal',async()=>{
     await goto('/');
     const detail=await page.evaluate(()=>({

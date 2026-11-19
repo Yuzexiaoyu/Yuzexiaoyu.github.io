@@ -135,6 +135,24 @@ function setupTocAutoCollapse() {
   toc.__tocAutoCollapseObserver = observer;
 }
 
+// Only move the floating menu's scrollport. Keep the parent in view when
+// the newly opened list is too tall to show in full.
+function revealMobileTocChildren(toc, children) {
+  var view = toc.getBoundingClientRect();
+  var list = children.getBoundingClientRect();
+  var delta = 0;
+  if (list.top < view.top) {
+    delta = list.top - view.top;
+  } else if (list.bottom > view.bottom) {
+    delta = list.height <= view.height
+      ? list.bottom - view.bottom
+      : Math.max(0, children.parentElement.getBoundingClientRect().top - view.top);
+  }
+  if (Math.abs(delta) > 0.5) {
+    toc.scrollBy({ top: delta, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }
+}
+
 // 用 capture 阶段事件委托，无视 Swup 切页换 DOM
 document.addEventListener('click', function(e) {
   var btn = e.target.closest && e.target.closest('.toc-toggle');
@@ -144,6 +162,9 @@ document.addEventListener('click', function(e) {
   var li = btn.parentElement;
   if (!li) return;
   var wasManual = li.classList.contains('is-manual-open');
+  var mobileToc = !wasManual && btn.closest('.m-toc[open] #TableOfContents');
+  var children = mobileToc && li.querySelector(':scope > ol');
+  var willReveal = children && !children.getClientRects().length;
   li.classList.toggle('is-manual-open');
   if (wasManual) {
     // 用户主动关掉 → 清掉"在浏览中点开"标记
@@ -152,6 +173,7 @@ document.addEventListener('click', function(e) {
     // 用户刚点开。如果当前 li 正在被浏览（active），打上标记，方便滚走时清掉它
     var nowActive = li.classList.contains('active-class') || !!li.querySelector('.active-class');
     if (nowActive) li.dataset.tocManualDuringVisit = '1';
+    if (willReveal) revealMobileTocChildren(mobileToc, children);
   }
 }, true);
 
