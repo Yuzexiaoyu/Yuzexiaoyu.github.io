@@ -231,18 +231,18 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
     }
     for(const mobile of [false,true])for(const reduced of ['no-preference','reduce']) {
       const {page,errors}=await setup(browser,mobile,reduced);
-      await page.goto(base+'/404.html',{waitUntil:'load'});
-      await page.waitForFunction(()=>window.swup && window.WorkshopApp);
-      if(mobile)await page.locator('.m-navigation summary').click();
-      const articleLink=page.locator((mobile?'.m-navigation':'.left-sidebar')+' a').filter({hasText:'雨泽小鱼的工坊'});
-      await articleLink.evaluate(link=>{link.href='/p/'+encodeURIComponent('数据结构之线性表')+'/';});
+      await page.goto(base+'/',{waitUntil:'load'});
+      await page.waitForFunction(()=>window.swup && window.WorkshopIntro);
+      const firstPage = mobile ? '.m-home-track [data-mobile-page="1"]' : 'main > [data-page="1"]';
+      const articleLink=page.locator(firstPage+' article:not(.home-pinned-card) .article-image a').first();
       await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];});
       await articleLink.click();
       await page.waitForFunction(()=>document.querySelector('article.main-article')&&window.__qaSlows.length>0);
       const articleWarp=await page.evaluate(()=>({speeds:window.__qaSpeeds.map(sample=>sample.speed),slow:window.__qaSlows.length}));
       assert.deepEqual(articleWarp,{speeds:[40],slow:1});
-      if(mobile)await page.locator('.m-navigation summary').click();
-      const link=page.locator((mobile?'.m-navigation':'.left-sidebar')+' a[href$="/prints/"]');
+      await page.goBack();
+      const link=page.locator(firstPage+' article:first-child .article-image a[href$="/prints/"]');
+      await link.waitFor();
       await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];window.__qaModules=[];window.__qaEffects=[];window.__qaDocument=document;});
       await link.click();await ready(page);
       const speeds=await page.evaluate(()=>window.__qaSpeeds);
@@ -264,11 +264,11 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
     }
     {
       const {page,errors}=await setup(browser,false);
-      await page.goto(base+'/404.html',{waitUntil:'load'});await page.waitForFunction(()=>window.swup&&window.WorkshopApp);
+      await page.goto(base+'/',{waitUntil:'load'});await page.waitForFunction(()=>window.swup&&window.WorkshopIntro);
       let release;
       const held=new Promise(resolve=>{release=resolve;});
       await page.route('**/prints/?qa-delayed=1',async route=>{await held;await route.continue();});
-      const link=page.locator('.left-sidebar a').filter({hasText:'雨泽小鱼的工坊'});
+      const link=page.locator('main > [data-page="1"] .home-pinned-card .article-image a');
       await link.evaluate(el=>{el.href='/prints/?qa-delayed=1';});
       await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];});
       await link.click();await page.waitForTimeout(1200);

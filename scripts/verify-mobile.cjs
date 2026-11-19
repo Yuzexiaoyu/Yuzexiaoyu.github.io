@@ -154,12 +154,15 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     await goto('/');
     const detail=await page.evaluate(()=>({
       cards:Array.from(document.querySelectorAll('section.article-list[data-page="1"] > article')).map(el=>{const r=el.getBoundingClientRect();return {x:Math.round(r.x),y:Math.round(r.y),height:Math.round(r.height)};}),
+      pinned:document.querySelector('[data-mobile-page="1"] > article:first-child.home-pinned-card .article-image a')?.pathname,
+      pins:document.querySelectorAll('.m-home-track .home-pinned-card').length,
       player:!!document.querySelector('#aplayer'),audio:!!document.querySelector('audio'),
       resources:performance.getEntriesByType('resource').filter(entry=>/aplayer|music-uploads/i.test(entry.name)).map(entry=>entry.name),
       width:document.documentElement.scrollWidth,viewport:innerWidth,
       heading:!!document.querySelector('.home-feed-heading')
     }));
-    assert.equal(detail.heading,false);assert.equal(detail.cards.length,4);
+    assert.equal(detail.heading,false);assert.equal(detail.cards.length,6);
+    assert.equal(detail.pinned,'/prints/');assert.equal(detail.pins,1);
     assert.equal(detail.cards[0].y,detail.cards[1].y);
     assert.ok(detail.cards[1].x>detail.cards[0].x && detail.cards[2].y>detail.cards[0].y);
     assert.ok(detail.cards.every(card=>card.height<=260),JSON.stringify(detail.cards));

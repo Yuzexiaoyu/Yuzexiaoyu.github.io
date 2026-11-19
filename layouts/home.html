@@ -11,7 +11,7 @@
 {{ end }}
 
 {{ define "main" }}
-    {{- $pages := partial "helper/pages.html" . -}}
+    {{- $pages := partial "home/pages.html" . -}}
     {{- $pageSize := .Site.Params.pagination.pagerSize | default 4 -}}
     {{- $totalPages := math.Ceil (div (len $pages) (float $pageSize)) -}}
 

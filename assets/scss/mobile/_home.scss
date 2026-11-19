@@ -234,6 +234,8 @@ body.home-page .m-home-viewport {
   width: 100vw;
   margin-inline: calc((100% - 100vw) / 2);
   overflow: hidden;
+  // Only the track transform should move pages, including when a link receives focus.
+  overflow: clip;
 }
 
 body.home-page .m-home-single-page { --m-home-reserved-height: 50px; }
@@ -294,6 +296,10 @@ body.home-page .m-home-subtitle {
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
+}
+
+body.home-page section.home-article-list > .home-pinned-card .m-home-overlay {
+  background: linear-gradient(180deg, transparent 45%, rgba(3, 7, 14, .18) 63%, rgba(3, 7, 14, .95) 100%);
 }
 
 body.home-page .m-home-title {
@@ -378,6 +384,17 @@ body.home-page .site-footer .powerby { display: none; }
   body.home-page .m-home-title,
   body.home-page .m-home-subtitle { -webkit-line-clamp: 1; }
   body.home-page .site-footer { display: none; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  body.home-page .m-home-track > section.home-article-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding-inline: var(--m-page-gutter);
+  }
+  body.home-page section.home-article-list > article {
+    aspect-ratio: auto;
+    height: calc((100dvh - var(--m-header-height) - var(--m-home-reserved-height) - 10px) / 2);
+  }
 }
 
 @media (max-width: 340px) {

@@ -1,12 +1,9 @@
 ---
 title: "雨泽小鱼的工坊"
+image: "workshop-cover.webp"
+homePinned: true
+readingTime: false
 url: "/prints/"
 layout: "print-catalog"
 comments: false
-menu:
-  main:
-    name: "雨泽小鱼的工坊"
-    weight: 30
-    params:
-      icon: "workshop"
 ---

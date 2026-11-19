@@ -176,7 +176,7 @@ window.__runMermaid = async function() {
 
 {{/* The first home card is shared by both layouts. Native lazy loading handles the rest. */}}
 {{- if .IsHome -}}
-  {{- range first 1 (partial "helper/pages.html" .) -}}
+  {{- range first 1 (partial "home/pages.html" .) -}}
     {{- with partial "helper/image" (dict "Image" .Params.image "Resources" .Resources) -}}
       <link rel="preload" as="image" href="{{ .Permalink }}">
     {{- end -}}

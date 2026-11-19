@@ -50,9 +50,9 @@ async function create(device, mode = '4g') {
 }
 async function expected(page) {
   return page.evaluate(() => ({
-    articles:[...new Set([...document.querySelectorAll('.m-home-track .home-article-list[aria-hidden="false"] .article-title a')].map(a => a.pathname))],
+    articles:[...new Set([...document.querySelectorAll('.m-home-track .home-article-list[aria-hidden="false"] article:not(.home-pinned-card) .article-title a')].map(a => a.pathname))],
     menu:[...document.querySelectorAll('.m-navigation nav a[href]')].filter(a => a.origin === location.origin && !a.target && a.pathname !== location.pathname).map(a => a.pathname+a.search),
-    firstCover:document.querySelector('.home-article-list .article-image img')?.src
+    firstCover:document.querySelector('.m-home-track [aria-hidden="false"] article:not(.home-pinned-card) .article-image img')?.src
   }));
 }
 async function ready(page, targets) {
@@ -66,23 +66,23 @@ async function ready(page, targets) {
       try {
         await page.goto(base+'/', {waitUntil:'domcontentloaded'});
         const targets = await expected(page);
-        assert.equal(targets.articles.length,6);
+        assert.equal(targets.articles.length,5);
         await ready(page,targets);
         await page.waitForFunction(() => performance.getEntriesByType('resource').filter(r=>r.name.includes('/novel/covers/')).length===4);
         const audit = await page.evaluate(() => window.__preloadAudit);
-        assert.equal(audit.requests.length,6);
+        assert.equal(audit.requests.length,targets.articles.length);
         assert.ok(audit.requests[0].introReady && !audit.requests[0].introHidden,JSON.stringify(audit));
         assert.ok(audit.maxActive<=2,JSON.stringify(audit));
         assert.equal(requests.filter(r=>/\/novel\/covers\//.test(r.url)).length,4);
         assert.ok(!requests.some(r=>/\.epub|\/novel\/animations\/|aplayer|music-uploads|\/music\//i.test(r.url)));
         await page.evaluate(() => {window.initMobilePage();window.initMobilePage();});
         await page.waitForTimeout(100);
-        assert.equal(await page.evaluate(() => window.__preloadAudit.requests.length),6);
+        assert.equal(await page.evaluate(() => window.__preloadAudit.requests.length),targets.articles.length);
         const first = targets.articles[0];
         const htmlCount = () => requests.filter(r=>new URL(r.url).pathname===first && r.type==='Fetch').length;
         const coverCount = () => requests.filter(r=>r.url===targets.firstCover).length;
         const before = {html:htmlCount(),cover:coverCount()};
-        await page.locator('.m-home-track .article-image a').first().tap();
+        await page.locator('.m-home-track article:not(.home-pinned-card) .article-image a').first().tap();
         await page.waitForURL(url=>url.pathname===first);
         await page.locator('.article-content').waitFor();
         await page.waitForTimeout(100);
@@ -105,40 +105,23 @@ async function ready(page, targets) {
     await check('local pagination warms the newly visible articles', async () => {
       const {context,page,errors} = await create('Pixel 7');
       try {
-        // Provide two groups in the HTML before the deferred mobile bundle binds
-        // its swipe/resize listeners, as on a site with more than six articles.
-        const splitArticles = () => {
-          const first = document.querySelector('.m-home-track .home-article-list');
-          const second = first.cloneNode(false);
-          second.dataset.mobilePage = '2'; second.setAttribute('aria-hidden','true'); second.inert = true;
-          [...first.children].slice(3).forEach(card => second.append(card));
-          first.after(second);
-          const nav = document.querySelector('nav[data-mobile-home]');
-          const button = document.createElement('a'); button.dataset.goto = '2'; button.textContent = '2';
-          nav.append(button); nav.style.display = '';
-          document.querySelector('.m-home-viewport').classList.remove('m-home-single-page');
-        };
-        await page.route(url=>url.origin===new URL(base).origin && url.pathname==='/', async route => {
-          const response = await route.fetch();
-          const body = (await response.text()).replace('</body>', '<script>('+splitArticles.toString()+')()</script></body>');
-          await route.fulfill({response,body});
-        });
         await page.goto(base+'/', {waitUntil:'domcontentloaded'});
         const first = await expected(page);
-        assert.equal(first.articles.length,3);
+        assert.equal(first.articles.length,5);
         await ready(page,first);
-        assert.equal(await page.evaluate(() => window.__preloadAudit.requests.length),3);
+        assert.equal(await page.evaluate(() => window.__preloadAudit.requests.length),first.articles.length);
         await page.locator('#local-pagination [data-goto="2"]').click();
         await page.waitForFunction(() => document.querySelector('.m-home-track [data-mobile-page="2"]').getAttribute('aria-hidden')==='false');
         const second = await expected(page);
-        assert.equal(second.articles.length,3);
+        assert.ok(second.articles.length && second.articles.every(url=>!first.articles.includes(url)));
         await ready(page,second);
-        assert.equal(await page.evaluate(() => window.__preloadAudit.requests.length),6);
+        const articleRequests=first.articles.length+second.articles.length;
+        assert.equal(await page.evaluate(() => window.__preloadAudit.requests.length),articleRequests);
         await page.reload({waitUntil:'domcontentloaded'});
         await ready(page,second);
         assert.deepEqual(await page.evaluate(() => window.__preloadAudit.requests.map(request=>request.url)),second.articles);
         assert.deepEqual(errors,[]);
-        return {firstGroup:first.articles.length,secondGroup:second.articles.length,articleRequests:6,restoredGroupRequests:3,errors};
+        return {firstGroup:first.articles.length,secondGroup:second.articles.length,articleRequests,restoredGroupRequests:second.articles.length,errors};
       } finally {await context.close();}
     });
     await check('avatar still loading: article preloads start before load and opening completion', async () => {
@@ -190,7 +173,7 @@ async function ready(page, targets) {
       const {context,page,requests,errors} = await create();
       try {
         await page.goto(base+'/', {waitUntil:'domcontentloaded'});
-        const articles = group => page.locator('main > [data-page="'+group+'"] .article-title a').evaluateAll(links=>links.map(a=>a.pathname));
+        const articles = group => page.locator('main > [data-page="'+group+'"] article:not(.home-pinned-card) .article-title a').evaluateAll(links=>links.map(a=>a.pathname));
         const first = await articles(1), next = await articles(2);
         await ready(page,{articles:first,menu:['/novel/','/prints/']});
         await page.waitForFunction(() => performance.getEntriesByType('resource').filter(r=>r.name.includes('/novel/covers/')).length>=8);
@@ -231,8 +214,7 @@ async function ready(page, targets) {
       try {
         await page.goto(base+'/',{waitUntil:'load'});
         assert.ok(!requests.some(r=>r.url.includes('/ts/print-workshop')));
-        await page.locator('.m-navigation summary').click();
-        await page.locator('.m-navigation a[href$="/prints/"]').tap();
+        await page.locator('.m-home-track [data-mobile-page="1"] article:first-child .article-image a[href$="/prints/"]').tap();
         await page.locator('.wk-card').first().waitFor();
         const catalogFetches = requests.filter(r=>r.url.endsWith('/workshop/catalog.json')).length;
         assert.equal(catalogFetches,1);

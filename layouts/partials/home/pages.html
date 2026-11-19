@@ -1,0 +1,3 @@
+{{- $posts := partial "helper/pages.html" . -}}
+{{- $pinned := where .Site.RegularPages "Params.homePinned" true -}}
+{{- return (union $pinned $posts) -}}
