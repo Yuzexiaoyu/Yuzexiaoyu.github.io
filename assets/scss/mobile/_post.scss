@@ -87,30 +87,5 @@
         .lntd:first-child:not(:last-child) { display: block; user-select: none; }
       }
     }
-    .code-tools {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      padding-inline: 10px 3px;
-      background: var(--post-code-toolbar, var(--pre-background-color));
-      color: var(--pre-text-color);
-      border-bottom: 1px solid var(--card-separator-color);
-      font: 12px/1.3 var(--base-font-family);
-      .code-language { margin-inline-end: auto; font: 600 12px/1 var(--code-font-family); }
-      [aria-pressed="true"] { box-shadow: inset 0 -2px currentColor; }
-    }
-    .highlight .code-tools { padding-inline-end: 58px; }
-    .code-wrap, .highlight .copyCodeButton {
-      min-height: 44px;
-      min-width: 44px;
-      padding: 0 8px;
-      border: 0;
-      background: transparent;
-      box-shadow: none;
-      color: var(--pre-text-color);
-      font: 12px/1.3 var(--base-font-family);
-      cursor: pointer;
-    }
-    .highlight .copyCodeButton { top: 0; right: 3px; }
   }
 }

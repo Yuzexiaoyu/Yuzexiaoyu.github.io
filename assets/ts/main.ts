@@ -10,6 +10,7 @@ import createElement from './createElement';
 import StackColorScheme from './colorScheme';
 import { setupScrollspy } from './scrollspy';
 import { setupSmoothAnchors } from './smoothAnchors';
+import { getMobileCodeTools } from './mobile-code-tools';
 
 let Stack = {
     init: () => {
@@ -31,17 +32,20 @@ let Stack = {
          * Add copy button to code block
         */
         const highlights = document.querySelectorAll('.article-content div.highlight');
-        const copyText = `Copy`,
-            copiedText = `Copied!`;
+        const mobile = document.documentElement.dataset.ui === 'mobile';
+        const copyText = mobile ? '复制' : 'Copy';
+        const copiedText = mobile ? '已复制' : 'Copied!';
 
         highlights.forEach(highlight => {
-            const copyButton = document.createElement('button');
-            copyButton.innerHTML = copyText;
-            copyButton.classList.add('copyCodeButton');
-            highlight.appendChild(copyButton);
-
             const codeBlock = highlight.querySelector('code[data-lang]');
-            if (!codeBlock) return;
+            if (!codeBlock || highlight.querySelector('.copyCodeButton')) return;
+
+            const controls = mobile ? getMobileCodeTools(highlight) : highlight;
+            const copyButton = document.createElement('button');
+            copyButton.type = 'button';
+            copyButton.textContent = copyText;
+            copyButton.classList.add('copyCodeButton');
+            controls.appendChild(copyButton);
 
             copyButton.addEventListener('click', () => {
                 navigator.clipboard.writeText(codeBlock.textContent)

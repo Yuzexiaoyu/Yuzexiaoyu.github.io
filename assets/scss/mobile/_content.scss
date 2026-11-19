@@ -27,7 +27,40 @@ section.article-list > article { min-width: 0; opacity: 1; transform: none; anim
 .article-content blockquote { width: auto !important; max-width: 100%; box-sizing: border-box; margin: 1em 0 !important; padding-inline: 16px; }
 .article-content table { display: block; max-width: 100%; overflow-x: auto; white-space: normal; }
 .article-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
-.copyCodeButton { opacity: 1 !important; min-height: 44px; min-width: 44px; font-size: 13px; }
+.article-content .code-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-inline: 10px 4px;
+  border-top: 1px solid var(--card-separator-color);
+  background: var(--post-code-toolbar, var(--pre-background-color));
+  color: var(--pre-text-color);
+
+  .code-language {
+    margin-inline-end: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 600 12px/1 var(--code-font-family);
+  }
+  button {
+    flex: none;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font: 13px/1.3 var(--base-font-family);
+    cursor: pointer;
+    &:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+  }
+  .copyCodeButton { position: static; opacity: 1; min-width: 4.4em; }
+  .code-wrap[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }
+}
 .pagination { flex-wrap: wrap; justify-content: center; gap: 8px; }
 .pagination a { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
 .search-form { max-width: 100%; }

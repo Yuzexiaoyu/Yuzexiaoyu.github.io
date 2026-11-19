@@ -1,5 +1,6 @@
 /* Mobile UI owns page listeners across Swup navigation. */
 import { initMobileBackground } from './mobile-background';
+import { getMobileCodeTools } from './mobile-code-tools';
 import { createMobilePagination } from './mobile-reader';
 const w = window as any;
 const root = document.documentElement;
@@ -23,23 +24,14 @@ function initPostCode(signal: AbortSignal): void {
     block.append(pre);
   });
   content.querySelectorAll<HTMLElement>('.highlight, .post-plain-code').forEach(block => {
-    if (block.querySelector(':scope > .code-tools')) return;
-    const tools = document.createElement('div');
-    tools.className = 'code-tools';
-    const language = block.querySelector<HTMLElement>('code[data-lang]')?.dataset.lang;
-    if (language) {
-      const label = document.createElement('span');
-      label.className = 'code-language';
-      label.textContent = language.toUpperCase();
-      tools.append(label);
-    }
+    const tools = getMobileCodeTools(block);
+    if (tools.querySelector('.code-wrap')) return;
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'code-wrap';
     toggle.textContent = '自动换行';
     toggle.setAttribute('aria-pressed', String(!block.classList.contains('code-nowrap')));
-    tools.append(toggle);
-    block.prepend(tools);
+    tools.insertBefore(toggle, tools.querySelector('.copyCodeButton'));
   });
   content.addEventListener('click', event => {
     const toggle = (event.target as Element).closest<HTMLButtonElement>('button.code-wrap');

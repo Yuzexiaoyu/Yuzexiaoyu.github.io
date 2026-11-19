@@ -94,6 +94,10 @@ const routeList=['/','/archives/','/search/?keyword=数据','/关于/','/更新�
     const toggle = block.getByRole('button', {name:'自动换行'});
     const code = block.locator('code[data-lang]');
     const source = await code.textContent();
+    const copy = block.locator('.code-tools').getByRole('button', {name:'复制', exact:true});
+    const copyBox = await copy.boundingBox();
+    const codeBox = await code.boundingBox();
+    assert.ok(copyBox && codeBox && copyBox.y >= codeBox.y + codeBox.height - 1);
     const overflow = () => code.evaluate(el => el.parentElement.scrollWidth - el.parentElement.clientWidth);
     assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
     assert.equal(await overflow(), 0);
