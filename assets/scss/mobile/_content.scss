@@ -11,6 +11,15 @@ section.article-list > article { min-width: 0; opacity: 1; transform: none; anim
 .article-content h1 { font-size: 1.7em; }
 .article-content h2 { font-size: 1.4em; }
 .article-content h3 { font-size: 1.2em; }
+.article-page:not(.blog-post) .main-article {
+  .article-title { font-size: 20px; line-height: 1.35; }
+  .article-content {
+    font-size: 15px;
+    line-height: 1.65;
+    h3 { font-size: 1.14em; line-height: 1.35; }
+    pre { font-size: 13px; }
+  }
+}
 .article-content img, .article-content video, .article-content iframe { max-width: 100%; height: auto; }
 .article-content iframe { aspect-ratio: 16 / 9; width: 100%; }
 .article-content pre { max-width: 100%; overflow-x: auto; white-space: pre; font-size: 14px; }
