@@ -9,9 +9,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from server import ROOT, Store
+from server import ROOT, Problem, Store, integer, normalize_color_previews
 
-ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "min_price", "max_price", "fixed_price", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at"}
+ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews"}
 ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)")
 
 
@@ -41,9 +41,26 @@ def verify_snapshot(folder):
     for entry in payload["entries"]:
         if set(entry) - (ENTRY_FIELDS | {"images", "videos", "model", "colors"}) or entry["status"] != "published":
             raise ValueError("Private or unpublished entry in public catalog")
+        if "fixed_infill" in entry:
+            if entry["kind"] != "work":
+                raise ValueError("Fixed infill requires a configurable entry")
+            try:
+                integer(entry["fixed_infill"], "固定填充比例", 15, 100)
+            except Problem as error:
+                raise ValueError("Invalid public fixed infill") from error
         for asset in entry["images"] + entry.get("videos", []):
             check_asset(asset)
         check_asset(entry["model"])
+        if "color_previews" in entry:
+            previews = entry["color_previews"]
+            try:
+                normalized = normalize_color_previews(previews, [color["id"] for color in entry["colors"]],
+                                                      [image["id"] for image in entry["images"]],
+                                                      [video["id"] for video in entry.get("videos", [])])
+            except Problem as error:
+                raise ValueError("Invalid public color previews") from error
+            if entry["kind"] != "work" or previews != normalized:
+                raise ValueError("Invalid public color previews")
     if set(payload["settings"]) != {"name", "qq_image"}:
         raise ValueError("Unexpected public settings")
     check_asset(payload["settings"]["qq_image"])

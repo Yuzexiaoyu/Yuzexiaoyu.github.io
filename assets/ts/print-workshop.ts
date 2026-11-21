@@ -40,7 +40,11 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
       root.querySelectorAll<HTMLElement>('[data-count]').forEach(n=>n.textContent = String(entries.filter(p=>p.kind === n.dataset.count).length).padStart(2,'0'));
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
-      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="${i<2?'eager':'lazy'}" fetchpriority="${i===0?'high':'auto'}" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(tab==='work'?p.min_price:p.fixed_price)}<small>${tab==='work'?'起':p.weight_g?`${e(p.weight_g)} g`:''}</small></span></div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
+      grid.innerHTML = items.length ? items.map((p,i)=>{
+        const price=tab==='product'?p.fixed_price:p.fixed_infill==null?p.min_price:quote(p.min_price,p.max_price,p.fixed_infill);
+        const suffix=tab==='work'?(p.fixed_infill==null?'起':''):p.weight_g?`${e(p.weight_g)} g`:'';
+        return `<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="${i<2?'eager':'lazy'}" fetchpriority="${i===0?'high':'auto'}" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(price)}${suffix?`<small>${suffix}</small>`:''}</span></div></a>`;
+      }).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
       w.WorkshopIntro?.refresh?.(root);
       stopPreload = preloadCatalogEntries(root, items, signal);
     };
@@ -58,28 +62,45 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     let entry = await api<Entry>(`/api/entry/${encodeURIComponent(id)}`,signal);
     if(signal.aborted)return;
     const configurable=entry.kind==='work';
+    const stockLink=root.querySelector<HTMLAnchorElement>('[data-stock-link]');
+    if(configurable&&stockLink) {
+      void api<{entries: Entry[]}>('/api/catalog',signal).then(({entries})=>{
+        if(signal.aborted) return;
+        const matches=entries.filter(item=>item.kind==='product'&&item.status==='published'&&item.name===entry.name&&item.id);
+        if(matches.length!==1) return;
+        stockLink.href=`/prints/detail/?id=${encodeURIComponent(matches[0].id!)}`;
+        stockLink.hidden=false;
+      }).catch(()=>{});
+    }
     const mobile=document.documentElement.dataset.ui==='mobile';
     const videos=entry.videos||[];
-    const preloadedVideo=takePreloadedVideo(videos[0]?.url);
+    const photos=entry.images;
+    const previews=configurable?entry.color_previews:undefined;
+    const preloadedVideo=previews?undefined:takePreloadedVideo(videos[0]?.url);
     document.title=`${entry.name} · 雨泽小鱼的工坊`;
     root.querySelector<HTMLElement>('[data-detail-breadcrumb]')!.textContent=`${configurable?'可选':'现货'} / ${entry.name}`;
     root.querySelector<HTMLAnchorElement>('[data-detail-back]')!.href=`/prints/?tab=${entry.kind}`;
     root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab===entry.kind));
     let color: Color|undefined=entry.colors.find(c=>c.id===params.get('color'))||entry.colors[0];
-    let infill = Number(params.get('infill')||15);
+    const activePreview=()=>color?previews?.[color.id]:undefined;
+    const initialPreview=activePreview();
+    const cover=initialPreview?photos.find(image=>initialPreview.image_ids.includes(image.id)):photos[0];
+    const fixedInfill=configurable?entry.fixed_infill:null;
+    let infill = fixedInfill??Number(params.get('infill')||15);
     if(!Number.isInteger(infill)||infill<15||infill>100)infill=15;
     container.innerHTML=`<div class="wk-detail-grid"><div class="wk-gallery">
       <div class="wk-stage">
-        ${videos.length?`<video class="wk-stage-video" data-stage-video ${preloadedVideo?'':`src="${e(videos[0].url)}"`} poster="${e(entry.images[0]?.url)}" ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} autoplay muted playsinline preload="auto"></video>`:''}
+        ${videos.length?`<video class="wk-stage-video" data-stage-video ${preloadedVideo||previews?'':`src="${e(videos[0].url)}"`} ${cover?.url?`poster="${e(cover.url)}"`:''} ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} ${previews?'hidden':'autoplay'} muted playsinline preload="auto"></video>`:''}
         ${mobile&&videos.length?'<div class="wk-video-replay" data-video-replay-layer hidden><button type="button" data-video-replay aria-label="重新播放视频"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div>':''}
-        <img class="wk-stage-image" data-stage-image src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" ${videos.length?'hidden':''}>
+        <img class="wk-stage-image" data-stage-image ${cover?.url?`src="${e(cover.url)}"`:''} alt="${e(entry.name)}" ${videos.length||!cover?'hidden':''}>
         <span class="wk-photo-status" data-photo-status role="status" hidden></span>
+        ${previews?'<p class="wk-color-placeholder" data-color-placeholder role="status" hidden></p>':''}
         ${entry.model?`<model-viewer data-viewer alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
       </div>
       <div class="wk-gallery-tools">
         <div class="wk-view-switch" role="group" aria-label="媒体选择">
           ${videos.map((a,i)=>`<button type="button" data-view="video" data-media-index="${i}">▷ 视频${videos.length>1?i+1:''}</button>`).join('')}
-          ${entry.images.map((a,i)=>`<button type="button" data-view="photo" data-media-index="${i}">▧ 图片${entry.images.length>1?i+1:''}</button>`).join('')}
+          ${photos.map((a,i)=>`<button type="button" data-view="photo" data-media-index="${i}">▧ 图片${photos.length>1?i+1:''}</button>`).join('')}
           ${entry.model?'<button type="button" data-view="model">◇ 3D 预览</button>':''}
         </div>
         ${entry.model?'<button type="button" class="wk-text-link" data-reset-view hidden>↺ 重置视角</button>':''}
@@ -91,12 +112,16 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       ${configurable?`
         <div class="wk-config-section">
           <div class="wk-label-row"><h2>选择颜色</h2><span data-color-name>${e(color?.name)}</span></div>
-          <div class="wk-swatches" role="group" aria-label="可选颜色">${entry.colors.map(c=>`<button type="button" class="wk-swatch" data-color-id="${e(c.id)}" style="--swatch:${e(c.hex)}" aria-label="${e(c.name)}${c.material?` · ${e(c.material)}`:''}" title="${e(c.name)}${c.material?` · ${e(c.material)}`:''}" aria-pressed="${c.id===color?.id}"><span></span></button>`).join('')}</div>
+          <div class="wk-swatches" role="group" aria-label="可选颜色">${entry.colors.map(c=>{
+            const accent=previews?.[c.id]?.accent;
+            const swatch=accent?`linear-gradient(135deg,${c.hex} 50%,${accent} 50%)`:c.hex;
+            return `<button type="button" class="wk-swatch" data-color-id="${e(c.id)}" style="--swatch:${e(swatch)}" aria-label="${e(c.name)}${c.material?` · ${e(c.material)}`:''}" title="${e(c.name)}${c.material?` · ${e(c.material)}`:''}" aria-pressed="${c.id===color?.id}"><span></span></button>`;
+          }).join('')}</div>
           <div class="wk-material"><span>材质</span><span data-material>${e(color?.material||'—')}</span></div>
         </div>
         <div class="wk-config-section">
-          <div class="wk-label-row"><h2>填充比例</h2><output class="wk-infill-value" data-infill-value>${infill}%</output></div>
-          <input class="wk-range" type="range" min="15" max="100" step="1" value="${infill}" data-infill-range aria-label="调整填充比例">
+          <div class="wk-label-row"><h2>${fixedInfill==null?'填充比例':'固定填充比例'}</h2><output class="wk-infill-value" data-infill-value>${infill}%</output></div>
+          ${fixedInfill==null?`<input class="wk-range" type="range" min="15" max="100" step="1" value="${infill}" data-infill-range aria-label="调整填充比例">`:''}
         </div>
         <div class="wk-price-box"><div><span>当前报价</span><strong data-price></strong></div><span class="wk-unit">重量 <span data-weight>—</span></span></div>
       `:`
@@ -115,7 +140,12 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const stageImage=container.querySelector<HTMLImageElement>('[data-stage-image]')!;
     const stageVideo=container.querySelector<HTMLVideoElement>('[data-stage-video]');
     const videoBar=container.querySelector<HTMLElement>('[data-video-bar]');
-    const galleryPhotos=bindGalleryPhotos(stageImage,container.querySelector('[data-photo-status]')!,entry.images,signal);
+    const colorPlaceholder=container.querySelector<HTMLElement>('[data-color-placeholder]');
+    const galleryTools=container.querySelector<HTMLElement>('.wk-gallery-tools')!;
+    const mediaButtons=Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]'));
+    const photoButtons=mediaButtons.filter(button=>button.dataset.view==='photo');
+    const videoButtons=mediaButtons.filter(button=>button.dataset.view==='video');
+    const galleryPhotos=bindGalleryPhotos(stageImage,container.querySelector('[data-photo-status]')!,photos,signal);
     const replayLayer=container.querySelector<HTMLElement>('[data-video-replay-layer]');
     const replayButton=container.querySelector<HTMLButtonElement>('[data-video-replay]');
     const loading=container.querySelector<HTMLElement>('[data-viewer-loading]');
@@ -161,15 +191,16 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         if(!signal.aborted)viewer.src=entry.model!.url+(retry?'?retry='+Date.now():'');
       }).catch(viewerError);
     };
-    const selectView=(view:'model'|'photo'|'video')=>{
+    const selectView=(view:'model'|'photo'|'video'|'empty')=>{
       const model=view==='model'&&!!viewer;
       if(viewer)viewer.hidden=!model;
       stageImage.hidden=view!=='photo';
+      if(colorPlaceholder)colorPlaceholder.hidden=view!=='empty';
       galleryPhotos.updateStatus();
       if(stageVideo){stageVideo.hidden=view!=='video';if(view!=='video'){videoPlayAttempt++;stageVideo.pause();}}
       if(videoBar)videoBar.hidden=view!=='video';
       syncVideoReplay();
-      container.querySelectorAll<HTMLElement>('[data-view]').forEach(n=>{
+      mediaButtons.forEach(n=>{
         const active=n.dataset.view===view&&(view==='model'||Number(n.dataset.mediaIndex)===(view==='photo'?imageIndex:videoIndex));
         n.classList.toggle('is-active',active);
         n.setAttribute('aria-pressed',String(active));
@@ -182,17 +213,38 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       // Images and videos stay immediately usable; load 3D only on request.
       if(model&&!viewer.hasAttribute('src')&&!viewerFailed)openModel();
     };
-    container.querySelectorAll<HTMLElement>('[data-view]').forEach(n=>n.addEventListener('click',()=>{
+    mediaButtons.forEach(n=>n.addEventListener('click',()=>{
+      if(n.hidden)return;
       const view=n.dataset.view as 'model'|'photo'|'video';
       const index=Number(n.dataset.mediaIndex);
       if(view==='photo'){imageIndex=index;galleryPhotos.select(index);}
-      if(view==='video'&&stageVideo&&videoIndex!==index){videoIndex=index;stageVideo.src=videos[index].url!;}
+      if(view==='video'&&stageVideo&&(videoIndex!==index||!stageVideo.getAttribute('src'))){videoIndex=index;stageVideo.src=videos[index].url!;}
       selectView(view);
       if(view==='video')playVideo();
     },{signal}));
+    function showColorMedia() {
+      const preview=activePreview();
+      const filter=(buttons: HTMLButtonElement[], ids: string[]|undefined, assets: Entry['images'], label: string) => {
+        buttons.forEach((button,index)=>{button.hidden=!!ids&&!ids.includes(assets[index].id);});
+        const available=buttons.filter(button=>!button.hidden);
+        available.forEach((button,index)=>{button.textContent=label+(available.length>1?String(index+1):'');});
+        return available[0];
+      };
+      const firstPhoto=filter(photoButtons,preview?.image_ids,photos,'▧ 图片');
+      const firstVideo=filter(videoButtons,preview?.video_ids,videos,'▷ 视频');
+      const defaultButton=firstPhoto||firstVideo||mediaButtons.find(button=>button.dataset.view==='model');
+      const poster=firstPhoto&&photos[Number(firstPhoto.dataset.mediaIndex)].url;
+      if(stageVideo&&poster)stageVideo.poster=poster;
+      if(stageVideo&&!poster)stageVideo.removeAttribute('poster');
+      galleryTools.hidden=!defaultButton;
+      if(defaultButton) defaultButton.click();
+      else {
+        colorPlaceholder!.textContent=`${color?.name||'该配色'}实拍待补`;
+        selectView('empty');
+      }
+    }
     if(mobile){
-      const mediaButtons=Array.from(container.querySelectorAll<HTMLButtonElement>('[data-view]'));
-      const posters=mediaButtons.map(button=>button.dataset.view==='model'?null:entry.images[button.dataset.view==='photo'?Number(button.dataset.mediaIndex):0]?.url);
+      const posters=mediaButtons.map(button=>button.dataset.view==='photo'?photos[Number(button.dataset.mediaIndex)]?.url:null);
       revealMediaButton=initMobileGallerySwipe(container.querySelector<HTMLElement>('.wk-stage')!,mediaButtons,posters,signal);
     }
     if(viewer){
@@ -201,27 +253,28 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       container.querySelector('[data-reset-view]')!.addEventListener('click',()=>{selectView('model');viewer.cameraOrbit=DEFAULT_CAMERA_ORBIT;viewer.cameraTarget='auto auto auto';viewer.fieldOfView='auto';viewer.jumpCameraToGoal?.();},{signal});
       container.querySelector('[data-retry-viewer]')!.addEventListener('click',()=>{viewerFailed=false;failed!.hidden=true;loading!.hidden=false;openModel(true);},{signal});
     }
-    selectView(videos.length?'video':'photo');
-    galleryPhotos.warm(0);
-    if(stageVideo){
-      stageVideo.muted=true;
-      playVideo(false);
+    if(stageVideo)stageVideo.muted=true;
+    if(previews) showColorMedia();
+    else {
+      selectView(videos.length?'video':'photo');
+      galleryPhotos.warm(0);
+      if(stageVideo)playVideo(false);
     }
     const range=container.querySelector<HTMLInputElement>('[data-infill-range]');
     const contact=container.querySelector<HTMLButtonElement>('[data-contact]')!;
     const update=()=>{
       let displayPrice:string;
       if(configurable){
-        const value=range!.valueAsNumber;
+        const value=range?.valueAsNumber??infill;
         const valid=Number.isInteger(value)&&value>=15&&value<=100&&!!color;
         contact.disabled=!valid;
-        range!.setAttribute('aria-invalid',String(!valid));
+        range?.setAttribute('aria-invalid',String(!valid));
         setStatus(container.querySelector('[data-contact-error]'),valid?'':'请选择颜色与填充比例',!valid);
         displayPrice=valid?money(quote(entry.min_price,entry.max_price,value)):'—';
         container.querySelector<HTMLElement>('[data-weight]')!.textContent=valid?grams(weightAt(entry.min_weight_g,entry.max_weight_g,value)):'—';
         if(valid){
-          infill=value;range!.style.setProperty('--fill',`${(infill-15)/85*100}%`);
-          range!.setAttribute('aria-valuetext',`${infill}%`);
+          infill=value;range?.style.setProperty('--fill',`${(infill-15)/85*100}%`);
+          range?.setAttribute('aria-valuetext',`${infill}%`);
           container.querySelector<HTMLOutputElement>('[data-infill-value]')!.value=`${infill}%`;
           container.querySelector<HTMLElement>('[data-color-name]')!.textContent=color!.name;
           container.querySelectorAll<HTMLElement>('[data-color-id]').forEach(n=>n.setAttribute('aria-pressed',String(n.dataset.colorId===color!.id)));
@@ -242,7 +295,8 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     container.querySelectorAll<HTMLElement>('[data-color-id]').forEach(n=>n.addEventListener('click',()=>{
       color=entry.colors.find(c=>c.id===n.dataset.colorId);
       update();
-      if(viewer)selectView('model');
+      if(previews)showColorMedia();
+      else if(viewer)selectView('model');
     },{signal}));
     update();
     const dialog=root.querySelector<HTMLDialogElement>('[data-contact-dialog]')!;
@@ -261,15 +315,16 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         const [q,settings]=await Promise.all([api<{entry:Entry;color?:Color;infill?:number;price:number|null;weight_g:number|null;material:string}>(`/api/quote?${query}`,signal),api<Settings>('/api/settings',signal)]);
         if(signal.aborted)return;
         if(q.entry.kind!==entry.kind)throw new Error('内容栏目已更新，请刷新页面后重新选择。');
+        if((q.entry.fixed_infill??null)!==(entry.fixed_infill??null))throw new Error('填充比例已更新，请刷新详情后重新生成清单。');
         const changed=entry.revision!==q.entry.revision;entry=q.entry;color=q.color;update();
         if(q.price==null)return;
         text.value=[`商品：${entry.name}`,`材质：${q.material||'—'}`,
-          ...(configurable?[`颜色：${color!.name}`,`填充比例：${infill}%`]:[]),
+          ...(configurable?[`颜色：${color!.name}`,`填充比例：${q.infill??infill}%`]:[]),
           `报价：${money(q.price)}`].join('\n');
         root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=(settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码">`:'<p class="wk-qr-empty">店主还没有设置 QQ 二维码。清单可以先复制保存。</p>')+`<p class="wk-contact-number">QQ：<strong>${CONTACT_QQ}</strong></p>`;
         setStatus(feedback,changed?'商品信息已更新，清单已使用最新报价。':'');dialog.showModal();
       }catch(error){if(!abortError(error))setStatus(container.querySelector('[data-contact-error]'),(error as Error).message,true);}
-      finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range!.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price==null;}}
+      finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range?.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price==null;}}
     },{signal});
   }catch(error){if(!abortError(error))container.innerHTML=empty('暂时找不到这件作品',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="/prints/">返回工坊</a>`);}
 }

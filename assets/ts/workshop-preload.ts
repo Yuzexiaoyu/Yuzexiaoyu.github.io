@@ -6,6 +6,7 @@ const pages = new Map<string, Promise<unknown>>();
 const MAX_WARM_VIDEOS = 2;
 
 function warmVideo(entry: Entry, engaged = false) {
+  if (entry.color_previews) return;
   const asset = entry.videos?.[0];
   if (!asset?.url) return;
   const buffered = videos.get(asset.url);

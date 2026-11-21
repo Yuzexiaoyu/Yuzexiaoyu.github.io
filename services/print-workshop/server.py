@@ -81,6 +81,30 @@ def short_text(value, label, limit=160, required=False):
     return value
 
 
+def normalize_color_previews(raw, color_ids, image_ids, video_ids):
+    if not isinstance(raw, dict):
+        raise Problem("配色预览格式不正确")
+    previews = {}
+    for color_id, preview in raw.items():
+        if color_id not in color_ids:
+            continue
+        if not isinstance(preview, dict):
+            raise Problem("配色预览格式不正确")
+        normalized = {}
+        for field, available, limit in (("image_ids", image_ids, 12), ("video_ids", video_ids, 6)):
+            ids = preview.get(field, [])
+            if not isinstance(ids, list) or len(ids) > limit or any(not isinstance(asset_id, str) for asset_id in ids):
+                raise Problem("配色素材格式不正确")
+            normalized[field] = [asset_id for asset_id in dict.fromkeys(ids) if asset_id in available]
+        accent = preview.get("accent")
+        if accent is not None:
+            if not isinstance(accent, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", accent):
+                raise Problem("请填写六位配色色值")
+            normalized["accent"] = accent.upper()
+        previews[color_id] = normalized
+    return previews
+
+
 class Store:
     def __init__(self, folder):
         self.folder = Path(folder).resolve()
@@ -212,6 +236,11 @@ class Store:
             if not isinstance(payload[key], list) or len(payload[key]) > limit or any(not isinstance(x, str) for x in payload[key]):
                 raise Problem("图片、视频或颜色列表格式不正确")
             payload[key] = list(dict.fromkeys(payload[key]))
+        if kind == "work":
+            previews = normalize_color_previews(data.get("color_previews", {}), payload["color_ids"],
+                                                payload["image_ids"], payload["video_ids"])
+            if previews:
+                payload["color_previews"] = previews
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone() if entry_id else None
@@ -219,6 +248,12 @@ class Store:
                 raise Problem("内容不存在", 404)
             if old and data.get("revision") != old["revision"]:
                 raise Problem("内容已在其他页面更新，请重新打开后编辑", 409)
+            if kind == "work":
+                fixed_infill = data.get("fixed_infill")
+                if "fixed_infill" not in data and old:
+                    fixed_infill = json.loads(old["payload"]).get("fixed_infill")
+                if fixed_infill is not None:
+                    payload["fixed_infill"] = integer(fixed_infill, "固定填充比例", 15, 100)
             for a in payload["image_ids"]:
                 self.asset(db, a, "image")
             for a in payload["video_ids"]:
@@ -485,13 +520,15 @@ class Handler(SimpleHTTPRequestHandler):
             if p["kind"] == "product":
                 return self.json_response({"entry": p, "price": p["fixed_price"],
                                            "weight_g": p["weight_g"], "material": p["material"], "quantity": 1})
-            try:
-                raw = query.get("infill", [""])[0]
-                if not re.fullmatch(r"[0-9]+", raw):
-                    raise ValueError()
-                infill = int(raw)
-            except ValueError:
-                raise Problem("请填写有效填充整数")
+            infill = p.get("fixed_infill")
+            if infill is None:
+                try:
+                    raw = query.get("infill", [""])[0]
+                    if not re.fullmatch(r"[0-9]+", raw):
+                        raise ValueError()
+                    infill = int(raw)
+                except ValueError:
+                    raise Problem("请填写有效填充整数")
             color_id = query.get("color", [""])[0]
             color = next((c for c in p["colors"] if c["id"] == color_id), None)
             if p["kind"] != "work" or not color:

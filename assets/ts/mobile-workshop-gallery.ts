@@ -1,7 +1,13 @@
 // Touch navigation is installed only by the mobile workshop detail page.
 export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonElement[], posters: (string|null|undefined)[], signal: AbortSignal) {
   const strip = buttons[0]?.parentElement;
-  const active = () => buttons.find(button => button.getAttribute('aria-pressed') === 'true');
+  const video = stage.querySelector('video');
+  const active = () => buttons.find(button => !button.hidden && button.getAttribute('aria-pressed') === 'true');
+  const adjacent = (button: HTMLButtonElement, step: -1|1) => {
+    let index = buttons.indexOf(button) + step;
+    while (buttons[index]?.hidden) index += step;
+    return buttons[index];
+  };
   const media = Array.from(stage.querySelectorAll<HTMLElement>(':scope > .wk-stage-image,:scope > .wk-stage-video,:scope > .wk-video-replay,:scope > model-viewer,:scope > .wk-viewer-loading,:scope > .wk-viewer-failed'));
   const preview = document.createElement('img');
   preview.className = 'wk-swipe-preview';
@@ -9,7 +15,7 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
   type Gesture = {id: number; x: number; y: number; base: number; raw: number; lastX: number; lastTime: number; velocity: number; horizontal: boolean; button: HTMLButtonElement; resume?: HTMLButtonElement};
   type Snap = {animations: Animation[]; target?: HTMLButtonElement};
   let gesture: Gesture|null = null, snap: Snap|null = null;
-  let visualButton: HTMLButtonElement|undefined, width = 0, offset = 0, neighborSide = 1;
+  let visualButton: HTMLButtonElement|undefined, width = 0, offset = 0, neighborSide: -1|1 = 1;
   let committing = false, ignoreClickUntil = 0;
 
   const clear = () => {
@@ -34,16 +40,15 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
   if (buttons.length < 2) return reveal;
 
   const paint = (raw: number) => {
-    const index = buttons.indexOf(visualButton!);
     neighborSide = raw < 0 ? 1 : -1;
-    const neighbor = index + neighborSide, available = !!buttons[neighbor];
-    offset = available ? Math.max(-width,Math.min(width,raw)) : Math.sign(raw)*Math.min(52,Math.abs(raw)*.26);
+    const neighbor = adjacent(visualButton!,neighborSide);
+    offset = neighbor ? Math.max(-width,Math.min(width,raw)) : Math.sign(raw)*Math.min(52,Math.abs(raw)*.26);
     stage.classList.add('is-swiping');
     media.forEach(element => element.classList.add('wk-swipe-current'));
     stage.style.setProperty('--wk-swipe-x',`${offset}px`);
     stage.style.setProperty('--wk-swipe-neighbor-x',`${neighborSide*width+offset}px`);
-    const url = posters[neighbor];
-    preview.hidden = !available || !url;
+    const url = neighbor?.dataset.view === 'video' ? video?.getAttribute('poster') : neighbor && posters[buttons.indexOf(neighbor)];
+    preview.hidden = !url;
     if (url && preview.getAttribute('src') !== url) preview.src = url;
     if (!preview.isConnected) stage.append(preview);
   };
@@ -80,7 +85,7 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
     const previous = snap, element = media.find(node => !node.hidden)!;
     const transform = getComputedStyle(element).transform;
     const position = transform==='none'?0:new DOMMatrixReadOnly(transform).m41;
-    const neighbor = buttons[buttons.indexOf(visualButton!)+(position<0?1:-1)];
+    const neighbor = adjacent(visualButton!,position<0?1:-1);
     const base = neighbor?position:position/.26;
     snap = null;
     // Freeze the current visual position before cancelling the compositor animations.
@@ -136,7 +141,7 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
     const velocity = performance.now()-swipe.lastTime<100?swipe.velocity:0;
     const farEnough = Math.abs(dx)>=Math.max(48,Math.min(96,width*.23));
     const flick = Math.abs(dx)>=24 && Math.abs(velocity)>.45 && Math.sign(velocity)===Math.sign(dx);
-    const neighbor = buttons[buttons.indexOf(swipe.button)+(dx<0?1:-1)];
+    const neighbor = adjacent(swipe.button,dx<0?1:-1);
     settle(Math.abs(dx)>Math.abs(dy)*1.25 && (farEnough || flick)?neighbor:undefined);
   }, {passive: false, signal});
   stage.addEventListener('touchcancel', abandon, {passive: true, signal});

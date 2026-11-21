@@ -52,10 +52,11 @@ class ExportTests(unittest.TestCase):
         second = self.store.save_asset('second.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>', trusted_demo=True)
         work = self.store.save_entry({'name':'Configurable', 'kind':'work', 'status':'published',
             'image_ids':[self.image['id'], second['id']], 'color_ids':[self.color['id']],
-            'min_weight_g':60, 'max_weight_g':180})
+            'min_weight_g':60, 'max_weight_g':180, 'fixed_infill':50})
         payload = export_public(self.store.folder, self.output)
         exported = next(entry for entry in payload['entries'] if entry['id'] == work['id'])
         self.assertEqual((exported['min_weight_g'], exported['max_weight_g']), (60, 180))
+        self.assertEqual(exported['fixed_infill'], 50)
         self.assertEqual([image['id'] for image in exported['images']], [self.image['id'], second['id']])
         verify_snapshot(self.output)
 
@@ -67,6 +68,23 @@ class ExportTests(unittest.TestCase):
             export_public(self.store.folder, self.output)
         self.assertEqual((self.output / "catalog.json").read_bytes(), before)
         verify_snapshot(self.output)
+
+    def test_color_preview_references_only_current_public_media(self):
+        color_id = self.color["id"]
+        white = self.store.save_color({"name": "纯白", "hex": "#FFFFFF"})
+        work = self.store.save_entry({"name": "Color previews", "kind": "work", "status": "published",
+            "image_ids": [self.image["id"]], "video_ids": [self.video["id"]], "color_ids": [color_id, white["id"]],
+            "color_previews": {
+                color_id: {"image_ids": [self.image["id"], self.original["id"]], "video_ids": [self.video["id"]], "accent": "#ffaa11"},
+                white["id"]: {"image_ids": [], "video_ids": []},
+            }})
+        work = self.store.save_entry(dict(work, video_ids=[]), work["id"])
+        export_public(self.store.folder, self.output)
+        entry = next(row for row in verify_snapshot(self.output)["entries"] if row["id"] == work["id"])
+        self.assertEqual(entry["color_previews"], {
+            color_id: {"image_ids": [self.image["id"]], "video_ids": [], "accent": "#FFAA11"},
+            white["id"]: {"image_ids": [], "video_ids": []},
+        })
 
     def test_material_export_keeps_color_and_stock_sources_separate(self):
         self.store.save_entry(dict(self.product, material="TPU"), self.product["id"])

@@ -339,6 +339,16 @@ class HTTPTests(unittest.TestCase):
             self.assertNotIn("color",result)
             self.assertNotIn("infill",result)
 
+    def test_configurable_fixed_infill_applies_to_older_links_and_quotes(self):
+        template = next(entry for entry in self.store.get_entries() if entry["kind"] == "work")
+        entry = self.store.save_entry(dict(template, name="Fixed infill", fixed_infill=50))
+        self.addCleanup(self.store.delete_entry, entry["id"], entry["revision"])
+        query = f'/api/quote?id={entry["id"]}&color={entry["colors"][0]["id"]}'
+        for fill in ("", "&infill=15", "&infill=90", "&infill=old"):
+            with self.subTest(fill=fill):
+                status, quote, _ = self.request(query + fill)
+                self.assertEqual((status, quote["infill"], quote["price"], quote["weight_g"]), (200, 50, 53, 109.41))
+
     def test_full_crud_upload_and_private_source(self):
         status, image, _ = self.request("/api/admin/assets", "POST", PNG, {"X-Filename": "test.png"}, admin=True)
         self.assertEqual(status, 201)

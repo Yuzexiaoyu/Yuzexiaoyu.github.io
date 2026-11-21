@@ -2,6 +2,151 @@
   "version": 1,
   "entries": [
     {
+      "color_previews": {
+        "eba0aa30a83847b288c4c66226e40705": {
+          "image_ids": [
+            "d4eb2acb9b1ecb40ac0eb8030c246b63f9d28dd3fa461f7a04b7714a779ebc1e",
+            "d86fe3649d29190ce995587a829a1465fdd95922221fb3d2e988d6ee29233dbb"
+          ],
+          "video_ids": [],
+          "accent": "#D9A739"
+        },
+        "143232c60d10459fb6bfd9f37ad0cfb2": {
+          "image_ids": [
+            "66756b00ff86717029984e96aef3d39a5c14a1afb8301482b7aa2d523ba60144",
+            "bff9252b91fe1aaa42630733ac71b7fa71afe5a4269dd6416c3e35ba45770895",
+            "f92a3ed8fdfee897a9ea9084d29676d43fdd1dd530ef3bb8c4f789ed1e4da76f",
+            "90d7a3e3c4d942d81743e96551637b1d0b0a53dca0ac4e0185fc957caccc5281",
+            "b37e43e7bd7f371a12685dccc6fa1818d0710884ba7cd7e28f0e7b81db4e0f48"
+          ],
+          "video_ids": [
+            "f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f"
+          ]
+        },
+        "15ae95cc838e42f9a247477a17db7930": {
+          "image_ids": [
+            "22829e56539f62b9327984b2a929e033dc7cbc1dec9c6f997046bbe3df4ab7e5",
+            "6f15766f9aac1fe6f82eac9be6fcc944fad9188a81ade20cf39d9c144a1ce659"
+          ],
+          "video_ids": []
+        }
+      },
+      "description": "《赛博朋克 2077》中的马洛里安-序曲。PLA 打印的道具模型，操作时会发出机械声，模型弹不可击发。附六枚同色模型弹。",
+      "fixed_infill": 50,
+      "fixed_price": null,
+      "id": "23871d2434de44809fd3156d5ae4addd",
+      "is_demo": false,
+      "kind": "work",
+      "material": "",
+      "max_price": 0,
+      "max_weight_g": null,
+      "min_price": 0,
+      "min_weight_g": null,
+      "name": "马洛里安-序曲",
+      "revision": 8,
+      "status": "published",
+      "updated_at": "2026-11-21T22:05:16+0800",
+      "weight_g": null,
+      "images": [
+        {
+          "id": "d4eb2acb9b1ecb40ac0eb8030c246b63f9d28dd3fa461f7a04b7714a779ebc1e",
+          "name": "预览图片",
+          "url": "/workshop/media/d4eb2acb9b1ecb40ac0eb8030c246b63f9d28dd3fa461f7a04b7714a779ebc1e.webp",
+          "kind": "image",
+          "size": 105914
+        },
+        {
+          "id": "d86fe3649d29190ce995587a829a1465fdd95922221fb3d2e988d6ee29233dbb",
+          "name": "预览图片",
+          "url": "/workshop/media/d86fe3649d29190ce995587a829a1465fdd95922221fb3d2e988d6ee29233dbb.webp",
+          "kind": "image",
+          "size": 107388
+        },
+        {
+          "id": "66756b00ff86717029984e96aef3d39a5c14a1afb8301482b7aa2d523ba60144",
+          "name": "预览图片",
+          "url": "/workshop/media/66756b00ff86717029984e96aef3d39a5c14a1afb8301482b7aa2d523ba60144.webp",
+          "kind": "image",
+          "size": 110466
+        },
+        {
+          "id": "bff9252b91fe1aaa42630733ac71b7fa71afe5a4269dd6416c3e35ba45770895",
+          "name": "预览图片",
+          "url": "/workshop/media/bff9252b91fe1aaa42630733ac71b7fa71afe5a4269dd6416c3e35ba45770895.webp",
+          "kind": "image",
+          "size": 57712
+        },
+        {
+          "id": "f92a3ed8fdfee897a9ea9084d29676d43fdd1dd530ef3bb8c4f789ed1e4da76f",
+          "name": "预览图片",
+          "url": "/workshop/media/f92a3ed8fdfee897a9ea9084d29676d43fdd1dd530ef3bb8c4f789ed1e4da76f.jpg",
+          "kind": "image",
+          "size": 87526
+        },
+        {
+          "id": "90d7a3e3c4d942d81743e96551637b1d0b0a53dca0ac4e0185fc957caccc5281",
+          "name": "预览图片",
+          "url": "/workshop/media/90d7a3e3c4d942d81743e96551637b1d0b0a53dca0ac4e0185fc957caccc5281.jpg",
+          "kind": "image",
+          "size": 92521
+        },
+        {
+          "id": "b37e43e7bd7f371a12685dccc6fa1818d0710884ba7cd7e28f0e7b81db4e0f48",
+          "name": "预览图片",
+          "url": "/workshop/media/b37e43e7bd7f371a12685dccc6fa1818d0710884ba7cd7e28f0e7b81db4e0f48.webp",
+          "kind": "image",
+          "size": 78454
+        },
+        {
+          "id": "22829e56539f62b9327984b2a929e033dc7cbc1dec9c6f997046bbe3df4ab7e5",
+          "name": "预览图片",
+          "url": "/workshop/media/22829e56539f62b9327984b2a929e033dc7cbc1dec9c6f997046bbe3df4ab7e5.webp",
+          "kind": "image",
+          "size": 124272
+        },
+        {
+          "id": "6f15766f9aac1fe6f82eac9be6fcc944fad9188a81ade20cf39d9c144a1ce659",
+          "name": "预览图片",
+          "url": "/workshop/media/6f15766f9aac1fe6f82eac9be6fcc944fad9188a81ade20cf39d9c144a1ce659.webp",
+          "kind": "image",
+          "size": 99430
+        }
+      ],
+      "videos": [
+        {
+          "id": "f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f",
+          "name": "预览视频",
+          "url": "/workshop/media/f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f.mp4",
+          "kind": "video",
+          "size": 6758194
+        }
+      ],
+      "model": null,
+      "colors": [
+        {
+          "id": "eba0aa30a83847b288c4c66226e40705",
+          "name": "黑金",
+          "hex": "#252422",
+          "active": 1,
+          "material": "PLA"
+        },
+        {
+          "id": "143232c60d10459fb6bfd9f37ad0cfb2",
+          "name": "纯金",
+          "hex": "#D9A739",
+          "active": 1,
+          "material": "丝绸金 PLA"
+        },
+        {
+          "id": "15ae95cc838e42f9a247477a17db7930",
+          "name": "纯白",
+          "hex": "#FFFFFF",
+          "active": 1,
+          "material": "PLA"
+        }
+      ]
+    },
+    {
       "description": "枪械模型，操作时会发出机械声，模型弹不可击发！\n\n《赛博朋克 2077》中的马洛里安序曲。弹巢可弹出，可用退弹杆退出模型弹，也可以像《猎杀：对决》里一样把模型弹甩出来 🐶。\n\n双动式联动，可先扳下击锤再扣扳机，也可直接扣扳机。\n\n丝绸金 PLA 打印，成品约 320 g，附六发同色模型弹。",
       "fixed_price": null,
       "id": "6c4c0fadb83a48e4a3f0e4736630786c",

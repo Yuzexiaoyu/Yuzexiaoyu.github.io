@@ -67,17 +67,19 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     getField('weight_g').required=!configurable&&getField('status').value==='published';
   }
   function samplePrice(){
+    const fixed=getField('fixed_infill');
+    const fill=fixed.validity.valid&&fixed.value!==''?fixed.valueAsNumber:50;
     const low=Number(getField('min_price').value),high=Number(getField('max_price').value);
-    root.querySelector<HTMLElement>('[data-price-example]')!.textContent=Number.isInteger(low)&&Number.isInteger(high)&&high>=low&&low>=0?`50% 填充：${money(quote(low,high,50))}`:'最高价应不低于最低价，请填写非负整数元。';
+    root.querySelector<HTMLElement>('[data-price-example]')!.textContent=Number.isInteger(low)&&Number.isInteger(high)&&high>=low&&low>=0?`${fill}% 填充：${money(quote(low,high,fill))}`:'最高价应不低于最低价，请填写非负整数元。';
     const rawLow=getField('min_weight_g').value,rawHigh=getField('max_weight_g').value;
     const light=Number(rawLow),solid=Number(rawHigh);
-    root.querySelector<HTMLElement>('[data-weight-example]')!.textContent=rawLow===''&&rawHigh===''?'':rawLow!==''&&rawHigh!==''&&light>0&&solid>=light?`50% 填充重量 ${grams(weightAt(light,solid,50))}。`:'请填写两端重量，100% 重量应不低于 15% 重量。';
+    root.querySelector<HTMLElement>('[data-weight-example]')!.textContent=rawLow===''&&rawHigh===''?'':rawLow!==''&&rawHigh!==''&&light>0&&solid>=light?`${fill}% 填充重量 ${grams(weightAt(light,solid,fill))}。`:'请填写两端重量，100% 重量应不低于 15% 重量。';
   }
   function openEditor(entry?:Entry){
     editing=entry?JSON.parse(JSON.stringify(entry)):blank();editorSerial++;dirty=false;saving=false;
     pages.images=pages.videos=pages.colors=0;
     if(editing){editing.video_ids=editing.video_ids||[];editing.videos=editing.videos||[];}
-    form.reset();for(const name of ['name','kind','status','description','material','min_price','max_price','fixed_price','weight_g','min_weight_g','max_weight_g'])getField(name).value=String((editing as any)[name]??'');
+    form.reset();for(const name of ['name','kind','status','description','material','min_price','max_price','fixed_price','fixed_infill','weight_g','min_weight_g','max_weight_g'])getField(name).value=String((editing as any)[name]??'');
     getField('is_demo').checked=editing!.is_demo;
     root.querySelector<HTMLElement>('#entry-editor-title')!.textContent=entry?'编辑内容':'新建内容';
     setStatus(editorNotice,'');renderAssets();renderEditorColors();editorType();samplePrice();updateSaveButton();dialog.showModal();
@@ -125,7 +127,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(!editing||pending||saving)return;
     const data={...editing,name:getField('name').value,description:getField('description').value,material:getField('material').value.trim(),kind:getField('kind').value,status:getField('status').value,min_price:Number(getField('min_price').value),max_price:Number(getField('max_price').value),fixed_price:getField('fixed_price').value.trim()===''?null:Number(getField('fixed_price').value),weight_g:getField('weight_g').value.trim()===''?null:Number(getField('weight_g').value),min_weight_g:getField('min_weight_g').value.trim()===''?null:Number(getField('min_weight_g').value),max_weight_g:getField('max_weight_g').value.trim()===''?null:Number(getField('max_weight_g').value),is_demo:getField('is_demo').checked,color_ids:editing.color_ids.filter(id=>colors.some(color=>color.id===id&&color.active))};
-    if(data.kind==='product'){data.color_ids=[];data.min_price=0;data.max_price=0;data.min_weight_g=null;data.max_weight_g=null;}else{data.fixed_price=null;data.weight_g=null;data.material='';}
+    if(data.kind==='product'){data.color_ids=[];data.min_price=0;data.max_price=0;data.min_weight_g=null;data.max_weight_g=null;data.fixed_infill=null;}else{data.fixed_price=null;data.weight_g=null;data.material='';data.fixed_infill=getField('fixed_infill').value===''?null:getField('fixed_infill').valueAsNumber;}
     saving=true;updateSaveButton();setStatus(editorNotice,'正在保存…');
     try{const saved=await write<Entry>(editing.id?`/api/admin/entries/${editing.id}`:'/api/admin/entries',editing.id?'PUT':'POST',data);if(signal.aborted)return;editing=saved;dirty=false;dialog.close();await refresh();setStatus(notice,`“${saved.name}”已保存到本机${saved.status==='published'?'，本地工坊中可见':''}。发布网站后，图片与视频将通过 R2 CDN 加载。`);}
     catch(error){if(!abortError(error))setStatus(editorNotice,(error as Error).message,true);}

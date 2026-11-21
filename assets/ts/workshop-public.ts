@@ -78,7 +78,7 @@ export async function publicApi<T>(url: string, signal?: AbortSignal): Promise<T
   if (!quoting) return entry as T;
   if (entry.kind === 'product') return {entry, price: entry.fixed_price, weight_g: entry.weight_g, material: entry.material || '', quantity: 1} as T;
   const color = entry.colors.find(item => item.id === request.searchParams.get('color') && item.active);
-  const infill = Number(request.searchParams.get('infill'));
+  const infill = entry.fixed_infill ?? Number(request.searchParams.get('infill'));
   if (!color) throw new Error('请选择可选条目的可用颜色');
   if (!Number.isInteger(infill) || infill < 15 || infill > 100) throw new Error('请输入 15～100 的整数百分比');
   return {entry, color, infill, material: color.material || '', price: quote(entry.min_price, entry.max_price, infill), weight_g: weightAt(entry.min_weight_g, entry.max_weight_g, infill)} as T;
