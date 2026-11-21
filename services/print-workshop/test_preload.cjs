@@ -64,11 +64,12 @@ test('blog defers the workshop bundle and data until the scheduler requests them
   assert.deepEqual(preloads, ['static']);
 });
 
-test('concurrent preloads share one snapshot request and warm both cover images', async () => {
+test('concurrent preloads share one snapshot request and warm the lead cover of each tab', async () => {
   const h = harness();
   await Promise.all([h.app.preload('static'),h.app.preload('static')]);
   assert.deepEqual(h.requests, ['/workshop/catalog.json']);
-  assert.deepEqual(h.images.sort(), [...new Set(fixture.entries.map(e=>e.images[0].url))].sort());
+  const leadCovers = ['work', 'product'].map(kind=>fixture.entries.find(entry=>entry.kind===kind)?.images[0]?.url);
+  assert.deepEqual(h.images.sort(), [...new Set(leadCovers.filter(Boolean))].sort());
 });
 
 test('entering either catalog tab reuses the preloaded data', async () => {

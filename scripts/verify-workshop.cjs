@@ -8,7 +8,7 @@ const out = process.argv[3] || '.local/print-workshop/qa/cleanup';
 fs.mkdirSync(out, {recursive:true});
 const catalog = JSON.parse(fs.readFileSync('static/workshop/catalog.json','utf8'));
 const work = catalog.entries.find(entry=>entry.kind==='work');
-const product = catalog.entries.find(entry=>entry.kind==='product');
+const product = catalog.entries.find(entry=>entry.kind==='product' && entry.fixed_price!=null);
 const forbidden = /SMALL OBJECTS|让想象|DESIGNED WITH CARE|用心设计|FORM & EXPLORATION|MADE FOR YOUR EVERYDAY|演示内容|示例价|DEMO|A WORKSHOP JOURNAL|MAKE IT YOURS|点击缩略图|点击播放，查看/;
 const results = [];
 const device = mobile=>mobile ? {viewport:{width:390,height:844},isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'} : {viewport:{width:1440,height:1000}};
@@ -189,9 +189,10 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await page.screenshot({path:path.join(out,label+'-work.png'),fullPage:true});
       await page.goto(base+'/prints/?tab=product',{waitUntil:'load'});await ready(page);
       assert.doesNotMatch((await state(page)).text,forbidden);
-      const cardText=await page.locator('.wk-card').first().innerText();
+      const productCard=page.locator(`.wk-card[href$="id=${product.id}"]`);
+      const cardText=await productCard.innerText();
       assert.match(cardText,/¥39/);assert.match(cardText,/120 g/);assert.doesNotMatch(cardText,/起/);
-      await page.locator('.wk-card').first().click();await page.waitForFunction(()=>location.pathname==='/prints/detail/'&&document.querySelector('.wk-detail-grid'));await ready(page);
+      await productCard.click();await page.waitForFunction(()=>location.pathname==='/prints/detail/'&&document.querySelector('.wk-detail-grid'));await ready(page);
       assert.equal(await page.locator('[data-color-id], [data-infill-number], [data-infill-range]').count(),0);
       assert.equal(await page.locator('.wk-config h1').innerText(),product.name);
       assert.equal(await page.locator('.wk-description').innerText(),product.description);
@@ -305,7 +306,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       for(const mobile of [false,true])for(const kind of ['work','product']) {
         const {page,errors,requests}=await setup(browser,mobile);
         const fixture=structuredClone(catalog);
-        const item=fixture.entries.find(entry=>entry.kind===kind);
+        const item=fixture.entries.find(entry=>entry.id===(kind==='work'?work.id:product.id));
         if(kind==='work'){item.colors[0].material='PLA';item.colors[1].material='PETG';}else item.material='TPU';
         if(kind==='product')item.model=null;
         item.videos=[1,2].map(index=>({id:'qa-video-'+index,name:'QA video '+index,url:'/__qa/video-'+index+'.webm',kind:'video',size:fs.statSync(videoFile).size}));

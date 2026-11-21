@@ -238,8 +238,8 @@ class Store:
                     raise Problem("可选上架前请勾选可用颜色")
                 if kind == "work" and ((payload["min_weight_g"] is None) != (payload["max_weight_g"] is None)):
                     raise Problem("请同时填写 15% 和 100% 的重量")
-                if kind == "product" and (payload["fixed_price"] is None or payload["weight_g"] is None):
-                    raise Problem("现货上架前请填写固定售价和重量")
+                if kind == "product" and payload["weight_g"] is None:
+                    raise Problem("现货上架前请填写重量")
             entry_id = entry_id or uuid.uuid4().hex
             revision = old["revision"] + 1 if old else 1
             payload["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")

@@ -2,6 +2,71 @@
   "version": 1,
   "entries": [
     {
+      "description": "枪械模型，操作时会发出机械声，模型弹不可击发！\n\n《赛博朋克 2077》中的马洛里安序曲。弹巢可弹出，可用退弹杆退出模型弹，也可以像《猎杀：对决》里一样把模型弹甩出来 🐶。\n\n双动式联动，可先扳下击锤再扣扳机，也可直接扣扳机。\n\n丝绸金 PLA 打印，成品约 320 g，附六发同色模型弹。",
+      "fixed_price": null,
+      "id": "6c4c0fadb83a48e4a3f0e4736630786c",
+      "is_demo": false,
+      "kind": "product",
+      "material": "丝绸金 PLA",
+      "max_price": 0,
+      "max_weight_g": null,
+      "min_price": 0,
+      "min_weight_g": null,
+      "name": "马洛里安-序曲",
+      "revision": 7,
+      "status": "published",
+      "updated_at": "2026-11-21T20:47:50+0800",
+      "weight_g": 320,
+      "images": [
+        {
+          "id": "66756b00ff86717029984e96aef3d39a5c14a1afb8301482b7aa2d523ba60144",
+          "name": "预览图片",
+          "url": "/workshop/media/66756b00ff86717029984e96aef3d39a5c14a1afb8301482b7aa2d523ba60144.webp",
+          "kind": "image",
+          "size": 110466
+        },
+        {
+          "id": "bff9252b91fe1aaa42630733ac71b7fa71afe5a4269dd6416c3e35ba45770895",
+          "name": "预览图片",
+          "url": "/workshop/media/bff9252b91fe1aaa42630733ac71b7fa71afe5a4269dd6416c3e35ba45770895.webp",
+          "kind": "image",
+          "size": 57712
+        },
+        {
+          "id": "f92a3ed8fdfee897a9ea9084d29676d43fdd1dd530ef3bb8c4f789ed1e4da76f",
+          "name": "预览图片",
+          "url": "/workshop/media/f92a3ed8fdfee897a9ea9084d29676d43fdd1dd530ef3bb8c4f789ed1e4da76f.jpg",
+          "kind": "image",
+          "size": 87526
+        },
+        {
+          "id": "90d7a3e3c4d942d81743e96551637b1d0b0a53dca0ac4e0185fc957caccc5281",
+          "name": "预览图片",
+          "url": "/workshop/media/90d7a3e3c4d942d81743e96551637b1d0b0a53dca0ac4e0185fc957caccc5281.jpg",
+          "kind": "image",
+          "size": 92521
+        },
+        {
+          "id": "b37e43e7bd7f371a12685dccc6fa1818d0710884ba7cd7e28f0e7b81db4e0f48",
+          "name": "预览图片",
+          "url": "/workshop/media/b37e43e7bd7f371a12685dccc6fa1818d0710884ba7cd7e28f0e7b81db4e0f48.webp",
+          "kind": "image",
+          "size": 78454
+        }
+      ],
+      "videos": [
+        {
+          "id": "f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f",
+          "name": "预览视频",
+          "url": "/workshop/media/f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f.mp4",
+          "kind": "video",
+          "size": 6758194
+        }
+      ],
+      "model": null,
+      "colors": []
+    },
+    {
       "description": "沿瓶身旋转的细纹与收拢的瓶口，勾勒出柔和的曲线。适合搭配干花，也可单独摆放在书桌或书架上。",
       "fixed_price": null,
       "id": "8551df31cd844b4bb26193f353755542",

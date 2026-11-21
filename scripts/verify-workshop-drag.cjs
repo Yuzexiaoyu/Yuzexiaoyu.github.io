@@ -90,7 +90,7 @@ async function mount(browser,reducedMotion='no-preference'){
   for(const kind of ['work','product']){
    const {page,errors,box,start,move,end,cancel,cdp}=await mount(browser);
    if(kind==='product'){
-    const product=JSON.parse(fs.readFileSync('static/workshop/catalog.json','utf8')).entries.find(row=>row.kind==='product');
+    const product=JSON.parse(fs.readFileSync('static/workshop/catalog.json','utf8')).entries.find(row=>row.kind==='product'&&row.videos.length);
     await page.goto(base+'/prints/detail/?id='+product.id,{waitUntil:'load'});
     await page.waitForFunction(()=>window.WorkshopApp&&!window.WorkshopIntro.active()&&document.querySelector('.wk-detail-grid'));
    }else await page.locator('[data-view="video"]').first().click();

@@ -38,7 +38,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
       root.querySelectorAll<HTMLElement>('[data-count]').forEach(n=>n.textContent = String(entries.filter(p=>p.kind === n.dataset.count).length).padStart(2,'0'));
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
-      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="lazy" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(tab==='work'?p.min_price:(p.fixed_price??0))}<small>${tab==='work'?'起':p.weight_g?`${e(p.weight_g)} g`:''}</small></span></div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
+      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="lazy" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(tab==='work'?p.min_price:p.fixed_price)}<small>${tab==='work'?'起':p.weight_g?`${e(p.weight_g)} g`:''}</small></span></div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
       w.WorkshopIntro?.refresh?.(root);
       stopPreload = preloadCatalogEntries(root, items, signal);
     };
@@ -96,7 +96,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         </div>
         <div class="wk-price-box"><div><span>当前报价</span><strong data-price></strong></div><span class="wk-unit">重量 <span data-weight>—</span></span></div>
       `:`
-        <p class="wk-stock-facts" aria-label="售价、重量与材质"><span data-price>${money(entry.fixed_price??0)}</span><span aria-hidden="true">·</span><span data-weight>${e(entry.weight_g)} g</span><span aria-hidden="true">·</span><span>材质 <span data-material>${e(entry.material||'—')}</span></span></p>
+        <p class="wk-stock-facts" aria-label="售价、重量与材质"><span data-price>${money(entry.fixed_price)}</span><span aria-hidden="true">·</span><span data-weight>${e(entry.weight_g)} g</span><span aria-hidden="true">·</span><span>材质 <span data-material>${e(entry.material||'—')}</span></span></p>
       `}
       <button type="button" class="wk-button wk-primary wk-contact-button" data-contact><strong class="wk-mobile-price" data-mobile-price></strong><span>${configurable?'生成清单 · QQ 联系':'联系购买 · QQ'}</span><span>↗</span></button>
       <p class="wk-feedback" data-contact-error role="status"></p>
@@ -218,8 +218,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
           const current=new URLSearchParams(location.search);current.set('color',color!.id);current.set('infill',String(infill));replaceQuery(current);paint();
         }
       }else{
-        displayPrice=entry.fixed_price===null?'—':money(entry.fixed_price);
-        contact.disabled=entry.fixed_price===null;
+        displayPrice=money(entry.fixed_price);
+        contact.disabled=entry.fixed_price==null;
+        contact.hidden=contact.disabled;
         container.querySelector<HTMLElement>('[data-weight]')!.textContent=`${entry.weight_g} g`;
         const current=new URLSearchParams(location.search);current.delete('color');current.delete('infill');replaceQuery(current);
       }
@@ -247,17 +248,18 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       try{
         const query=new URLSearchParams({id});
         if(configurable){query.set('color',color!.id);query.set('infill',String(infill));}
-        const [q,settings]=await Promise.all([api<{entry:Entry;color?:Color;infill?:number;price:number;weight_g:number|null;material:string}>(`/api/quote?${query}`,signal),api<Settings>('/api/settings',signal)]);
+        const [q,settings]=await Promise.all([api<{entry:Entry;color?:Color;infill?:number;price:number|null;weight_g:number|null;material:string}>(`/api/quote?${query}`,signal),api<Settings>('/api/settings',signal)]);
         if(signal.aborted)return;
         if(q.entry.kind!==entry.kind)throw new Error('内容栏目已更新，请刷新页面后重新选择。');
         const changed=entry.revision!==q.entry.revision;entry=q.entry;color=q.color;update();
+        if(q.price==null)return;
         text.value=[`商品：${entry.name}`,`材质：${q.material||'—'}`,
           ...(configurable?[`颜色：${color!.name}`,`填充比例：${infill}%`]:[]),
           `报价：${money(q.price)}`].join('\n');
         root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=(settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码">`:'<p class="wk-qr-empty">店主还没有设置 QQ 二维码。清单可以先复制保存。</p>')+`<p class="wk-contact-number">QQ：<strong>${CONTACT_QQ}</strong></p>`;
         setStatus(feedback,changed?'商品信息已更新，清单已使用最新报价。':'');dialog.showModal();
       }catch(error){if(!abortError(error))setStatus(container.querySelector('[data-contact-error]'),(error as Error).message,true);}
-      finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range!.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price===null;}}
+      finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range!.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price==null;}}
     },{signal});
   }catch(error){if(!abortError(error))container.innerHTML=empty('暂时找不到这件作品',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="/prints/">返回工坊</a>`);}
 }

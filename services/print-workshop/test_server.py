@@ -132,8 +132,8 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(draft['min_weight_g'], 60)
         self.assertIsNone(draft['max_weight_g'])
 
-    def test_stock_requires_valid_fixed_price_and_positive_weight(self):
-        for changes in [{"fixed_price":None}, {"fixed_price":-1}, {"fixed_price":True},
+    def test_stock_requires_positive_weight_and_accepts_pending_price(self):
+        for changes in [{"fixed_price":-1}, {"fixed_price":True},
                         {"fixed_price":1.5}, {"weight_g":None}, {"weight_g":0},
                         {"weight_g":-1}, {"weight_g":True}, {"weight_g":float("inf")},
                         {"weight_g":float("nan")}, {"weight_g":1_000_001}]:
@@ -142,6 +142,10 @@ class StoreTests(unittest.TestCase):
         draft=self.store.save_entry(self.configurable(kind="product",status="draft"))
         self.assertIsNone(draft["fixed_price"])
         self.assertIsNone(draft["weight_g"])
+        published = self.store.save_entry(self.configurable(kind="product", fixed_price=None, weight_g=320))
+        self.assertIsNone(self.store.get_entry(published["id"])["fixed_price"])
+        self.store.save_entry(dict(published, fixed_price=39), published["id"])
+        self.assertEqual(self.store.get_entry(published["id"])["fixed_price"], 39)
 
     def test_revision_conflict_and_unpublish(self):
         entry = self.store.save_entry(self.configurable())

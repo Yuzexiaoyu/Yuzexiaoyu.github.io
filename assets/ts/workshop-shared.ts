@@ -7,7 +7,7 @@ export const escapeHTML = (value: unknown) => String(value ?? '').replace(/[&<>"
 export const quote = (low: number, high: number, infill: number) => Math.floor((2 * (low * 85 + (high - low) * (infill - 15)) + 85) / 170);
 export const weightAt = (low: number|null|undefined, high: number|null|undefined, infill: number) => low == null || high == null ? null : quote(Math.round(low * 100), Math.round(high * 100), infill) / 100;
 export const grams = (value: number|null) => value == null ? '—' : `${value.toLocaleString('zh-CN', {maximumFractionDigits: 2})} g`;
-export const money = (price: number) => `¥${price.toLocaleString('zh-CN')}`;
+export const money = (price: number|null|undefined) => price == null ? '敬请期待' : `¥${price.toLocaleString('zh-CN')}`;
 export function setStatus(node: HTMLElement | null, message: string, error = false) { if(node) {node.textContent = message; node.classList.toggle('is-error', error);} }
 export async function api<T>(url: string, signal?: AbortSignal, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, {...options, signal, credentials:'same-origin', cache:'no-store'});
