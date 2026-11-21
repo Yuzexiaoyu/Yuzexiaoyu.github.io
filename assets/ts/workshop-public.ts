@@ -6,11 +6,14 @@ type Entries = {entries: Entry[]};
 let snapshot: Promise<Catalog> | null = null;
 let localPreload: Promise<Entries> | null = null;
 const covers = new Map<string, HTMLImageElement>();
+const bootstrap = window as Window & {__workshopCatalogRequest?: Promise<Response>};
 
 function loadSnapshot(refresh = false): Promise<Catalog> {
   if (!snapshot || refresh) {
     snapshot = (async () => {
-      const response = await fetch('/workshop/catalog.json', {cache: 'no-cache'});
+      const earlyRequest = bootstrap.__workshopCatalogRequest;
+      delete bootstrap.__workshopCatalogRequest;
+      const response = await (earlyRequest ?? fetch('/workshop/catalog.json', {cache: 'no-cache'}));
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
         throw new Error('工坊内容暂未加载成功，请稍后刷新。');
       }

@@ -11,8 +11,6 @@
 <script src="/lib/Swup.umd.js" defer></script>
 <script src="/lib/index.umd.js" defer></script>
 
-{{ partial "workshop/loader.html" . }}
-
 {{- $js := `
 var swupReady = false;
 // 首屏链接失效修复：Swup 未就绪时绝不拦截点击，直接放行浏览器原生导航，
@@ -633,6 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 不再先空跃迁等 HTML 回来才在 page:view 里起动画（那段往返正是"跃迁干等"）。
     var toPath = '';
     try { toPath = ((visit && visit.to && visit.to.url) || '').split('?')[0].split('#')[0]; } catch (e) {}
+    if (workshopRoute.test(toPath)) window.__prepareWorkshop?.().catch(function(){});
     if (window.WorkshopIntro) window.WorkshopIntro.navigate(visit.to.url, visit.from.url);
     if (/^\/novel\/?$/.test(toPath) && typeof window.__playBookshelfIntro === 'function') {
       window.__playBookshelfIntro({ early: true });

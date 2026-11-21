@@ -1,7 +1,7 @@
 /** Reveal workshop modules as they arrive; never gate content behind the canvas. */
 (() => {
   const w = window as any;
-  const VERSION = 'module-reveal-5';
+  const VERSION = 'module-reveal-6';
   if (w.WorkshopIntro?.version === VERSION) return;
   w.WorkshopIntro?.cancel?.();
   const html = document.documentElement;
@@ -107,12 +107,11 @@
     }
     group('.wk-collection-toolbar', compact ? 0 : 300, compact ? 260 : 500, compact ? 8 : 18);
     group('.wk-breadcrumb', compact ? 0 : 220, compact ? 260 : 420, compact ? 6 : 10);
-    const cardsStart = Math.max(compact ? 40 : 480,elapsed);
     element.querySelectorAll<HTMLElement>('.wk-grid > .wk-card').forEach((card, index) =>
-      show(card, cardsStart + Math.min(index * (compact ? 50 : 110),compact ? 100 : 220), compact ? 360 : 640, compact ? 12 : 30));
+      show(card, elapsed + Math.min(index * 45,90), 320, 10, .45));
 
     const detailStart = Math.max(compact ? 0 : 320,elapsed);
-    group('.wk-gallery', detailStart, compact ? 320 : 560, compact ? 8 : 20);
+    element.querySelectorAll<HTMLElement>('.wk-gallery').forEach(node => show(node, elapsed, 320, 8, .45));
     group('.wk-config > h1', detailStart + (compact ? 0 : 90), compact ? 320 : 480, compact ? 8 : 14);
     group('.wk-config > .wk-description', detailStart + (compact ? 35 : 170), compact ? 320 : 500, compact ? 8 : 14);
     element.querySelectorAll<HTMLElement>('.wk-config-section').forEach((section, index) =>

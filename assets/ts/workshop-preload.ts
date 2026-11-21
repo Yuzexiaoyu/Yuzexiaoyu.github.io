@@ -5,9 +5,15 @@ const videos = new Map<string, HTMLVideoElement>();
 const pages = new Map<string, Promise<unknown>>();
 const MAX_WARM_VIDEOS = 2;
 
-function warmVideo(entry: Entry) {
+function warmVideo(entry: Entry, engaged = false) {
   const asset = entry.videos?.[0];
-  if (!asset?.url || videos.has(asset.url)) return;
+  if (!asset?.url) return;
+  const buffered = videos.get(asset.url);
+  const preload = engaged && asset.size <= 8 * 1024 * 1024 ? 'auto' : 'metadata';
+  if (buffered) {
+    if (preload === 'auto') buffered.preload = preload;
+    return;
+  }
   while (videos.size >= MAX_WARM_VIDEOS) {
     const [url, video] = videos.entries().next().value!;
     video.removeAttribute('src');
@@ -17,8 +23,7 @@ function warmVideo(entry: Entry) {
   const video = document.createElement('video');
   video.muted = true;
   video.playsInline = true;
-  // Large uploads only warm metadata; don't download entire movies in the list.
-  video.preload = asset.size > 8 * 1024 * 1024 ? 'metadata' : 'auto';
+  video.preload = preload;
   video.src = asset.url;
   video.addEventListener('error', () => {
     if (videos.get(asset.url!) === video) videos.delete(asset.url!);
@@ -54,7 +59,7 @@ export function preloadCatalogEntries(root: HTMLElement, entries: Entry[], signa
     const card = (event.target as Element).closest<HTMLAnchorElement>('.wk-card');
     const entry = card && items.get(card);
     if (!entry || !canPreload()) return;
-    warmVideo(entry);
+    warmVideo(entry,true);
     void warmPage(card!.href);
   };
   for (const type of ['pointerover', 'focusin', 'touchstart']) {

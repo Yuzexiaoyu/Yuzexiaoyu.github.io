@@ -2,6 +2,8 @@ import {abortError, escapeHTML as e, quote, weightAt, grams, money, replaceQuery
 import {publicApi as api, preloadPublicCatalog} from './workshop-public';
 import {initAdmin} from './print-admin';
 import {initMobileGallerySwipe} from './mobile-workshop-gallery';
+import {bindMobileVideoBar, mobileVideoBar} from './mobile-workshop-video';
+import {bindGalleryPhotos} from './workshop-gallery-photos';
 import {preloadCatalogEntries, takePreloadedVideo} from './workshop-preload';
 
 const w = window as any;
@@ -38,7 +40,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
       root.querySelectorAll<HTMLElement>('[data-count]').forEach(n=>n.textContent = String(entries.filter(p=>p.kind === n.dataset.count).length).padStart(2,'0'));
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
-      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="lazy" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(tab==='work'?p.min_price:p.fixed_price)}<small>${tab==='work'?'起':p.weight_g?`${e(p.weight_g)} g`:''}</small></span></div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
+      grid.innerHTML = items.length ? items.map((p,i)=>`<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="${i<2?'eager':'lazy'}" fetchpriority="${i===0?'high':'auto'}" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(tab==='work'?p.min_price:p.fixed_price)}<small>${tab==='work'?'起':p.weight_g?`${e(p.weight_g)} g`:''}</small></span></div></a>`).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
       w.WorkshopIntro?.refresh?.(root);
       stopPreload = preloadCatalogEntries(root, items, signal);
     };
@@ -71,6 +73,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         ${videos.length?`<video class="wk-stage-video" data-stage-video ${preloadedVideo?'':`src="${e(videos[0].url)}"`} poster="${e(entry.images[0]?.url)}" ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} autoplay muted playsinline preload="auto"></video>`:''}
         ${mobile&&videos.length?'<div class="wk-video-replay" data-video-replay-layer hidden><button type="button" data-video-replay aria-label="重新播放视频"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div>':''}
         <img class="wk-stage-image" data-stage-image src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" ${videos.length?'hidden':''}>
+        <span class="wk-photo-status" data-photo-status role="status" hidden></span>
         ${entry.model?`<model-viewer data-viewer alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
       </div>
       <div class="wk-gallery-tools">
@@ -81,6 +84,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         </div>
         ${entry.model?'<button type="button" class="wk-text-link" data-reset-view hidden>↺ 重置视角</button>':''}
       </div>
+      ${mobile&&videos.length?mobileVideoBar:''}
     </div><aside class="wk-config">
       <h1>${e(entry.name)}</h1>
       <p class="wk-description">${e(entry.description).replace(/\n/g,'<br>')}</p>
@@ -110,6 +114,8 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const viewer=container.querySelector<any>('[data-viewer]');
     const stageImage=container.querySelector<HTMLImageElement>('[data-stage-image]')!;
     const stageVideo=container.querySelector<HTMLVideoElement>('[data-stage-video]');
+    const videoBar=container.querySelector<HTMLElement>('[data-video-bar]');
+    const galleryPhotos=bindGalleryPhotos(stageImage,container.querySelector('[data-photo-status]')!,entry.images,signal);
     const replayLayer=container.querySelector<HTMLElement>('[data-video-replay-layer]');
     const replayButton=container.querySelector<HTMLButtonElement>('[data-video-replay]');
     const loading=container.querySelector<HTMLElement>('[data-viewer-loading]');
@@ -142,6 +148,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       },{signal});
       replayButton!.addEventListener('click',()=>playVideo(stageVideo.ended),{signal});
     }
+    if(stageVideo&&videoBar)bindMobileVideoBar(videoBar,stageVideo,playVideo,signal);
     const paint=()=>{if(configurable&&viewer?.model&&color) for(const material of viewer.model.materials){const pbr=material.pbrMetallicRoughness;pbr.baseColorTexture?.setTexture(null);pbr.setBaseColorFactor(color.hex);}};
     const viewerError=()=>{
       if(signal.aborted)return;
@@ -158,7 +165,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       const model=view==='model'&&!!viewer;
       if(viewer)viewer.hidden=!model;
       stageImage.hidden=view!=='photo';
+      galleryPhotos.updateStatus();
       if(stageVideo){stageVideo.hidden=view!=='video';if(view!=='video'){videoPlayAttempt++;stageVideo.pause();}}
+      if(videoBar)videoBar.hidden=view!=='video';
       syncVideoReplay();
       container.querySelectorAll<HTMLElement>('[data-view]').forEach(n=>{
         const active=n.dataset.view===view&&(view==='model'||Number(n.dataset.mediaIndex)===(view==='photo'?imageIndex:videoIndex));
@@ -176,7 +185,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     container.querySelectorAll<HTMLElement>('[data-view]').forEach(n=>n.addEventListener('click',()=>{
       const view=n.dataset.view as 'model'|'photo'|'video';
       const index=Number(n.dataset.mediaIndex);
-      if(view==='photo'){imageIndex=index;stageImage.src=entry.images[index].url!;}
+      if(view==='photo'){imageIndex=index;galleryPhotos.select(index);}
       if(view==='video'&&stageVideo&&videoIndex!==index){videoIndex=index;stageVideo.src=videos[index].url!;}
       selectView(view);
       if(view==='video')playVideo();
@@ -193,6 +202,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       container.querySelector('[data-retry-viewer]')!.addEventListener('click',()=>{viewerFailed=false;failed!.hidden=true;loading!.hidden=false;openModel(true);},{signal});
     }
     selectView(videos.length?'video':'photo');
+    galleryPhotos.warm(0);
     if(stageVideo){
       stageVideo.muted=true;
       playVideo(false);

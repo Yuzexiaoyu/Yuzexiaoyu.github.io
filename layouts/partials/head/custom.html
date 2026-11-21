@@ -49,6 +49,7 @@
 {{- $workshopScript := resources.Get "ts/print-workshop.ts" | js.Build $mainOpts | fingerprint -}}
 <link rel="preload" as="script" href="{{ $workshopScript.RelPermalink }}">
 {{- end -}}
+{{ partial "workshop/loader.html" . }}
 
 {{/* 桌面端按需加载播放器样式；移动端不加载音乐资源 */}}
 <script>

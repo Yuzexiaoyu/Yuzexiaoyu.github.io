@@ -6,7 +6,6 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
   const preview = document.createElement('img');
   preview.className = 'wk-swipe-preview';
   preview.alt = ''; preview.setAttribute('aria-hidden','true'); preview.decoding = 'async'; preview.draggable = false;
-  const warmed = new Map<string,HTMLImageElement>();
   type Gesture = {id: number; x: number; y: number; base: number; raw: number; lastX: number; lastTime: number; velocity: number; horizontal: boolean; button: HTMLButtonElement; resume?: HTMLButtonElement};
   type Snap = {animations: Animation[]; target?: HTMLButtonElement};
   let gesture: Gesture|null = null, snap: Snap|null = null;
@@ -31,13 +30,6 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
     const frame = strip.getBoundingClientRect(), item = button.getBoundingClientRect();
     if (item.left < frame.left + 3) strip.scrollLeft += item.left - frame.left - 3;
     else if (item.right > frame.right - 3) strip.scrollLeft += item.right - frame.right + 3;
-    // Warm adjacent posters only; videos and 3D stay lazy until actually selected.
-    const index = buttons.indexOf(button);
-    for (const adjacent of [index-1,index+1]) {
-      const url = posters[adjacent];
-      if (!url || warmed.has(url)) continue;
-      const image = new Image(); image.decoding = 'async'; image.src = url; warmed.set(url,image);
-    }
   };
   if (buttons.length < 2) return reveal;
 

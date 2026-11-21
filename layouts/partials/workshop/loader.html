@@ -15,6 +15,20 @@
     }
     return window.__workshopLoad;
   }
+  function prepare(){
+    if (dataSource === 'static' && !window.WorkshopApp && !window.__workshopCatalogRequest) {
+      var request = fetch('/workshop/catalog.json', {cache: 'no-cache'});
+      window.__workshopCatalogRequest = request;
+      request.catch(function(){
+        if (window.__workshopCatalogRequest === request) delete window.__workshopCatalogRequest;
+      });
+    }
+    return load();
+  }
+  window.__prepareWorkshop = prepare;
+  if (/^\/prints\/(?:detail\/)?$/.test(window.location?.pathname || '')) {
+    prepare().catch(function(){});
+  }
   window.__runWorkshop = function(){
     var root = document.querySelector('[data-workshop]');
     // Legacy head content can start body before its template classes are parsed.
@@ -23,14 +37,15 @@
     if (!root) return;
     if (window.WorkshopIntro) window.WorkshopIntro.enter(root);
     if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
-    load().then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
+    prepare().then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
       var node=document.querySelector('[data-catalog-grid],[data-detail-content],[data-admin-notice]');
       if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
     });
   };
   window.__destroyWorkshop = function(){if(window.WorkshopApp)window.WorkshopApp.destroy();};
   window.__warmWorkshop = function(signal){
-    return load().then(function(){
+    if (signal.aborted || !window.__pagePreload?.allowed()) return Promise.resolve();
+    return prepare().then(function(){
       if (!signal.aborted && window.__pagePreload.allowed()) {
         return window.WorkshopApp.preload(dataSource,signal);
       }

@@ -152,9 +152,8 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       assert.equal(await page.locator('[data-view="photo"]').count(),2);
       assert.equal(await page.locator('[data-view="photo"][data-media-index="0"]').innerText(),'▧ 图片1');
       assert.equal(await page.locator('[data-view="photo"][data-media-index="1"]').innerText(),'▧ 图片2');
-      const firstImage=await page.locator('[data-stage-image]').getAttribute('src');
       await page.locator('[data-view="photo"][data-media-index="1"]').click();
-      assert.notEqual(await page.locator('[data-stage-image]').getAttribute('src'),firstImage);
+      await page.waitForFunction(url=>document.querySelector('[data-stage-image]')?.getAttribute('src')===url,work.images[1].url);
       assert.equal(await page.locator('[data-view="photo"][data-media-index="1"]').getAttribute('aria-pressed'),'true');
       assert.equal(await page.locator('[data-view][aria-pressed="true"]').count(),1);
       frames.push(await galleryFrame(page));
@@ -341,7 +340,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
         assert.equal(await page.locator('[data-view="video"][data-media-index="1"]').getAttribute('aria-pressed'),'true');
         restarts.push(await restartVideoFromButton(page,1,true));
         await page.locator('[data-view="photo"][data-media-index="1"]').click();
-        assert.ok((await page.locator('[data-stage-image]').getAttribute('src')).endsWith('?qa-image=2'));
+        await page.waitForFunction(url=>document.querySelector('[data-stage-image]')?.getAttribute('src')===url,item.images[1].url);
         assert.equal(await page.locator('[data-view="photo"][data-media-index="1"]').getAttribute('aria-pressed'),'true');
         assert.equal(await page.locator('[data-view][aria-pressed="true"]').count(),1);
         restarts.push(await restartVideoFromButton(page,1));
@@ -460,7 +459,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await page.locator('[data-view="video"][data-media-index="5"]').click();
       assert.ok((await page.locator('[data-stage-video]').getAttribute('src')).endsWith('?qa-video=5'));
       await page.locator('[data-view="photo"][data-media-index="11"]').click();
-      assert.ok((await page.locator('[data-stage-image]').getAttribute('src')).endsWith('?qa-image=11'));
+      await page.waitForFunction(url=>document.querySelector('[data-stage-image]')?.getAttribute('src')===url,item.images[11].url);
       assert.equal(await page.locator('[data-view][aria-pressed="true"]').count(),1);
       assert.equal(await page.locator('.wk-thumbnails').count(),0);
       assert.ok((await state(page)).scrollWidth<=390);assert.deepEqual(errors,[]);

@@ -14,11 +14,11 @@ const fixture = JSON.parse(readFileSync('static/workshop/catalog.json', 'utf8'))
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const response = data => ({ok:true, headers:{get:()=>'application/json'}, json:async()=>structuredClone(data)});
 
-function harness(fetcher = async () => response(fixture)) {
+function harness(fetcher = async () => response(fixture), earlyResponse) {
   const requests = [], images = [];
   let current = null;
   const location = {origin:'http://localhost', search:''};
-  const window = {};
+  const window = {__workshopCatalogRequest:earlyResponse};
   vm.runInNewContext(bundle, {
     window, location, URL, URLSearchParams, AbortController, navigator:{},
     requestAnimationFrame:()=>1, cancelAnimationFrame(){},
@@ -43,25 +43,35 @@ function harness(fetcher = async () => response(fixture)) {
   };
 }
 
-test('blog defers the workshop bundle and data until the scheduler requests them', async () => {
+test('blog defers workshop requests and then starts the bundle and data together', async () => {
   const source = html.match(/<script id=["']?workshop-loader["']?>([\s\S]*?)<\/script>/)[1];
-  const scripts = [], preloads = [];
+  const scripts = [], preloads = [], requests = [];
   const window = {addEventListener(){}, __pagePreload:{allowed:()=>true}};
   vm.runInNewContext(source, {
-    window,
+    window, fetch:url=>{requests.push(url);return Promise.resolve(response(fixture));},
     document:{
       addEventListener(){}, createElement:()=>({}),
       head:{appendChild:script=>scripts.push(script)},
     },
   });
   assert.equal(scripts.length, 0);
+  assert.equal(requests.length, 0);
   const warm = window.__warmWorkshop(new AbortController().signal);
   assert.equal(scripts.length, 1);
+  assert.deepEqual(requests, ['/workshop/catalog.json']);
   assert.equal(scripts[0].src, new URL(bundleUrl, 'http://localhost').pathname);
   window.WorkshopApp = {preload:async source=>preloads.push(source)};
   scripts[0].onload();
   await warm;
   assert.deepEqual(preloads, ['static']);
+});
+
+test('the workshop bundle consumes the catalog request started during navigation', async () => {
+  const h = harness(undefined,Promise.resolve(response(fixture)));
+  const grid = h.mount();
+  await flush();
+  assert.match(grid.innerHTML,/wk-card/);
+  assert.deepEqual(h.requests,[]);
 });
 
 test('concurrent preloads share one snapshot request and warm the lead cover of each tab', async () => {

@@ -3,7 +3,7 @@ const {readFileSync}=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const {test}=require('node:test');
-const html=readFileSync('.local/print-workshop/site/prints/index.html','utf8');
+const html=readFileSync((process.env.HUGO_BUILD_DIR||'.local/print-workshop/site')+'/prints/index.html','utf8');
 const source=html.match(/<script id="workshop-intro-script">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(source,'Build the local Hugo site before running entrance tests');
 
@@ -45,16 +45,17 @@ test('direct entry never hides or locks the body before modules exist',()=>{
   assert.ok(p.animations.every(animation=>animation.cancelled&&!animation.target.dataset.workshopReveal));
 });
 
-test('module order has a short capped card ripple',()=>{
+test('cards start immediately with a short capped stagger',()=>{
   const p=page(),root=p.root('catalog',20);p.window.WorkshopIntro.enter(root);
   const [brand,back,toolbar,...cards]=p.animations;
   assert.equal(brand.target.name,'brand');assert.equal(back.target.name,'back');assert.equal(toolbar.target.name,'toolbar');
-  assert.ok(brand.timing.delay<back.timing.delay&&back.timing.delay<toolbar.timing.delay&&toolbar.timing.delay<cards[0].timing.delay);
+  assert.ok(brand.timing.delay<back.timing.delay&&back.timing.delay<toolbar.timing.delay);
+  assert.equal(cards[0].timing.delay,0);
   assert.equal(brand.keyframes[0].transform,'translate3d(-24px,0px,0)');
   assert.equal(back.keyframes[0].transform,'translate3d(24px,0px,0)');
   assert.ok(cards[1].timing.delay>cards[0].timing.delay);
-  assert.ok(cards.every(card=>card.timing.delay+card.timing.duration<=1400));
-  assert.ok(cards.every(card=>card.keyframes[0].transform==='translate3d(0px,30px,0)'));
+  assert.ok(cards.every(card=>card.timing.delay+card.timing.duration<=410));
+  assert.ok(cards.every(card=>card.keyframes[0].transform==='translate3d(0px,10px,0)'));
 });
 
 test('slow HTML navigation leaves the existing page usable without an animation clock',()=>{
@@ -173,7 +174,7 @@ test('hiding midway pauses and showing resumes unfinished effects',()=>{
 
 test('a stale bootstrap is replaced instead of silently retaining its old behavior',()=>{
   let cancelled=false;const p=page({previous:{cancel(){cancelled=true;}}});
-  assert.equal(cancelled,true);assert.equal(p.window.WorkshopIntro.version,'module-reveal-5');
+  assert.equal(cancelled,true);assert.equal(p.window.WorkshopIntro.version,'module-reveal-6');
   assert.equal(typeof p.window.WorkshopIntro.refresh,'function');
 });
 
@@ -184,7 +185,7 @@ test('data arriving before the first visible frame cannot consume the module off
   assert.equal(byName('brand').timing.delay,0);
   assert.equal(byName('back').timing.delay,160);
   assert.equal(byName('toolbar').timing.delay,300);
-  assert.equal(byName('cached-card').timing.delay,480);
+  assert.equal(byName('cached-card').timing.delay,0);
 });
 
 test('article and workshop visits share acceleration and decelerate while modules are active',()=>{
@@ -218,7 +219,7 @@ test('internal visits reveal details immediately and keep header modules still',
   p.window.WorkshopIntro.navigate('/prints/','/p/article/');
   p.window.WorkshopIntro.enter(p.root('catalog',1));
   assert.ok(p.animations.some(a=>!a.cancelled&&a.target.name==='brand'));
-  assert.equal(p.animations.findLast(a=>a.target.name==='card0').timing.delay,480);
+  assert.equal(p.animations.findLast(a=>a.target.name==='card0').timing.delay,0);
 });
 
 test('workshop returns and reduced motion keep fast navigation without stale state',()=>{
