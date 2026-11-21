@@ -5,7 +5,7 @@ export const mobileVideoBar = `
     </button>
     <input type="range" data-video-seek aria-label="播放进度" min="0" max="1" step="0.1" value="0" disabled>
     <span class="wk-video-time" data-video-time aria-hidden="true">0:00 / 0:00</span>
-    <button type="button" class="wk-video-sound" data-video-sound>开启声音</button>
+    <button type="button" class="wk-video-sound" data-video-sound>静音</button>
   </div>`;
 
 function timestamp(seconds: number): string {
@@ -45,6 +45,7 @@ export function bindMobileVideoBar(bar: HTMLElement, video: HTMLVideoElement, pl
   },{signal});
   sound.addEventListener('click',()=>{
     video.muted = !video.muted;
+    if (!video.muted && video.paused && !video.played.length) play(false);
     sync();
   },{signal});
   seek.addEventListener('input',()=>{scrubbing=true;sync();},{signal});

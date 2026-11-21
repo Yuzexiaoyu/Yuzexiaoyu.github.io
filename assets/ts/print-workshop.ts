@@ -1,4 +1,4 @@
-import {abortError, escapeHTML as e, quote, weightAt, grams, money, replaceQuery, setStatus, CONTACT_QQ, Entry, Color, Settings} from './workshop-shared';
+import {abortError, escapeHTML as e, firstVideoIndexForColor, workPriceAt, workPriceRange, workWeightAt, grams, money, replaceQuery, setStatus, CONTACT_QQ, Entry, Color, Settings} from './workshop-shared';
 import {publicApi as api, preloadPublicCatalog} from './workshop-public';
 import {initAdmin} from './print-admin';
 import {initMobileGallerySwipe} from './mobile-workshop-gallery';
@@ -41,8 +41,9 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
       grid.innerHTML = items.length ? items.map((p,i)=>{
-        const price=tab==='product'?p.fixed_price:p.fixed_infill==null?p.min_price:quote(p.min_price,p.max_price,p.fixed_infill);
-        const suffix=tab==='work'?(p.fixed_infill==null?'起':''):p.weight_g?`${e(p.weight_g)} g`:'';
+        const [price,high]=tab==='work'?workPriceRange(p):[p.fixed_price,p.fixed_price];
+        const isRange=price!==high||(!p.color_prices&&p.fixed_infill==null);
+        const suffix=tab==='work'?(isRange?'起':''):p.weight_g?`${e(p.weight_g)} g`:'';
         return `<a class="wk-card" href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="${i<2?'eager':'lazy'}" fetchpriority="${i===0?'high':'auto'}" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(price)}${suffix?`<small>${suffix}</small>`:''}</span></div></a>`;
       }).join('') : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
       w.WorkshopIntro?.refresh?.(root);
@@ -76,7 +77,6 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const videos=entry.videos||[];
     const photos=entry.images;
     const previews=configurable?entry.color_previews:undefined;
-    const preloadedVideo=previews?undefined:takePreloadedVideo(videos[0]?.url);
     document.title=`${entry.name} · 雨泽小鱼的工坊`;
     root.querySelector<HTMLElement>('[data-detail-breadcrumb]')!.textContent=`${configurable?'可选':'现货'} / ${entry.name}`;
     root.querySelector<HTMLAnchorElement>('[data-detail-back]')!.href=`/prints/?tab=${entry.kind}`;
@@ -84,13 +84,16 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     let color: Color|undefined=entry.colors.find(c=>c.id===params.get('color'))||entry.colors[0];
     const activePreview=()=>color?previews?.[color.id]:undefined;
     const initialPreview=activePreview();
+    const initialVideoIndex=firstVideoIndexForColor(entry,color?.id);
+    const initialVideo=videos[initialVideoIndex];
+    const preloadedVideo=takePreloadedVideo(initialVideo?.url);
     const cover=initialPreview?photos.find(image=>initialPreview.image_ids.includes(image.id)):photos[0];
     const fixedInfill=configurable?entry.fixed_infill:null;
     let infill = fixedInfill??Number(params.get('infill')||15);
     if(!Number.isInteger(infill)||infill<15||infill>100)infill=15;
     container.innerHTML=`<div class="wk-detail-grid"><div class="wk-gallery">
       <div class="wk-stage">
-        ${videos.length?`<video class="wk-stage-video" data-stage-video ${preloadedVideo||previews?'':`src="${e(videos[0].url)}"`} ${cover?.url?`poster="${e(cover.url)}"`:''} ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} ${previews?'hidden':'autoplay'} muted playsinline preload="auto"></video>`:''}
+        ${videos.length?`<video class="wk-stage-video" data-stage-video ${!preloadedVideo&&initialVideo?.url?`src="${e(initialVideo.url)}"`:''} ${cover?.url?`poster="${e(cover.url)}"`:''} ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} ${initialVideo?'autoplay':'hidden'} playsinline preload="auto"></video>`:''}
         ${mobile&&videos.length?'<div class="wk-video-replay" data-video-replay-layer hidden><button type="button" data-video-replay aria-label="重新播放视频"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div>':''}
         <img class="wk-stage-image" data-stage-image ${cover?.url?`src="${e(cover.url)}"`:''} alt="${e(entry.name)}" ${videos.length||!cover?'hidden':''}>
         <span class="wk-photo-status" data-photo-status role="status" hidden></span>
@@ -119,7 +122,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
           }).join('')}</div>
           <div class="wk-material"><span>材质</span><span data-material>${e(color?.material||'—')}</span></div>
         </div>
-        <div class="wk-config-section">
+        <div class="wk-config-section${fixedInfill==null?'':' wk-config-section--fixed-infill'}">
           <div class="wk-label-row"><h2>${fixedInfill==null?'填充比例':'固定填充比例'}</h2><output class="wk-infill-value" data-infill-value>${infill}%</output></div>
           ${fixedInfill==null?`<input class="wk-range" type="range" min="15" max="100" step="1" value="${infill}" data-infill-range aria-label="调整填充比例">`:''}
         </div>
@@ -151,24 +154,37 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const loading=container.querySelector<HTMLElement>('[data-viewer-loading]');
     const failed=container.querySelector<HTMLElement>('[data-viewer-failed]');
     let viewerReady=false;let viewerFailed=false;
-    let imageIndex=0;let videoIndex=0;
+    let imageIndex=0;let videoIndex=Math.max(0,initialVideoIndex);
     let videoNeedsPlay=false,videoPlayAttempt=0;
+    let soundWasBlocked=false;
     let revealMediaButton: (()=>void)|undefined;
     const syncVideoReplay=()=>{
       if(!stageVideo||!replayLayer)return;
       replayLayer.hidden=stageVideo.hidden||(!stageVideo.ended&&!videoNeedsPlay);
       replayButton!.setAttribute('aria-label',stageVideo.ended?'重新播放视频':'播放视频');
     };
-    const playVideo=(restart=true)=>{
+    const playVideo=(restart=true, fromUser=false)=>{
       if(!stageVideo)return;
       const attempt=++videoPlayAttempt;videoNeedsPlay=false;
+      if(fromUser&&soundWasBlocked){
+        soundWasBlocked=false;
+        stageVideo.muted=false;
+      }
       if(restart)stageVideo.currentTime=0;
       syncVideoReplay();
-      void stageVideo.play().catch(()=>{
-        if(signal.aborted||attempt!==videoPlayAttempt||stageVideo.hidden)return;
+      const stillActive=()=>!signal.aborted&&attempt===videoPlayAttempt&&!stageVideo.hidden;
+      void stageVideo.play().catch(async(error: DOMException)=>{
+        if(!stillActive())return;
+        if(error.name==='NotAllowedError'&&!stageVideo.muted){
+          soundWasBlocked=true;
+          stageVideo.muted=true;
+          const started=await stageVideo.play().then(()=>true,()=>false);
+          if(started||!stillActive())return;
+        }
         videoNeedsPlay=true;syncVideoReplay();
       });
     };
+    if(stageVideo)stageVideo.addEventListener('volumechange',()=>{if(!stageVideo.muted)soundWasBlocked=false;},{signal});
     if(stageVideo&&replayLayer){
       stageVideo.addEventListener('ended',syncVideoReplay,{signal});
       stageVideo.addEventListener('playing',()=>{videoNeedsPlay=false;syncVideoReplay();},{signal});
@@ -176,9 +192,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         videoNeedsPlay=stageVideo.paused&&!stageVideo.hidden&&stageVideo.readyState>=2;
         syncVideoReplay();
       },{signal});
-      replayButton!.addEventListener('click',()=>playVideo(stageVideo.ended),{signal});
+      replayButton!.addEventListener('click',()=>playVideo(stageVideo.ended,true),{signal});
     }
-    if(stageVideo&&videoBar)bindMobileVideoBar(videoBar,stageVideo,playVideo,signal);
+    if(stageVideo&&videoBar)bindMobileVideoBar(videoBar,stageVideo,restart=>playVideo(restart,true),signal);
     const paint=()=>{if(configurable&&viewer?.model&&color) for(const material of viewer.model.materials){const pbr=material.pbrMetallicRoughness;pbr.baseColorTexture?.setTexture(null);pbr.setBaseColorFactor(color.hex);}};
     const viewerError=()=>{
       if(signal.aborted)return;
@@ -213,16 +229,16 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       // Images and videos stay immediately usable; load 3D only on request.
       if(model&&!viewer.hasAttribute('src')&&!viewerFailed)openModel();
     };
-    mediaButtons.forEach(n=>n.addEventListener('click',()=>{
+    mediaButtons.forEach(n=>n.addEventListener('click',event=>{
       if(n.hidden)return;
       const view=n.dataset.view as 'model'|'photo'|'video';
       const index=Number(n.dataset.mediaIndex);
       if(view==='photo'){imageIndex=index;galleryPhotos.select(index);}
       if(view==='video'&&stageVideo&&(videoIndex!==index||!stageVideo.getAttribute('src'))){videoIndex=index;stageVideo.src=videos[index].url!;}
       selectView(view);
-      if(view==='video')playVideo();
+      if(view==='video')playVideo(true,event.isTrusted);
     },{signal}));
-    function showColorMedia() {
+    function showColorMedia(preferVideo=false) {
       const preview=activePreview();
       const filter=(buttons: HTMLButtonElement[], ids: string[]|undefined, assets: Entry['images'], label: string) => {
         buttons.forEach((button,index)=>{button.hidden=!!ids&&!ids.includes(assets[index].id);});
@@ -232,8 +248,10 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       };
       const firstPhoto=filter(photoButtons,preview?.image_ids,photos,'▧ 图片');
       const firstVideo=filter(videoButtons,preview?.video_ids,videos,'▷ 视频');
-      const defaultButton=firstPhoto||firstVideo||mediaButtons.find(button=>button.dataset.view==='model');
-      const poster=firstPhoto&&photos[Number(firstPhoto.dataset.mediaIndex)].url;
+      const firstMedia=preferVideo?(firstVideo||firstPhoto):(firstPhoto||firstVideo);
+      const defaultButton=firstMedia||mediaButtons.find(button=>button.dataset.view==='model');
+      const posterIndex=firstPhoto?Number(firstPhoto.dataset.mediaIndex):null;
+      const poster=posterIndex==null?null:photos[posterIndex].url;
       if(stageVideo&&poster)stageVideo.poster=poster;
       if(stageVideo&&!poster)stageVideo.removeAttribute('poster');
       galleryTools.hidden=!defaultButton;
@@ -242,6 +260,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         colorPlaceholder!.textContent=`${color?.name||'该配色'}实拍待补`;
         selectView('empty');
       }
+      if(firstMedia && firstMedia===firstVideo && posterIndex!=null)galleryPhotos.warm(posterIndex);
     }
     if(mobile){
       const posters=mediaButtons.map(button=>button.dataset.view==='photo'?photos[Number(button.dataset.mediaIndex)]?.url:null);
@@ -253,8 +272,8 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       container.querySelector('[data-reset-view]')!.addEventListener('click',()=>{selectView('model');viewer.cameraOrbit=DEFAULT_CAMERA_ORBIT;viewer.cameraTarget='auto auto auto';viewer.fieldOfView='auto';viewer.jumpCameraToGoal?.();},{signal});
       container.querySelector('[data-retry-viewer]')!.addEventListener('click',()=>{viewerFailed=false;failed!.hidden=true;loading!.hidden=false;openModel(true);},{signal});
     }
-    if(stageVideo)stageVideo.muted=true;
-    if(previews) showColorMedia();
+    if(stageVideo)stageVideo.muted=false;
+    if(previews) showColorMedia(true);
     else {
       selectView(videos.length?'video':'photo');
       galleryPhotos.warm(0);
@@ -270,8 +289,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         contact.disabled=!valid;
         range?.setAttribute('aria-invalid',String(!valid));
         setStatus(container.querySelector('[data-contact-error]'),valid?'':'请选择颜色与填充比例',!valid);
-        displayPrice=valid?money(quote(entry.min_price,entry.max_price,value)):'—';
-        container.querySelector<HTMLElement>('[data-weight]')!.textContent=valid?grams(weightAt(entry.min_weight_g,entry.max_weight_g,value)):'—';
+        displayPrice=valid?money(workPriceAt(entry,color!.id,value)):'—';
+        const approximate=fixedInfill!=null&&entry.weight_g!=null;
+        container.querySelector<HTMLElement>('[data-weight]')!.textContent=valid?`${approximate?'约 ':''}${grams(workWeightAt(entry,value))}`:'—';
         if(valid){
           infill=value;range?.style.setProperty('--fill',`${(infill-15)/85*100}%`);
           range?.setAttribute('aria-valuetext',`${infill}%`);

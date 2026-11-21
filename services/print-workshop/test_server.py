@@ -349,6 +349,24 @@ class HTTPTests(unittest.TestCase):
                 status, quote, _ = self.request(query + fill)
                 self.assertEqual((status, quote["infill"], quote["price"], quote["weight_g"]), (200, 50, 53, 109.41))
 
+    def test_quote_prefers_the_weight_saved_for_fixed_infill(self):
+        template = next(entry for entry in self.store.get_entries() if entry["kind"] == "work")
+        entry = self.store.save_entry(dict(template, name="Estimated weight", fixed_infill=50, weight_g=320))
+        self.addCleanup(self.store.delete_entry, entry["id"], entry["revision"])
+        status, quote, _ = self.request(f'/api/quote?id={entry["id"]}&color={entry["colors"][0]["id"]}&infill=15')
+        self.assertEqual((status, quote["infill"], quote["weight_g"]), (200, 50, 320))
+
+    def test_work_quote_uses_selected_color_price_with_default_for_other_colors(self):
+        template = next(entry for entry in self.store.get_entries() if entry["kind"] == "work")
+        first, second, third = template["color_ids"][:3]
+        entry = self.store.save_entry(dict(template, name="Color pricing", fixed_infill=50,
+                                           color_prices={first:65, second:60}))
+        self.addCleanup(self.store.delete_entry, entry["id"], entry["revision"])
+        for color_id, expected in ((first,65), (second,60), (third,53)):
+            with self.subTest(color=color_id):
+                status, quote, _ = self.request(f'/api/quote?id={entry["id"]}&color={color_id}')
+                self.assertEqual((status, quote["infill"], quote["price"]), (200, 50, expected))
+
     def test_full_crud_upload_and_private_source(self):
         status, image, _ = self.request("/api/admin/assets", "POST", PNG, {"X-Filename": "test.png"}, admin=True)
         self.assertEqual(status, 201)

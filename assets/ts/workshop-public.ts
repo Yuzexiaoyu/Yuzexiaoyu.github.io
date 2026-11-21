@@ -1,4 +1,4 @@
-import {api, quote, weightAt, Entry, Settings} from './workshop-shared';
+import {api, workPriceAt, workWeightAt, Entry, Settings} from './workshop-shared';
 import {canPreload} from './preload-policy';
 
 type Catalog = {version: number; entries: Entry[]; settings: Settings};
@@ -81,5 +81,5 @@ export async function publicApi<T>(url: string, signal?: AbortSignal): Promise<T
   const infill = entry.fixed_infill ?? Number(request.searchParams.get('infill'));
   if (!color) throw new Error('请选择可选条目的可用颜色');
   if (!Number.isInteger(infill) || infill < 15 || infill > 100) throw new Error('请输入 15～100 的整数百分比');
-  return {entry, color, infill, material: color.material || '', price: quote(entry.min_price, entry.max_price, infill), weight_g: weightAt(entry.min_weight_g, entry.max_weight_g, infill)} as T;
+  return {entry, color, infill, material: color.material || '', price: workPriceAt(entry, color.id, infill), weight_g: workWeightAt(entry, infill)} as T;
 }

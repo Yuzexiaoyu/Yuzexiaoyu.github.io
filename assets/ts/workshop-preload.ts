@@ -1,4 +1,4 @@
-import {Entry} from './workshop-shared';
+import {Entry, firstVideoIndexForColor} from './workshop-shared';
 import {canPreload} from './preload-policy';
 
 const videos = new Map<string, HTMLVideoElement>();
@@ -6,8 +6,7 @@ const pages = new Map<string, Promise<unknown>>();
 const MAX_WARM_VIDEOS = 2;
 
 function warmVideo(entry: Entry, engaged = false) {
-  if (entry.color_previews) return;
-  const asset = entry.videos?.[0];
+  const asset = entry.videos?.[firstVideoIndexForColor(entry)];
   if (!asset?.url) return;
   const buffered = videos.get(asset.url);
   const preload = engaged && asset.size <= 8 * 1024 * 1024 ? 'auto' : 'metadata';

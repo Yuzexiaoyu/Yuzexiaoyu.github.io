@@ -51,6 +51,13 @@ def price(low, high, infill):
     return (numerator * 2 + 85) // 170
 
 
+def single_weight(value, name):
+    if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
+                              or not 0 < value <= 1_000_000):
+        raise Problem(f"{name}须为大于 0、不超过 1000000 的克数")
+    return value
+
+
 def weight_endpoint(value, name):
     if (isinstance(value, bool) or not isinstance(value, (int, float))
             or not math.isfinite(value) or not 0 < value <= 1_000_000):
@@ -103,6 +110,13 @@ def normalize_color_previews(raw, color_ids, image_ids, video_ids):
             normalized["accent"] = accent.upper()
         previews[color_id] = normalized
     return previews
+
+
+def normalize_color_prices(raw, color_ids):
+    if not isinstance(raw, dict):
+        raise Problem("配色售价格式不正确")
+    return {color_id: integer(value, "配色售价", 0, PRICE_LIMIT)
+            for color_id, value in raw.items() if color_id in color_ids}
 
 
 class Store:
@@ -218,7 +232,7 @@ class Store:
                    "min_weight_g": data.get("min_weight_g"), "max_weight_g": data.get("max_weight_g"),
                    "is_demo": data.get("is_demo") is True}
         if kind == "work":
-            payload["fixed_price"] = payload["weight_g"] = None
+            payload["fixed_price"] = None
             price(payload["min_price"], payload["max_price"], 15)
             for key, label in (("min_weight_g", "15% 重量"), ("max_weight_g", "100% 重量")):
                 if payload[key] is not None:
@@ -228,10 +242,7 @@ class Store:
             payload.update(color_ids=[], min_price=0, max_price=0, min_weight_g=None, max_weight_g=None)
             if payload["fixed_price"] is not None:
                 integer(payload["fixed_price"], "现货售价", 0, PRICE_LIMIT)
-            weight = payload["weight_g"]
-            if weight is not None and (isinstance(weight, bool) or not isinstance(weight, (int, float))
-                                       or not math.isfinite(weight) or not 0 < weight <= 1_000_000):
-                raise Problem("现货重量须为大于 0、不超过 1000000 的克数")
+            single_weight(payload["weight_g"], "现货重量")
         for key, limit in (("image_ids", 12), ("video_ids", 6), ("color_ids", 80)):
             if not isinstance(payload[key], list) or len(payload[key]) > limit or any(not isinstance(x, str) for x in payload[key]):
                 raise Problem("图片、视频或颜色列表格式不正确")
@@ -249,11 +260,17 @@ class Store:
             if old and data.get("revision") != old["revision"]:
                 raise Problem("内容已在其他页面更新，请重新打开后编辑", 409)
             if kind == "work":
-                fixed_infill = data.get("fixed_infill")
-                if "fixed_infill" not in data and old:
-                    fixed_infill = json.loads(old["payload"]).get("fixed_infill")
+                previous = json.loads(old["payload"]) if old else {}
+                fixed_infill = data.get("fixed_infill", previous.get("fixed_infill"))
                 if fixed_infill is not None:
                     payload["fixed_infill"] = integer(fixed_infill, "固定填充比例", 15, 100)
+                    single_weight(payload["weight_g"], "固定填充重量")
+                else:
+                    payload["weight_g"] = None
+                color_prices = normalize_color_prices(data.get("color_prices", previous.get("color_prices", {})),
+                                                     payload["color_ids"])
+                if color_prices:
+                    payload["color_prices"] = color_prices
             for a in payload["image_ids"]:
                 self.asset(db, a, "image")
             for a in payload["video_ids"]:
@@ -271,7 +288,7 @@ class Store:
                     raise Problem("上架前请至少上传一张图片")
                 if kind == "work" and not payload["color_ids"]:
                     raise Problem("可选上架前请勾选可用颜色")
-                if kind == "work" and ((payload["min_weight_g"] is None) != (payload["max_weight_g"] is None)):
+                if kind == "work" and payload["weight_g"] is None and ((payload["min_weight_g"] is None) != (payload["max_weight_g"] is None)):
                     raise Problem("请同时填写 15% 和 100% 的重量")
                 if kind == "product" and payload["weight_g"] is None:
                     raise Problem("现货上架前请填写重量")
@@ -533,9 +550,15 @@ class Handler(SimpleHTTPRequestHandler):
             color = next((c for c in p["colors"] if c["id"] == color_id), None)
             if p["kind"] != "work" or not color:
                 raise Problem("商品或颜色已不可选，请刷新详情")
+            weight = p["weight_g"] if p.get("fixed_infill") is not None else None
+            if weight is None:
+                weight = weight_at(p.get("min_weight_g"), p.get("max_weight_g"), infill)
+            total = p.get("color_prices", {}).get(color_id)
+            if total is None:
+                total = price(p["min_price"], p["max_price"], infill)
             return self.json_response({"entry": p, "color": color, "infill": infill, "material": color["material"],
-                                       "weight_g": weight_at(p.get("min_weight_g"), p.get("max_weight_g"), infill),
-                                       "price": price(p["min_price"], p["max_price"], infill), "quantity": 1})
+                                       "weight_g": weight,
+                                       "price": total, "quantity": 1})
         if path.startswith("/api/"):
             raise Problem("接口不存在", 404)
         if path == "/admin/prints":

@@ -52,11 +52,14 @@ class ExportTests(unittest.TestCase):
         second = self.store.save_asset('second.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>', trusted_demo=True)
         work = self.store.save_entry({'name':'Configurable', 'kind':'work', 'status':'published',
             'image_ids':[self.image['id'], second['id']], 'color_ids':[self.color['id']],
-            'min_weight_g':60, 'max_weight_g':180, 'fixed_infill':50})
+            'min_weight_g':60, 'max_weight_g':180, 'fixed_infill':50, 'weight_g':320,
+            'color_prices':{self.color['id']:65, 'unused':99}})
         payload = export_public(self.store.folder, self.output)
         exported = next(entry for entry in payload['entries'] if entry['id'] == work['id'])
         self.assertEqual((exported['min_weight_g'], exported['max_weight_g']), (60, 180))
         self.assertEqual(exported['fixed_infill'], 50)
+        self.assertEqual(exported['weight_g'], 320)
+        self.assertEqual(exported['color_prices'], {self.color['id']:65})
         self.assertEqual([image['id'] for image in exported['images']], [self.image['id'], second['id']])
         verify_snapshot(self.output)
 

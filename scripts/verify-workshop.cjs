@@ -6,9 +6,9 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = process.argv[2] || 'http://127.0.0.1:13136';
 const out = process.argv[3] || '.local/print-workshop/qa/cleanup';
 fs.mkdirSync(out, {recursive:true});
-const catalog = JSON.parse(fs.readFileSync('static/workshop/catalog.json','utf8'));
-const work = catalog.entries.find(entry=>entry.kind==='work');
-const product = catalog.entries.find(entry=>entry.kind==='product' && entry.fixed_price!=null);
+const catalog = JSON.parse(fs.readFileSync(process.env.WORKSHOP_QA_CATALOG || '.local/print-workshop/qa-site/workshop/catalog.json','utf8'));
+const work = catalog.entries.find(entry=>entry.kind==='work' && entry.name==='扭纹花器');
+const product = catalog.entries.find(entry=>entry.kind==='product' && entry.name==='青绿扭纹花器');
 const forbidden = /SMALL OBJECTS|让想象|DESIGNED WITH CARE|用心设计|FORM & EXPLORATION|MADE FOR YOUR EVERYDAY|演示内容|示例价|DEMO|A WORKSHOP JOURNAL|MAKE IT YOURS|点击缩略图|点击播放，查看/;
 const results = [];
 const device = mobile=>mobile ? {viewport:{width:390,height:844},isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'} : {viewport:{width:1440,height:1000}};
@@ -65,7 +65,7 @@ function sameFrames(frames) {
 async function automaticVideoState(page) {
   await page.waitForFunction(()=>{const video=document.querySelector('[data-stage-video]');return video&&video.currentTime>0&&video.played.length>0;});
   const playback=await page.locator('[data-stage-video]').evaluate(video=>({autoplay:video.autoplay,muted:video.muted,playsInline:video.playsInline,controls:video.controls,time:video.currentTime,duration:video.duration,paused:video.paused,ended:video.ended}));
-  assert.equal(playback.autoplay,true);assert.equal(playback.muted,true);assert.equal(playback.playsInline,true);
+  assert.equal(playback.autoplay,true);assert.equal(playback.playsInline,true);
   assert.equal(playback.controls,(await page.locator('html').getAttribute('data-ui'))!=='mobile');
   return playback;
 }
@@ -109,7 +109,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       assert.doesNotMatch((await state(page)).text,forbidden);
       await page.screenshot({path:path.join(out,label+'-catalog.png'),fullPage:true});
       await page.evaluate(()=>{window.__qaSpeeds=[];window.__qaSlows=[];});
-      await page.locator('.wk-card').first().click();await page.waitForFunction(()=>location.pathname==='/prints/detail/'&&document.querySelector('.wk-detail-grid'));await ready(page);
+      await page.locator(`.wk-card[href$="id=${work.id}"]`).click();await page.waitForFunction(()=>location.pathname==='/prints/detail/'&&document.querySelector('.wk-detail-grid'));await ready(page);
       assert.deepEqual(await page.evaluate(()=>window.__qaSpeeds.map(sample=>sample.speed)),[40]);
       assert.equal(await page.evaluate(()=>window.__qaSlows.length),1);
       assert.equal((await state(page)).selected,work.videos.length?'video':'photo');
@@ -374,7 +374,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
     }
     for(const mobile of [false,true])for(const hasModel of [true,false]){
       const {page,errors,requests}=await setup(browser,mobile);
-      const fixture=structuredClone(catalog),item=fixture.entries.find(entry=>entry.kind==='work');
+      const fixture=structuredClone(catalog),item=fixture.entries.find(entry=>entry.id===work.id);
       if(!hasModel)item.model=null;
       await page.route('**/workshop/catalog.json',route=>route.fulfill({json:fixture}));
       let releaseModel;
@@ -436,7 +436,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
     }
     {
       const {page,errors}=await setup(browser,true);
-      const fixture=structuredClone(catalog),item=fixture.entries.find(entry=>entry.kind==='work');
+      const fixture=structuredClone(catalog),item=fixture.entries.find(entry=>entry.id===work.id);
       item.videos=Array.from({length:6},(_,index)=>({...work.videos[0],url:work.videos[0].url+'?qa-video='+index}));
       item.images=Array.from({length:12},(_,index)=>({...work.images[0],url:work.images[0].url+'?qa-image='+index}));
       await page.route('**/workshop/catalog.json',route=>route.fulfill({json:fixture}));
@@ -505,7 +505,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
     }
     {
       const {page,errors}=await setup(browser,true);
-      const fixture=structuredClone(catalog),item=fixture.entries.find(row=>row.kind==='work');
+      const fixture=structuredClone(catalog),item=fixture.entries.find(row=>row.id===work.id);
       item.videos=[];item.model=null;item.images=Array.from({length:12},(_,index)=>({...work.images[0],url:work.images[0].url+'?swipe='+index}));
       await page.route('**/workshop/catalog.json',route=>route.fulfill({json:fixture}));
       await page.goto(base+'/prints/detail/?id='+item.id,{waitUntil:'load'});await ready(page);

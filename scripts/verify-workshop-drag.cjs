@@ -4,7 +4,8 @@ const path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base=process.argv[2]||'http://127.0.0.1:13136';
 const out=process.argv[3]||'.local/print-workshop/qa/follow-drag';
-const work=JSON.parse(fs.readFileSync('static/workshop/catalog.json','utf8')).entries.find(row=>row.kind==='work');
+const catalog=JSON.parse(fs.readFileSync(process.env.WORKSHOP_QA_CATALOG||'.local/print-workshop/qa-site/workshop/catalog.json','utf8'));
+const work=catalog.entries.find(row=>row.kind==='work'&&row.name==='扭纹花器');
 const results=[];
 fs.mkdirSync(out,{recursive:true});
 const idle=page=>page.waitForFunction(()=>!document.querySelector('.wk-stage')?.classList.contains('is-swiping'));
@@ -90,7 +91,7 @@ async function mount(browser,reducedMotion='no-preference'){
   for(const kind of ['work','product']){
    const {page,errors,box,start,move,end,cancel,cdp}=await mount(browser);
    if(kind==='product'){
-    const product=JSON.parse(fs.readFileSync('static/workshop/catalog.json','utf8')).entries.find(row=>row.kind==='product'&&row.videos.length);
+    const product=catalog.entries.find(row=>row.kind==='product'&&row.videos.length);
     await page.goto(base+'/prints/detail/?id='+product.id,{waitUntil:'load'});
     await page.waitForFunction(()=>window.WorkshopApp&&!window.WorkshopIntro.active()&&document.querySelector('.wk-detail-grid'));
    }else await page.locator('[data-view="video"]').first().click();
@@ -98,7 +99,8 @@ async function mount(browser,reducedMotion='no-preference'){
    assert.equal(await video.evaluate(video=>video.controls),false);
    assert.equal(await video.evaluate(video=>getComputedStyle(video).pointerEvents),'none');
    const finishVideo=async()=>{
-    await video.evaluate(async video=>{if(video.readyState<2)await new Promise(resolve=>video.addEventListener('loadeddata',resolve,{once:true}));video.currentTime=video.duration-.05;await video.play();});
+    await page.waitForFunction(()=>document.querySelector('[data-stage-video]')?.readyState>=2);
+    await video.evaluate(async video=>{video.currentTime=video.duration-.05;await video.play();});
     await page.waitForFunction(()=>document.querySelector('[data-stage-video]').ended);
     await replay.waitFor({state:'visible'});
    };

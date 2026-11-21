@@ -9,9 +9,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from server import ROOT, Problem, Store, integer, normalize_color_previews
+from server import ROOT, Problem, Store, integer, normalize_color_previews, normalize_color_prices, single_weight
 
-ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews"}
+ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews", "color_prices"}
 ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)")
 
 
@@ -46,8 +46,17 @@ def verify_snapshot(folder):
                 raise ValueError("Fixed infill requires a configurable entry")
             try:
                 integer(entry["fixed_infill"], "固定填充比例", 15, 100)
+                single_weight(entry.get("weight_g"), "固定填充重量")
             except Problem as error:
-                raise ValueError("Invalid public fixed infill") from error
+                raise ValueError("Invalid public fixed infill or weight") from error
+        if "color_prices" in entry:
+            prices = entry["color_prices"]
+            try:
+                normalized_prices = normalize_color_prices(prices, [color["id"] for color in entry["colors"]])
+            except Problem as error:
+                raise ValueError("Invalid public color prices") from error
+            if entry["kind"] != "work" or prices != normalized_prices:
+                raise ValueError("Invalid public color prices")
         for asset in entry["images"] + entry.get("videos", []):
             check_asset(asset)
         check_asset(entry["model"])

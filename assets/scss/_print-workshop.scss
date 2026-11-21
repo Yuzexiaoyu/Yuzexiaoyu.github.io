@@ -118,7 +118,6 @@ body.template-workshop {
   .wk-config h1 { font-size: clamp(27px,2.7vw,37px); font-weight: 500; line-height: 1.4; margin: 17px 0; overflow-wrap: anywhere; }
   .wk-description { color: #c2d2c8; font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; }
   .wk-stock-facts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 20px 0 24px; color: #b5cbbd; font-size: 14px; }
-  .wk-stock-facts [data-price] { color: #c7e7d3; font-size: 16px; }
   .wk-config-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid #2d4034; }
   .wk-label-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 14px; }
   .wk-label-row h2 { font-size: 14px; font-weight: 600; color: #eef5f0; margin: 0; }
@@ -136,7 +135,7 @@ body.template-workshop {
   .wk-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; border: 3px solid #bedccb; background: #85b498; }
   .wk-price-box { display: flex; justify-content: space-between; align-items: end; gap: 20px; border-top: 1px solid #2d4034; padding-top: 23px; margin: 24px 0 22px; }
   .wk-price-box > div > span { display: block; font-size: 14px; font-weight: 600; color: #eef5f0; }
-  .wk-price-box strong { display: block; font-size: 37px; font-weight: 500; color: #c7e7d3; line-height: 1.4; }
+  .wk-config [data-price] { display: block; font-size: 37px; font-weight: 500; color: #c7e7d3; line-height: 1.4; }
   .wk-unit { font-size: 14px; font-weight: 600; color: #eef5f0; padding-bottom: 7px; }
   .wk-contact-button { width: 100%; justify-content: space-between; min-height: 48px; }
   .wk-price-note { text-align: center; }
@@ -233,6 +232,9 @@ body.template-workshop {
   .wk-editor-fixed-infill { display: inline-flex; align-items: center; gap: 6px; color: #c7ddcf; font-size: 12px; }
   .wk-editor-fixed-infill input { width: 78px; padding: 4px 6px; font-size: 13px; }
   .wk-editor .wk-editor-colors { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .wk-editor-color-row { display: flex; min-width: 0; gap: 4px; }
+  .wk-editor-color-row .wk-color-choice { flex: 1; }
+  .wk-editor-color-row > input { width: 4.3em; min-width: 0; padding: 4px 5px; font-size: 12px; }
   .wk-editor .wk-color-choice { min-width: 0; min-height: 36px; }
   .wk-editor .wk-color-choice > input, .wk-editor .wk-color-choice > span:not(.wk-color-choice-name) { flex-shrink: 0; }
   .wk-editor .wk-color-choice > .wk-color-choice-name { width: auto; height: auto; min-width: 0; border-radius: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

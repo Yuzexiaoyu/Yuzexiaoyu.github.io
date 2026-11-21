@@ -93,6 +93,7 @@ body.template-workshop {
   .wk-swatch { width: 44px; height: 44px; }
   .wk-config-section { order: 1; margin-top: 10px; padding-top: 10px; }
   .wk-config-section .wk-label-row { margin-bottom: 8px; }
+  .wk-config-section--fixed-infill .wk-label-row { margin-bottom: 0; }
   .wk-config-section:has(.wk-swatches) { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 18px; }
   .wk-config-section:has(.wk-swatches) .wk-label-row { grid-column: 1; grid-row: 1; min-width: 0; margin: 0; }
   .wk-config-section:has(.wk-swatches) h2, .wk-material > span:first-child { flex-shrink: 0; }
