@@ -32,12 +32,6 @@ export function bindMobileVideoBar(bar: HTMLElement, video: HTMLVideoElement, pl
   const soundOffIcon = sound.querySelector('[data-sound-off]')!;
   let scrubbing = false;
 
-  const syncFrame = () => {
-    if (video.videoWidth && video.videoHeight) {
-      bar.style.setProperty('--wk-video-aspect',String(video.videoWidth / video.videoHeight));
-    }
-  };
-
   function sync() {
     const duration = Number.isFinite(video.duration) ? Math.max(0,video.duration) : 0;
     seek.disabled = duration === 0;
@@ -76,7 +70,5 @@ export function bindMobileVideoBar(bar: HTMLElement, video: HTMLVideoElement, pl
   for (const event of ['play','pause','ended','durationchange','timeupdate','seeked','volumechange']) {
     video.addEventListener(event,sync,{signal});
   }
-  video.addEventListener('resize',syncFrame,{signal});
-  syncFrame();
   sync();
 }
