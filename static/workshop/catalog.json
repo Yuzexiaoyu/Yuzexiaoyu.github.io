@@ -13,11 +13,18 @@
       "min_price": 0,
       "min_weight_g": null,
       "name": "马洛里安-序曲",
-      "revision": 9,
+      "revision": 10,
       "status": "published",
-      "updated_at": "2026-11-21T23:53:11+0800",
+      "updated_at": "2026-11-22T15:10:11+0800",
       "weight_g": 320,
       "images": [
+        {
+          "id": "365f9d8349e69b05746e7900a49826ab95632064ddb0f9737f9e15c25f4f2889",
+          "name": "预览图片",
+          "url": "/workshop/media/365f9d8349e69b05746e7900a49826ab95632064ddb0f9737f9e15c25f4f2889.webp",
+          "kind": "image",
+          "size": 94268
+        },
         {
           "id": "66756b00ff86717029984e96aef3d39a5c14a1afb8301482b7aa2d523ba60144",
           "name": "预览图片",

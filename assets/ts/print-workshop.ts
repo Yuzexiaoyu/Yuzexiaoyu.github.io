@@ -320,11 +320,44 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     },{signal}));
     update();
     const dialog=root.querySelector<HTMLDialogElement>('[data-contact-dialog]')!;
+    const dialogBody=dialog.querySelector<HTMLElement>('.wk-contact-body')!;
     const text=root.querySelector<HTMLTextAreaElement>('[data-contact-text]')!;
+    const number=root.querySelector<HTMLElement>('[data-contact-number]')!;
     const feedback=root.querySelector<HTMLElement>('[data-copy-feedback]')!;
+    number.textContent=CONTACT_QQ;
     root.querySelector('[data-close-dialog]')!.addEventListener('click',()=>dialog.close(),{signal});
     dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}},{signal});
-    root.querySelector('[data-copy-again]')!.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(text.value);if(!signal.aborted)setStatus(feedback,'清单已复制，可以粘贴到 QQ。');}catch{if(signal.aborted)return;text.focus();text.select();setStatus(feedback,'自动复制未成功，已选中清单，请手动复制。');}},{signal});
+    let copyAttempt=0;
+    dialog.addEventListener('close',()=>{copyAttempt++;},{signal});
+    async function copy(value:string, message:string, fallback:()=>string) {
+      const attempt=++copyAttempt;
+      const active=()=>!signal.aborted&&dialog.open&&attempt===copyAttempt;
+      try {
+        await navigator.clipboard.writeText(value);
+      } catch {
+        if(active())setStatus(feedback,fallback(),true);
+        return;
+      }
+      if(active())setStatus(feedback,message);
+    }
+    root.querySelector('[data-copy-again]')!.addEventListener('click',()=>{
+      void copy(text.value,'清单已复制，可以粘贴到 QQ。',()=>{
+        text.focus();
+        text.select();
+        return '已选中清单，请手动复制。';
+      });
+    },{signal});
+    root.querySelector('[data-copy-qq]')!.addEventListener('click',()=>{
+      void copy(CONTACT_QQ,'QQ 号已复制。',()=>{
+        number.scrollIntoView({block:'nearest'});
+        const selection=window.getSelection();
+        const selectionRange=document.createRange();
+        selectionRange.selectNodeContents(number);
+        selection?.removeAllRanges();
+        selection?.addRange(selectionRange);
+        return '请长按或选中上方 QQ 号手动复制。';
+      });
+    },{signal});
     contact.addEventListener('click',async()=>{
       contact.disabled=true;
       const controls=[range,...Array.from(container.querySelectorAll<HTMLButtonElement>('[data-color-id]'))].filter((control):control is HTMLInputElement|HTMLButtonElement=>!!control);
@@ -341,8 +374,12 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         text.value=[`商品：${entry.name}`,`材质：${q.material||'—'}`,
           ...(configurable?[`颜色：${color!.name}`,`填充比例：${q.infill??infill}%`]:[]),
           `报价：${money(q.price)}`].join('\n');
-        root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=(settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码">`:'<p class="wk-qr-empty">店主还没有设置 QQ 二维码。清单可以先复制保存。</p>')+`<p class="wk-contact-number">QQ：<strong>${CONTACT_QQ}</strong></p>`;
-        setStatus(feedback,changed?'商品信息已更新，清单已使用最新报价。':'');dialog.showModal();
+        root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码">`:'';
+        setStatus(feedback,changed?'商品信息已更新，清单已使用最新报价。':'');
+        dialog.showModal();
+        dialogBody.scrollTop=0;
+        text.setSelectionRange(0,0);
+        text.scrollTop=0;
       }catch(error){if(!abortError(error))setStatus(container.querySelector('[data-contact-error]'),(error as Error).message,true);}
       finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range?.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price==null;}}
     },{signal});

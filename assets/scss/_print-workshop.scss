@@ -143,19 +143,26 @@ body.template-workshop {
   .wk-work-note p { font-size: 12px; color: #819d8a; margin: 10px 0 20px; }
   .wk-dialog, .wk-editor { color: #dbeade; background: #142019; border: 1px solid #425e4a; border-radius: 16px; padding: 35px; width: Min(480px,calc(100% - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; }
   .wk-dialog::backdrop, .wk-editor::backdrop { background: #030c08ba; backdrop-filter: blur(5px); }
+  .wk-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+  .wk-contact-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
+  .wk-contact-heading p { margin: 0; font-size: 14px; color: #b4cbbc; }
+  .wk-contact-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .wk-dialog h2 { font-size: 25px; font-weight: 500; margin: 0 0 10px; }
-  .wk-dialog > p { font-size: 14px; color: #b4cbbc; }
   .wk-dialog .wk-eyebrow { font-size: 9px; }
   .wk-icon-button { width: 36px; height: 36px; font-size: 25px; border-radius: 50%; color: #bbd7c6; background: #2b4534; display: grid; place-items: center; padding: 0; }
-  .wk-dialog-close { position: absolute; top: 13px; right: 13px; }
+  .wk-dialog-close { flex: none; }
   .wk-dialog-close svg { display: block; width: 20px; height: 20px; }
   .wk-contact-qr { display: block; width: 180px; height: 180px; object-fit: contain; background: transparent; padding: 0; border-radius: 0; margin: 18px auto 8px; }
   [data-contact-qr] { text-align: center; }
-  .wk-contact-number { margin: 12px 0 0; font-size: 15px; color: #dbeade; }
+  .wk-contact-number { margin: 12px 0 0; text-align: center; font-size: 15px; color: #dbeade; }
   .wk-contact-number strong { font-weight: 600; color: #eef5f0; letter-spacing: .5px; user-select: all; }
-  .wk-dialog textarea { width: 100%; height: 160px; font-size: 14px; resize: vertical; line-height: 1.7; margin: 16px 0 12px; }
-  .wk-dialog > .wk-button { width: 100%; }
-  .wk-qr-empty { font-size: 13px; background: #243829; border-radius: 8px; padding: 18px; color: #c5dacd; margin: 20px 0 0; }
+  .wk-contact-list { position: relative; margin: 16px 0 12px; border: 1px solid #344049; border-radius: 8px; background: #111a20; }
+  .wk-dialog .wk-copy-list { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; z-index: 1; min-height: 34px; padding: 4px 8px; }
+  .wk-dialog textarea { display: block; width: 100%; height: 160px; padding-inline-end: 60px; border: 0; background: transparent; font-size: 14px; resize: vertical; line-height: 1.7; }
+  .wk-contact-body > .wk-button { width: 100%; }
+  .wk-contact-body :focus-visible { outline-offset: -2px; }
+  .wk-dialog > .wk-feedback { display: block; flex: none; min-height: 0; margin: 0; }
+  .wk-dialog > .wk-feedback:not(:empty) { margin-top: 10px; }
   .wk-admin-tabs { display: flex; border-bottom: 1px solid #314939; gap: 30px; margin: 24px 0; }
   .wk-admin-tabs button { background: transparent; color: #829e8b; padding: 12px 0; border-bottom: 2px solid transparent; font-size: 13px; margin-bottom: -1px; }
   .wk-admin-tabs button.is-active { color: #b4d9c1; border-bottom-color: #a2d3bc; }
