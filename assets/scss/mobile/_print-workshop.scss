@@ -137,9 +137,8 @@ body.template-workshop {
   .wk-dialog { width: calc(100% - 24px); padding: 16px 20px 20px; }
   .wk-dialog textarea { font-size: 16px; height: 180px; }
   .wk-dialog h2 { font-size: 23px; }
-  .wk-dialog .wk-button { min-height: 46px; }
+  .wk-contact-body > .wk-button { min-height: 46px; }
   .wk-dialog-close { width: 44px; height: 44px; }
-  .wk-dialog .wk-copy-list { min-height: 44px; }
   .wk-contact-qr { width: 160px; height: 160px; }
   .wk-admin-heading { align-items: flex-start; gap: 12px; margin: 24px 0; }
   .wk-admin-heading h1 { font-size: 23px; }
