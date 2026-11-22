@@ -83,23 +83,19 @@ section.article-list > article {
 }
 
 section.home-article-list > .home-pinned-card {
-  .home-card-pin {
-    position: absolute;
-    inset-block-start: 8px;
-    inset-inline-start: 8px;
-    z-index: 3;
-    padding: 3px 8px;
-    border: 1px solid rgba(255, 255, 255, .28);
-    border-radius: 99px;
-    background: #11242cf0;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.3;
-    pointer-events: none;
+  .article-image {
+    z-index: 1;
+    container-type: inline-size;
+    background: radial-gradient(ellipse at 50% 18%, #393454, #161729 76%);
   }
-
-  .article-image { z-index: 1; }
+  .article-image img { object-position: center 34%; }
+  @container (min-width: 400px) {
+    .article-image img {
+      max-width: 396px;
+      margin-inline: auto;
+      mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+    }
+  }
   .article-details { position: static; }
   .article-title a::after { content: ""; position: absolute; inset: 0; }
   &:focus-within { outline: 2px solid currentColor; outline-offset: -2px; }

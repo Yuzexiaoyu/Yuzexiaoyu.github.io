@@ -1,7 +1,6 @@
 {{ $image := partial "helper/image" (dict "Image" .Params.image "Resources" .Resources) }}
 <article class="{{ if $image }}has-image{{ end }}{{ if .Params.homePinned }} home-pinned-card{{ end }}">
     {{ partial "article/components/header" (dict "Page" . "IsList" true) }}
-    {{- if .Params.homePinned }}<span class="home-card-pin">置顶</span>{{ end }}
     <div class="m-home-overlay" style="display:none">
         <strong class="m-home-title">{{ .Title }}</strong>
         {{ with .Params.description }}<span class="m-home-subtitle">{{ . }}</span>{{ end }}
