@@ -36,19 +36,17 @@ body.template-workshop {
   .wk-video-bar {
     position: absolute;
     inset-inline: 0;
-    // Match the visible frame of the contained video when the stage is letterboxed.
-    width: clamp(100px, calc(100cqh * var(--wk-video-aspect,1)), 100%);
+    // Follow the video frame while leaving enough room to seek on narrow clips.
+    width: clamp(Min(100%, 180px), calc(100cqh * var(--wk-video-aspect,1)), 100%);
     bottom: Max(0px, calc(50% - 50cqw / var(--wk-video-aspect,1)));
     margin-inline: auto;
     z-index: 3;
-    padding: 12px 6px 2px;
-    background: linear-gradient(transparent, rgba(0,0,0,.72) 57%, rgba(0,0,0,.94));
+    display: grid;
+    grid-template-columns: 44px minmax(0,auto) minmax(24px,1fr) 44px;
+    align-items: center;
+    padding-bottom: 2px;
     color: #fff;
     pointer-events: none;
-  }
-  .wk-video-actions {
-    display: flex;
-    align-items: center;
   }
   .wk-video-bar button {
     display: grid;
@@ -62,15 +60,14 @@ body.template-workshop {
     color: inherit;
     pointer-events: auto;
   }
-  .wk-video-bar [data-video-sound] { margin-inline-start: auto; }
-  .wk-video-bar svg { width: 22px; height: 22px; fill: currentColor; }
+  .wk-video-bar svg { width: 22px; height: 22px; fill: currentColor; filter: drop-shadow(0 1px 2px #000a); }
   .wk-video-bar :is(button,input) { -webkit-tap-highlight-color: transparent; }
   .wk-video-bar :is(button,input):focus-visible { outline: 2px solid #fff !important; outline-offset: -2px; }
   .wk-video-bar input {
     appearance: none;
     display: block;
     width: 100%;
-    height: 24px;
+    height: 32px;
     margin: 0;
     padding: 0;
     border: 0;
@@ -81,15 +78,16 @@ body.template-workshop {
   .wk-video-bar input::-webkit-slider-runnable-track {
     height: 4px;
     border-radius: 8px;
+    box-shadow: 0 1px 2px #000a;
     background: linear-gradient(to right,#fff var(--wk-video-progress,0%),rgba(255,255,255,.44) var(--wk-video-progress,0%));
   }
   .wk-video-bar input::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; margin-top: -3px; border-radius: 50%; background: transparent; }
   .wk-video-bar input:is(:active,:focus-visible)::-webkit-slider-thumb { background: #fff; }
-  .wk-video-bar input::-moz-range-track { height: 4px; border-radius: 8px; background: rgba(255,255,255,.44); }
+  .wk-video-bar input::-moz-range-track { height: 4px; border-radius: 8px; box-shadow: 0 1px 2px #000a; background: rgba(255,255,255,.44); }
   .wk-video-bar input::-moz-range-progress { height: 4px; border-radius: 8px; background: #fff; }
   .wk-video-bar input::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: transparent; }
   .wk-video-bar input:is(:active,:focus-visible)::-moz-range-thumb { background: #fff; }
-  .wk-video-time { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12px; }
+  .wk-video-time { min-width: 0; margin-inline-end: 8px; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12px; text-shadow: 0 1px 2px #000; }
   .wk-stage.is-swiping > .wk-swipe-current { transform: translate3d(var(--wk-swipe-x,0px),0,0); will-change: transform; }
   .wk-swipe-preview { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; background: #0b1214; transform: translate3d(var(--wk-swipe-neighbor-x,100%),0,0); will-change: transform; pointer-events: none; }
   // Keep center drags available for 3D rotation; reserve invisible edges for media swipes.
