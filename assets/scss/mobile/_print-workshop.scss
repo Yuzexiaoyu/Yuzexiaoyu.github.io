@@ -39,8 +39,7 @@ body.template-workshop {
     z-index: 3;
     display: grid;
     grid-template-columns: 44px minmax(0,auto) minmax(24px,1fr) 44px;
-    align-items: center;
-    padding-bottom: 2px;
+    align-items: end;
     color: #fff;
     pointer-events: none;
   }
@@ -52,7 +51,7 @@ body.template-workshop {
     background: transparent;
     border: 0;
     border-radius: 50%;
-    padding: 0;
+    padding: 20px 0 0;
     color: inherit;
     pointer-events: auto;
   }
@@ -65,7 +64,7 @@ body.template-workshop {
     width: 100%;
     height: 44px;
     margin: 0;
-    padding: 0;
+    padding: 20px 0 0;
     border: 0;
     background: transparent;
     touch-action: none;
@@ -81,7 +80,7 @@ body.template-workshop {
   .wk-video-bar input::-moz-range-track { height: 5px; border-radius: 8px; box-shadow: 0 1px 2px #000a; background: rgba(255,255,255,.44); }
   .wk-video-bar input::-moz-range-progress { height: 5px; border-radius: 8px; background: #fff; }
   .wk-video-bar input::-moz-range-thumb { width: 9px; height: 9px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px #000a; }
-  .wk-video-time { min-width: 0; margin-inline-end: 8px; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12px; text-shadow: 0 1px 2px #000; }
+  .wk-video-time { min-width: 0; margin-inline-end: 8px; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12px; line-height: 24px; text-shadow: 0 1px 2px #000; }
   .wk-stage.is-swiping > .wk-swipe-current { transform: translate3d(var(--wk-swipe-x,0px),0,0); will-change: transform; }
   .wk-swipe-preview { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; background: #0b1214; transform: translate3d(var(--wk-swipe-neighbor-x,100%),0,0); will-change: transform; pointer-events: none; }
   // Keep center drags available for 3D rotation; reserve invisible edges for media swipes.
