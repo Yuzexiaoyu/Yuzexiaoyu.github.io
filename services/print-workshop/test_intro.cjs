@@ -10,8 +10,10 @@ assert.ok(source,'Build the local Hugo site before running entrance tests');
 function page({path='/',mobile=false,reduced=false,previous}={}){
   let now=0,sequence=0;const events={},speeds=[],animations=[],frames=new Map();
   class Element{
-    constructor(name='module'){this.name=name;this.dataset={};this.inert=false;this.isConnected=true;this.groups=new Map();}
+    constructor(name='module'){this.name=name;this.dataset={};this.inert=false;this.isConnected=true;this.groups=new Map();this.listeners=new Map();}
     querySelectorAll(selector){return this.groups.get(selector)||[];}
+    querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
+    addEventListener(event,listener){this.listeners.set(event,listener);}
     animate(keyframes,timing){
       const animation={target:this,keyframes,timing,created:now,started:now,currentTime:0,playState:'running',cancelled:false,onfinish:null,
         pause(){if(this.playState==='running')this.currentTime=now-this.started;this.playState='paused';},
@@ -45,17 +47,51 @@ test('direct entry never hides or locks the body before modules exist',()=>{
   assert.ok(p.animations.every(animation=>animation.cancelled&&!animation.target.dataset.workshopReveal));
 });
 
-test('cards start immediately with a short capped stagger',()=>{
+test('desktop catalog reveals header, tabs and then cards with a short stagger',()=>{
   const p=page(),root=p.root('catalog',20);p.window.WorkshopIntro.enter(root);
   const [brand,back,toolbar,...cards]=p.animations;
   assert.equal(brand.target.name,'brand');assert.equal(back.target.name,'back');assert.equal(toolbar.target.name,'toolbar');
-  assert.ok(brand.timing.delay<back.timing.delay&&back.timing.delay<toolbar.timing.delay);
-  assert.equal(cards[0].timing.delay,0);
+  assert.equal(brand.timing.delay,0);
+  assert.equal(back.timing.delay,0);
+  assert.ok(toolbar.timing.delay>=brand.timing.duration);
+  assert.ok(cards[0].timing.delay>=toolbar.timing.delay+toolbar.timing.duration);
   assert.equal(brand.keyframes[0].transform,'translate3d(-24px,0px,0)');
   assert.equal(back.keyframes[0].transform,'translate3d(24px,0px,0)');
   assert.ok(cards[1].timing.delay>cards[0].timing.delay);
-  assert.ok(cards.every(card=>card.timing.delay+card.timing.duration<=410));
+  assert.ok(cards.every(card=>card.timing.delay+card.timing.duration-cards[0].timing.delay<=410));
   assert.ok(cards.every(card=>card.keyframes[0].transform==='translate3d(0px,10px,0)'));
+  assert.ok(cards.every(card=>card.keyframes[0].opacity===0));
+});
+
+test('a late cover fades after the card has become visible',()=>{
+  const p=page(), root=p.root('catalog',1);
+  const card=root.querySelector('.wk-grid > .wk-card');
+  const cover=p.add(card,'.wk-card-image > img','cover');
+  p.window.WorkshopIntro.enter(root);
+  p.step(1000);
+  assert.equal(p.window.WorkshopIntro.active(),false);
+  assert.ok(p.animations.some(animation=>animation.target===card));
+  assert.ok(!p.animations.some(animation=>animation.target===cover));
+  assert.equal(cover.dataset.workshopCoverPending,'true');
+  cover.listeners.get('load')();
+  const fade=p.animations.find(animation=>animation.target===cover);
+  assert.equal(cover.dataset.workshopCoverPending,undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(fade.keyframes)),[{opacity:0},{opacity:1}]);
+  p.step(1032);
+  assert.equal(fade.timing.delay,0);
+  p.step(1400);
+  assert.equal(p.window.WorkshopIntro.active(),false);
+});
+
+test('a cover available before its turn fades with its card',()=>{
+  const p=page(), root=p.root('catalog',1);
+  const card=root.querySelector('.wk-grid > .wk-card');
+  const cover=p.add(card,'.wk-card-image > img','cover');
+  p.window.WorkshopIntro.enter(root);
+  p.step(150);
+  cover.listeners.get('load')();
+  assert.equal(cover.dataset.workshopCoverPending,undefined);
+  assert.ok(!p.animations.some(animation=>animation.target===cover));
 });
 
 test('slow HTML navigation leaves the existing page usable without an animation clock',()=>{
@@ -120,14 +156,22 @@ test('Swup body replacement preserves both existing input states',()=>{
 
 test('reduced motion simplifies modules without controlling the shared background',()=>{
   const p=page({reduced:true}),root=p.root('catalog',4);p.window.WorkshopIntro.enter(root);
-  assert.ok(p.animations.every(a=>a.timing.duration===260&&a.timing.delay<=180));
+  const [brand,,toolbar,card]=p.animations;
+  assert.ok(toolbar.timing.delay>=brand.timing.duration);
+  assert.ok(card.timing.delay>=toolbar.timing.delay+toolbar.timing.duration);
+  assert.ok(p.animations.every(a=>a.timing.duration<=260));
   assert.ok(p.animations.every(a=>a.keyframes.every(frame=>frame.transform===undefined)));
   assert.equal(p.speeds.length,0);assert.equal(p.document.body.inert,false);
-  p.step(500);assert.equal(p.window.WorkshopIntro.active(),false);
+  p.step(550);assert.equal(p.window.WorkshopIntro.active(),false);
 });
 
-test('mobile module lifecycle does not change the lightweight canvas speed',()=>{
-  const p=page({mobile:true});p.window.WorkshopIntro.navigate('/prints/','/');p.window.WorkshopIntro.enter(p.root('catalog',1));p.step(800);
+test('mobile catalog reveals tabs and then cards without changing canvas speed',()=>{
+  const p=page({mobile:true});p.window.WorkshopIntro.navigate('/prints/','/');p.window.WorkshopIntro.enter(p.root('catalog',1));
+  const [tabs,card]=p.animations;
+  assert.deepEqual(p.animations.map(a=>a.target.name),['toolbar','card0']);
+  assert.equal(tabs.timing.delay,0);
+  assert.ok(card.timing.delay>=tabs.timing.duration);
+  p.step(800);
   assert.equal(p.speeds.length,0);
 });
 
@@ -145,7 +189,9 @@ test('admin and unsupported animation APIs stay directly usable',()=>{
 
 test('inline entrance styles contain no whole-page hiding rule',()=>{
   const styles=html.match(/<style id="workshop-intro-styles">([\s\S]*?)<\/style>/)?.[1];
-  assert.ok(styles);assert.doesNotMatch(styles,/visibility:\s*hidden|pointer-events:\s*none|opacity:\s*0|body\s*>/);
+  const pendingCover=/body\.template-workshop \.wk-card-image\s*>\s*img\[data-workshop-cover-pending\]\s*\{\s*opacity:\s*0;?\s*\}/;
+  assert.match(styles,pendingCover);
+  assert.doesNotMatch(styles.replace(pendingCover,''),/visibility:\s*hidden|pointer-events:\s*none|opacity:\s*0|body\s*>/);
 });
 
 test('effects start only after the first visible paint',()=>{
@@ -173,8 +219,9 @@ test('hiding midway pauses and showing resumes unfinished effects',()=>{
 });
 
 test('a stale bootstrap is replaced instead of silently retaining its old behavior',()=>{
-  let cancelled=false;const p=page({previous:{cancel(){cancelled=true;}}});
-  assert.equal(cancelled,true);assert.equal(p.window.WorkshopIntro.version,'module-reveal-6');
+  let cancelled=false;const previous={version:'module-reveal-7',cancel(){cancelled=true;}};
+  const p=page({previous});
+  assert.equal(cancelled,true);assert.notEqual(p.window.WorkshopIntro.version,previous.version);
   assert.equal(typeof p.window.WorkshopIntro.refresh,'function');
 });
 
@@ -183,9 +230,9 @@ test('data arriving before the first visible frame cannot consume the module off
   p.step(16);p.stall(500);p.add(root,'.wk-grid > .wk-card','cached-card');p.window.WorkshopIntro.refresh(root);p.step(516);
   const byName=name=>p.animations.find(a=>a.target.name===name);
   assert.equal(byName('brand').timing.delay,0);
-  assert.equal(byName('back').timing.delay,160);
-  assert.equal(byName('toolbar').timing.delay,300);
-  assert.equal(byName('cached-card').timing.delay,0);
+  assert.equal(byName('back').timing.delay,0);
+  assert.ok(byName('toolbar').timing.delay>=byName('brand').timing.duration);
+  assert.ok(byName('cached-card').timing.delay>=byName('toolbar').timing.delay+byName('toolbar').timing.duration);
 });
 
 test('article and workshop visits share acceleration and decelerate while modules are active',()=>{
@@ -219,7 +266,8 @@ test('internal visits reveal details immediately and keep header modules still',
   p.window.WorkshopIntro.navigate('/prints/','/p/article/');
   p.window.WorkshopIntro.enter(p.root('catalog',1));
   assert.ok(p.animations.some(a=>!a.cancelled&&a.target.name==='brand'));
-  assert.equal(p.animations.findLast(a=>a.target.name==='card0').timing.delay,0);
+  const toolbar=p.animations.findLast(a=>a.target.name==='toolbar');
+  assert.ok(p.animations.findLast(a=>a.target.name==='card0').timing.delay>=toolbar.timing.delay+toolbar.timing.duration);
 });
 
 test('workshop returns and reduced motion keep fast navigation without stale state',()=>{

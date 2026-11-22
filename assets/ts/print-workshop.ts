@@ -99,6 +99,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         <span class="wk-photo-status" data-photo-status role="status" hidden></span>
         ${previews?'<p class="wk-color-placeholder" data-color-placeholder role="status" hidden></p>':''}
         ${entry.model?`<model-viewer data-viewer alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
+        ${mobile&&videos.length?mobileVideoBar:''}
       </div>
       <div class="wk-gallery-tools">
         <div class="wk-view-switch" role="group" aria-label="媒体选择">
@@ -108,7 +109,6 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         </div>
         ${entry.model?'<button type="button" class="wk-text-link" data-reset-view hidden>↺ 重置视角</button>':''}
       </div>
-      ${mobile&&videos.length?mobileVideoBar:''}
     </div><aside class="wk-config">
       <h1>${e(entry.name)}</h1>
       <p class="wk-description">${e(entry.description).replace(/\n/g,'<br>')}</p>

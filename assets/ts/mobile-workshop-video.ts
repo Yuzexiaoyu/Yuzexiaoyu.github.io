@@ -1,11 +1,21 @@
 export const mobileVideoBar = `
-  <div class="wk-video-bar" data-video-bar role="group" aria-label="视频播放控制">
-    <button type="button" data-video-toggle aria-label="播放">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path data-play-icon d="M8 5v14l11-7z"/><path data-pause-icon d="M6 5h4v14H6zm8 0h4v14h-4z" hidden/></svg>
-    </button>
+  <div class="wk-video-bar" data-video-bar role="group" aria-label="视频播放控制" hidden>
+    <div class="wk-video-actions">
+      <button type="button" data-video-toggle aria-label="播放">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path data-play-icon d="M8 5v14l11-7z"/><path data-pause-icon d="M6 5h4v14H6zm8 0h4v14h-4z" hidden/></svg>
+      </button>
+      <span class="wk-video-time" data-video-time aria-hidden="true">0:00 / 0:00</span>
+      <button type="button" data-video-sound aria-label="静音">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 9h4l5-4v14l-5-4H3z"/>
+          <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path data-sound-on d="M15 9a4.2 4.2 0 0 1 0 6m2.5-8.5a7.8 7.8 0 0 1 0 11"/>
+            <path data-sound-off d="m15.5 9.5 5 5m0-5-5 5" hidden/>
+          </g>
+        </svg>
+      </button>
+    </div>
     <input type="range" data-video-seek aria-label="播放进度" min="0" max="1" step="0.1" value="0" disabled>
-    <span class="wk-video-time" data-video-time aria-hidden="true">0:00 / 0:00</span>
-    <button type="button" class="wk-video-sound" data-video-sound>静音</button>
   </div>`;
 
 function timestamp(seconds: number): string {
@@ -20,7 +30,15 @@ export function bindMobileVideoBar(bar: HTMLElement, video: HTMLVideoElement, pl
   const sound = bar.querySelector<HTMLButtonElement>('[data-video-sound]')!;
   const playIcon = toggle.querySelector('[data-play-icon]')!;
   const pauseIcon = toggle.querySelector('[data-pause-icon]')!;
+  const soundOnIcon = sound.querySelector('[data-sound-on]')!;
+  const soundOffIcon = sound.querySelector('[data-sound-off]')!;
   let scrubbing = false;
+
+  const syncFrame = () => {
+    if (video.videoWidth && video.videoHeight) {
+      bar.style.setProperty('--wk-video-aspect',String(video.videoWidth / video.videoHeight));
+    }
+  };
 
   function sync() {
     const duration = Number.isFinite(video.duration) ? Math.max(0,video.duration) : 0;
@@ -36,8 +54,9 @@ export function bindMobileVideoBar(bar: HTMLElement, video: HTMLVideoElement, pl
     toggle.setAttribute('aria-label',playing ? '暂停' : '播放');
     playIcon.toggleAttribute('hidden',playing);
     pauseIcon.toggleAttribute('hidden',!playing);
-    const soundLabel = video.muted ? '开启声音' : '静音';
-    if (sound.textContent !== soundLabel) sound.textContent = soundLabel;
+    sound.setAttribute('aria-label',video.muted ? '开启声音' : '静音');
+    soundOnIcon.toggleAttribute('hidden',video.muted);
+    soundOffIcon.toggleAttribute('hidden',!video.muted);
   }
   toggle.addEventListener('click',()=>{
     if (video.paused || video.ended) play(video.ended);
@@ -59,5 +78,7 @@ export function bindMobileVideoBar(bar: HTMLElement, video: HTMLVideoElement, pl
   for (const event of ['play','pause','ended','durationchange','timeupdate','seeked','volumechange']) {
     video.addEventListener(event,sync,{signal});
   }
+  video.addEventListener('resize',syncFrame,{signal});
+  syncFrame();
   sync();
 }

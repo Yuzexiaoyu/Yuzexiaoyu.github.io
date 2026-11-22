@@ -8,7 +8,9 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
     while (buttons[index]?.hidden) index += step;
     return buttons[index];
   };
-  const media = Array.from(stage.querySelectorAll<HTMLElement>(':scope > .wk-stage-image,:scope > .wk-stage-video,:scope > .wk-video-replay,:scope > model-viewer,:scope > .wk-viewer-loading,:scope > .wk-viewer-failed'));
+  const media = Array.from(stage.querySelectorAll<HTMLElement>(
+    ':scope > :is(.wk-stage-image,.wk-stage-video,.wk-video-replay,.wk-video-bar,model-viewer,.wk-viewer-loading,.wk-viewer-failed)'
+  ));
   const preview = document.createElement('img');
   preview.className = 'wk-swipe-preview';
   preview.alt = ''; preview.setAttribute('aria-hidden','true'); preview.decoding = 'async'; preview.draggable = false;

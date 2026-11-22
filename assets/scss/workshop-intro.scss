@@ -5,3 +5,6 @@ html[data-workshop-entry] {
 body.template-workshop [data-workshop-reveal] {
   will-change: opacity, transform;
 }
+body.template-workshop .wk-card-image > img[data-workshop-cover-pending] {
+  opacity: 0;
+}
