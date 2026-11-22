@@ -74,6 +74,9 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       }).catch(()=>{});
     }
     const mobile=document.documentElement.dataset.ui==='mobile';
+    const description=mobile
+      ? entry.description.split(/\r\n?|\n/).filter(line=>line.trim()).map(e).join('<br>')
+      : e(entry.description).replace(/\n/g,'<br>');
     const videos=entry.videos||[];
     const photos=entry.images;
     const previews=configurable?entry.color_previews:undefined;
@@ -111,7 +114,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       </div>
     </div><aside class="wk-config">
       <h1>${e(entry.name)}</h1>
-      <p class="wk-description">${e(entry.description).replace(/\n/g,'<br>')}</p>
+      <p class="wk-description">${description}</p>
       ${configurable?`
         <div class="wk-config-section">
           <div class="wk-label-row"><h2>选择颜色</h2><span data-color-name>${e(color?.name)}</span></div>

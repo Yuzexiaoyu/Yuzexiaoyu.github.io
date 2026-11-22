@@ -83,6 +83,10 @@ function refresh(): void {
     if (link.origin === location.origin && !link.target && !link.hasAttribute('download') &&
         url !== location.pathname + location.search) urls.add(url);
   }
+  if (current) schedule = new AbortController();
+  const signal = schedule?.signal;
+  const prioritizeWorkshop = mobile && urls.has('/prints/');
+  if (prioritizeWorkshop && signal) queue.push(() => w.__warmWorkshop?.(signal));
   for (const url of urls) {
     queue.push(async () => {
       const result = await w.swup.preload(url);
@@ -91,12 +95,10 @@ function refresh(): void {
     });
   }
   pump();
-  if (!current) return;
+  if (!signal) return;
 
-  schedule = new AbortController();
-  const {signal} = schedule;
   afterLoadIdle(() => {
-    queue.push(() => w.__warmWorkshop?.(signal));
+    if (!prioritizeWorkshop) queue.push(() => w.__warmWorkshop?.(signal));
     if (!mobile && !w.__isMobileDevice?.()) queue.push(() => w.__warmNextBookshelfVideo?.());
     for (const url of (w.__preloadData?.novelCovers || []).slice(0, mobile ? 4 : 8)) {
       queue.push(() => warmCover(url));

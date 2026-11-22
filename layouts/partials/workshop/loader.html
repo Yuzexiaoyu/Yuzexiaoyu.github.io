@@ -15,9 +15,10 @@
     }
     return window.__workshopLoad;
   }
-  function prepare(){
-    if (dataSource === 'static' && !window.WorkshopApp && !window.__workshopCatalogRequest) {
-      var request = fetch('/workshop/catalog.json', {cache: 'no-cache'});
+  function prepare(path){
+    var catalog = dataSource === 'static' ? '/workshop/catalog.json' : path === '/prints/' ? '/api/catalog' : null;
+    if (catalog && !window.WorkshopApp && !window.__workshopCatalogRequest) {
+      var request = fetch(catalog, {cache: dataSource === 'static' ? 'no-cache' : 'no-store'});
       window.__workshopCatalogRequest = request;
       request.catch(function(){
         if (window.__workshopCatalogRequest === request) delete window.__workshopCatalogRequest;
@@ -26,8 +27,9 @@
     return load();
   }
   window.__prepareWorkshop = prepare;
-  if (/^\/prints\/(?:detail\/)?$/.test(window.location?.pathname || '')) {
-    prepare().catch(function(){});
+  var initialPath = window.location?.pathname || '';
+  if (/^\/prints\/(?:detail\/)?$/.test(initialPath)) {
+    prepare(initialPath).catch(function(){});
   }
   window.__runWorkshop = function(){
     var root = document.querySelector('[data-workshop]');
@@ -37,7 +39,7 @@
     if (!root) return;
     if (window.WorkshopIntro) window.WorkshopIntro.enter(root);
     if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
-    prepare().then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
+    prepare(root.dataset.workshop === 'catalog' ? '/prints/' : null).then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
       var node=document.querySelector('[data-catalog-grid],[data-detail-content],[data-admin-notice]');
       if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
     });
@@ -45,7 +47,7 @@
   window.__destroyWorkshop = function(){if(window.WorkshopApp)window.WorkshopApp.destroy();};
   window.__warmWorkshop = function(signal){
     if (signal.aborted || !window.__pagePreload?.allowed()) return Promise.resolve();
-    return prepare().then(function(){
+    return prepare('/prints/').then(function(){
       if (!signal.aborted && window.__pagePreload.allowed()) {
         return window.WorkshopApp.preload(dataSource,signal);
       }

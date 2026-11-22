@@ -133,3 +133,15 @@ test('local preview consumes its preload once then reads live data on return', a
   await flush();
   assert.deepEqual(h.requests, ['/api/catalog','/api/catalog']);
 });
+
+test('a local catalog visit consumes the request started before the bundle', async () => {
+  const h = harness(async()=>response({entries:fixture.entries}),Promise.resolve(response({entries:fixture.entries})));
+  const grid = h.mount('local');
+  await flush();
+  assert.match(grid.innerHTML,/wk-card/);
+  assert.deepEqual(h.requests,[]);
+  h.app.destroy();
+  h.mount('local','product');
+  await flush();
+  assert.deepEqual(h.requests,['/api/catalog']);
+});

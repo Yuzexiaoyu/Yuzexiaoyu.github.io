@@ -6,7 +6,7 @@
   {{ partial "workshop/header.html" . }}
   <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
     <div class="wk-collection-toolbar"><div class="wk-tabs" role="tablist" aria-label="内容栏目"><button type="button" role="tab" data-catalog-tab="work">可选 <span data-count="work">—</span></button><button type="button" role="tab" data-catalog-tab="product">现货 <span data-count="product">—</span></button></div></div>
-    <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty">正在打开工坊…</p></div>
+    <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty wk-catalog-loading"><span>正在打开工坊…</span></p></div>
   </section>
 </div>
 <script>window.__runWorkshop?.();</script>

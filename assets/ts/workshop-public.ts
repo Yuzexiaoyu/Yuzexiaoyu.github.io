@@ -1,4 +1,4 @@
-import {api, workPriceAt, workWeightAt, Entry, Settings} from './workshop-shared';
+import {api, readApiJSON, workPriceAt, workWeightAt, Entry, Settings} from './workshop-shared';
 import {canPreload} from './preload-policy';
 
 type Catalog = {version: number; entries: Entry[]; settings: Settings};
@@ -8,11 +8,20 @@ let localPreload: Promise<Entries> | null = null;
 const covers = new Map<string, HTMLImageElement>();
 const bootstrap = window as Window & {__workshopCatalogRequest?: Promise<Response>};
 
+function takeEarlyCatalogRequest(): Promise<Response> | undefined {
+  const request = bootstrap.__workshopCatalogRequest;
+  delete bootstrap.__workshopCatalogRequest;
+  return request;
+}
+
+function loadLocalCatalog(signal?: AbortSignal): Promise<Entries> {
+  return takeEarlyCatalogRequest()?.then(readApiJSON<Entries>) ?? api<Entries>('/api/catalog', signal);
+}
+
 function loadSnapshot(refresh = false): Promise<Catalog> {
   if (!snapshot || refresh) {
     snapshot = (async () => {
-      const earlyRequest = bootstrap.__workshopCatalogRequest;
-      delete bootstrap.__workshopCatalogRequest;
+      const earlyRequest = takeEarlyCatalogRequest();
       const response = await (earlyRequest ?? fetch('/workshop/catalog.json', {cache: 'no-cache'}));
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
         throw new Error('工坊内容暂未加载成功，请稍后刷新。');
@@ -30,7 +39,11 @@ function loadSnapshot(refresh = false): Promise<Catalog> {
 export async function preloadPublicCatalog(source: string, signal?: AbortSignal): Promise<void> {
   let catalog: Entries;
   if (source === 'local') {
-    if (!localPreload) localPreload = api<Entries>('/api/catalog').catch(error => { localPreload = null; throw error; });
+    if (!localPreload) {
+      const pending = loadLocalCatalog();
+      localPreload = pending;
+      void pending.catch(() => { if (localPreload === pending) localPreload = null; });
+    }
     catalog = await localPreload;
   } else {
     catalog = await loadSnapshot();
@@ -55,8 +68,8 @@ export async function preloadPublicCatalog(source: string, signal?: AbortSignal)
 export async function publicApi<T>(url: string, signal?: AbortSignal): Promise<T> {
   signal?.throwIfAborted();
   if (document.querySelector('[data-workshop]')?.getAttribute('data-workshop-source') === 'local') {
-    if (url === '/api/catalog' && localPreload) {
-      const pending = localPreload;
+    if (url === '/api/catalog') {
+      const pending = localPreload ?? loadLocalCatalog(signal);
       localPreload = null;
       const catalog = await pending;
       signal?.throwIfAborted();

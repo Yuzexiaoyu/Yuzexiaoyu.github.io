@@ -22,6 +22,19 @@ body.template-workshop {
   .wk-card-price small { display: inline; margin-left: 6px; font-size: 13px; }
   .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
   .wk-empty { padding: 35px 18px; }
+  .wk-catalog-loading { position: relative; margin: 0; padding: 0; border: 0; background: none; }
+  .wk-catalog-loading > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .wk-catalog-loading::before {
+    content: '';
+    display: block;
+    width: calc((100% - 12px) / 2);
+    aspect-ratio: 1;
+    border: 1px solid #2b3c34;
+    border-radius: 13px;
+    background: linear-gradient(180deg,#192820,#101819);
+    animation: wk-catalog-placeholder .18s ease .25s both;
+  }
+  @keyframes wk-catalog-placeholder { from { opacity: 0; } to { opacity: 1; } }
   .wk-breadcrumb { margin: 8px 0; gap: 15px; font-size: 13px; }
   .wk-breadcrumb > [data-detail-breadcrumb] { display: none; }
   .wk-detail-grid { display: flex; flex-direction: column; gap: 8px; padding: 0 0 env(safe-area-inset-bottom,0px); }

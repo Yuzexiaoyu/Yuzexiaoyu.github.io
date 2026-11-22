@@ -29,6 +29,9 @@ export const money = (price: number|null|undefined) => price == null ? '敬请�
 export function setStatus(node: HTMLElement | null, message: string, error = false) { if(node) {node.textContent = message; node.classList.toggle('is-error', error);} }
 export async function api<T>(url: string, signal?: AbortSignal, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, {...options, signal, credentials:'same-origin', cache:'no-store'});
+  return readApiJSON<T>(response);
+}
+export async function readApiJSON<T>(response: Response): Promise<T> {
   if(!response.headers.get('content-type')?.includes('application/json')) throw new Error('工坊服务尚未启动。请运行项目根目录的“启动工坊.cmd”，再打开本地工坊地址。');
   const data = await response.json();
   if(!response.ok) throw new Error(data.error || `请求失败（${response.status}）`);
