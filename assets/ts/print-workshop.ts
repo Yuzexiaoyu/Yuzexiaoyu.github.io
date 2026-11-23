@@ -74,13 +74,20 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
   const video = root.querySelector<HTMLVideoElement>('[data-topic-video]');
   const sources = root.querySelector<HTMLTemplateElement>('[data-topic-video-sources]');
   if (!video || !sources) return;
+  const poster = root.querySelector<HTMLImageElement>('[data-topic-poster]');
   const variants = Array.from(sources.content.querySelectorAll('source'));
   const portraitView = matchMedia(variants.find(source => source.media)?.media ?? '(max-aspect-ratio: 4/5)');
   let activePortrait: boolean | undefined;
+  const showPoster = () => {
+    video.classList.remove('is-playing');
+    if (poster) poster.hidden = false;
+  };
   const start = () => {
     video.muted = true;
     void video.play().catch((error: DOMException) => {
-      if (error.name === 'NotAllowedError' && !signal.aborted) {
+      if (signal.aborted || error.name === 'AbortError') return;
+      showPoster();
+      if (error.name === 'NotAllowedError') {
         root.addEventListener('click', start, {once: true, signal});
       }
     });
@@ -100,7 +107,9 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
     video.classList.add('is-playing');
     root.removeEventListener('click', start);
   }, {signal});
-  video.addEventListener('error', () => video.classList.remove('is-playing'), {signal});
+  video.addEventListener('error', event => {
+    if (event.target === video || event.target === video.lastElementChild) showPoster();
+  }, {capture: true, signal});
   portraitView.addEventListener('change', update, {signal});
   signal.addEventListener('abort', () => {
     video.replaceChildren();

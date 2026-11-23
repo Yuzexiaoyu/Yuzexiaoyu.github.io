@@ -36,7 +36,6 @@ body.template-workshop {
     pointer-events: none;
   }
 
-  .wk-topic-wallpaper picture,
   .wk-topic-wallpaper img,
   .wk-topic-wallpaper video { display: block; width: 100%; height: 100%; }
 
@@ -45,8 +44,8 @@ body.template-workshop {
     object-position: 62% 24%;
   }
 
-  .wk-topic-wallpaper video { position: absolute; inset: 0; opacity: 0; transition: opacity .16s ease; }
-  .wk-topic-wallpaper video.is-playing { opacity: 1; }
+  .wk-topic-wallpaper video { position: absolute; inset: 0; opacity: 0; }
+  .wk-topic-wallpaper video.is-playing { opacity: 1; transition: opacity 3s ease-in-out; }
 
   .wk-topic-wallpaper::after {
     content: "";
@@ -96,7 +95,9 @@ html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
     .wk-topic { --topic-art-height: 75vw; }
     .wk-topic-scene { min-height: calc(var(--topic-art-height) + var(--topic-back-space) + 59px); }
     .wk-topic-wallpaper { bottom: auto; height: var(--topic-art-height); }
-    .wk-topic-wallpaper :is(img, video) { object-fit: contain; object-position: center; }
+    // The portrait video is center-cropped from the landscape source.
+    .wk-topic-wallpaper :is(img, video) { object-position: center; }
+    .wk-topic-wallpaper video { object-fit: contain; }
     .wk-topic-wallpaper::after {
       background: linear-gradient(0deg, var(--topic-bg), #0b101455 12%, transparent 32%),
         linear-gradient(180deg, #0b101450, transparent 24%);

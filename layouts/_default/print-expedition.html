@@ -8,12 +8,10 @@
   </div>
   <article class="wk-topic-scene" aria-labelledby="expedition-title">
     <div class="wk-topic-wallpaper" aria-hidden="true">
-      {{/* Original artwork: https://assets.xboxservices.com/assets/38/74/38740001-90b4-4404-83bb-154475213631.jpg */}}
-      <picture>
-        <source media="(max-aspect-ratio: 4/5)" srcset="{{ "prints/expedition-33/scene-loop-mobile-poster.webp" | relURL }}" width="960" height="720">
-        <img src="{{ "prints/expedition-33/key-art.webp" | relURL }}" width="1920" height="1080" alt="" fetchpriority="high">
-      </picture>
-      {{/* Loop footage: https://motionbgs.com/clair-obscur */}}
+      {{/* The poster is the first frame of this loop: https://motionbgs.com/clair-obscur */}}
+      {{ $poster := "prints/expedition-33/scene-loop-poster.webp" | relURL }}
+      <img data-topic-poster hidden src="{{ $poster }}" width="1600" height="900" alt="" fetchpriority="low">
+      <noscript><img src="{{ $poster }}" width="1600" height="900" alt=""></noscript>
       <video data-topic-video autoplay muted playsinline loop preload="none" disablepictureinpicture disableremoteplayback></video>
       <template data-topic-video-sources>
         <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-4k-mobile-2x.webm" | relURL }}" type='video/webm; codecs="av01.0.12M.08"'>
