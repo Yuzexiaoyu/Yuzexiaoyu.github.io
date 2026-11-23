@@ -11,24 +11,26 @@ body.template-workshop {
     min-height: 100svh;
     --topic-ink: #f7ebd7;
     --topic-bg: #0b1014;
+    --topic-back-space: 0px;
     color: var(--topic-ink);
     background: var(--topic-bg);
   }
 
   .wk-topic-header { position: absolute; inset: 0 0 auto; z-index: 2; padding: 0; }
+  .wk-topic-header .wk-nav-back { display: none; }
 
   .wk-topic-scene {
     position: relative;
     isolation: isolate;
     display: flex;
-    min-height: Clamp(420px, 49vw, 680px);
+    min-height: calc(Clamp(420px, 49vw, 680px) + var(--topic-back-space));
     overflow: hidden;
   }
 
   .wk-topic-wallpaper {
     position: absolute;
     z-index: -1;
-    inset: 0;
+    inset: var(--topic-back-space) 0 0;
     overflow: hidden;
     pointer-events: none;
   }
@@ -76,13 +78,12 @@ body.template-workshop {
   }
 
   .wk-topic-items { padding: 12px 0 32px; }
-  .wk-topic-items > h2 { margin: 0 0 16px; color: var(--topic-ink); font-size: 19px; font-weight: 600; }
   .wk-topic-items .wk-grid { min-height: 0; }
   .wk-topic-status { grid-column: 1/-1; margin: 0; color: #b6b7b3; }
 
   @media (max-aspect-ratio: 4/5) {
     .wk-topic { --topic-art-height: 75vw; }
-    .wk-topic-scene { min-height: calc(var(--topic-art-height) + 59px); }
+    .wk-topic-scene { min-height: calc(var(--topic-art-height) + var(--topic-back-space) + 59px); }
     .wk-topic-wallpaper { bottom: auto; height: var(--topic-art-height); }
     .wk-topic-wallpaper :is(img, video) { object-fit: contain; object-position: center; }
     .wk-topic-wallpaper::after {
@@ -99,9 +100,9 @@ body.template-workshop {
 
 html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
   .container.main-container.flex.on-phone--column { padding-bottom: 0 !important; }
-  .wk-topic { min-height: calc(100svh - var(--m-header-height, 60px)); }
+  .wk-topic { --topic-back-space: 38px; min-height: calc(100svh - var(--m-header-height, 60px)); }
   .wk-topic-inner { padding: 8px 0; }
+  .wk-topic-inner .wk-breadcrumb { margin: 0; }
   .wk-topic-inner h1 { font-size: Clamp(32px, 8vw, 48px); }
   .wk-topic-items { padding-bottom: Max(28px, env(safe-area-inset-bottom, 0px)); }
-  .wk-topic-items > h2 { margin-bottom: 12px; font-size: 16px; }
 }
