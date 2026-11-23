@@ -753,6 +753,11 @@
   }
 }
 
+#toc-toggle-btn,
+#toc-close {
+  touch-action: manipulation;
+}
+
 // ========== TOC 遮罩 ==========
 .reader-toc-overlay {
   position: fixed;
@@ -760,12 +765,12 @@
   background: rgba(0, 0, 0, 0.4);
   z-index: 200;
   opacity: 0;
-  visibility: hidden;
-  transition: all 0.25s ease;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
 
   &.open {
     opacity: 1;
-    visibility: visible;
+    pointer-events: auto;
   }
 }
 
@@ -779,13 +784,12 @@
   background: var(--reader-bg);
   border-left: 1px solid var(--reader-border);
   z-index: 201;
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  visibility: hidden;
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
 
-  &.open { transform: translateX(0); }
+  &.open { visibility: visible; }
 
   .toc-close {
     position: absolute;
@@ -802,7 +806,7 @@
     color: var(--reader-text-secondary);
     cursor: pointer;
     font-size: 18px;
-    transition: all 0.15s ease;
+    transition: color 0.15s ease, border-color 0.15s ease;
     z-index: 2;
 
     &:hover { color: var(--reader-text); border-color: var(--reader-accent); }
@@ -919,7 +923,7 @@
       font-size: 14px;
       font-family: inherit;
       text-align: left;
-      transition: all 0.1s ease;
+      transition: color 0.1s ease, background 0.1s ease;
 
       &:hover {
         color: var(--reader-text);

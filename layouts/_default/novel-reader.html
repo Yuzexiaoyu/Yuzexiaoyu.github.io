@@ -132,6 +132,8 @@ window.__initNovelReader = function() {
   var root = document.getElementById('novel-reader-root');
   if (!root || root.dataset.readerInit) return;
   root.dataset.readerInit = '1';
+  // The inline loader can set the body class before the parser reaches the template's body tag.
+  document.body.classList.add('template-novel-reader');
   var mobile = !!(window.__isMobileUI && window.__isMobileUI());
   var pagesPerView = mobile ? 1 : 2;
   var disposed = false;
@@ -420,14 +422,14 @@ window.__initNovelReader = function() {
     tocDrawer.classList.add('open');
     tocOverlay.classList.add('open');
     document.body.style.overflow = 'hidden';
-    if (mobile) { tocToggle.setAttribute('aria-expanded', 'true'); tocClose.focus(); }
+    if (mobile) { tocToggle.setAttribute('aria-expanded', 'true'); tocClose.focus({ preventScroll: true }); }
   }
 
   function closeToc() {
     tocDrawer.classList.remove('open');
     tocOverlay.classList.remove('open');
     document.body.style.overflow = '';
-    if (mobile) { tocToggle.setAttribute('aria-expanded', 'false'); if (root.isConnected && !disposed) tocToggle.focus(); }
+    if (mobile) { tocToggle.setAttribute('aria-expanded', 'false'); if (root.isConnected && !disposed) tocToggle.focus({ preventScroll: true }); }
   }
 
   /* ======================= EPUB 解析 =======================
