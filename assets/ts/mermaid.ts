@@ -107,6 +107,9 @@ async function renderOffscreen(sources: string[]): Promise<string[]> {
 }
 
 function setupWrappers(elements: NodeListOf<HTMLElement>) {
+    const mobile = document.documentElement.dataset.ui === 'mobile';
+    const expandTitle = mobile ? '全屏查看图表' : 'Open fullscreen with pan/zoom';
+    const expandLabel = mobile ? '放大 <span aria-hidden="true">↗</span>' : 'Expand';
     elements.forEach((el, idx) => {
         // If already wrapped (e.g. Swup re-init edge case), update toolbar idx and skip
         if (el.parentElement?.classList.contains('mermaid-wrapper')) {
@@ -120,7 +123,7 @@ function setupWrappers(elements: NodeListOf<HTMLElement>) {
         wrapper.appendChild(el);
         wrapper.insertAdjacentHTML(
             'beforeend',
-            `<div class="mermaid-toolbar"><button data-idx="${idx}" title="Open fullscreen with pan/zoom">Expand</button></div>`,
+            `<div class="mermaid-toolbar"><button type="button" data-idx="${idx}" title="${expandTitle}">${expandLabel}</button></div>`,
         );
     });
 }

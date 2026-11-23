@@ -133,7 +133,42 @@ body .article-list--compact { grid-template-columns: minmax(0,1fr) !important; }
   #TableOfContents .toc-toggle { min-width: 44px; min-height: 44px; top: 0; left: auto; right: 0; transform: none; }
 }
 .mermaid-zoom-btn { opacity: 1 !important; min-width: 44px; min-height: 44px; }
-.mermaid-toolbar button, .mermaid-modal-close { opacity: 1 !important; min-width: 44px; min-height: 44px; }
+.mermaid-wrapper {
+  min-width: 0;
+  margin: 14px 0;
+  overflow: hidden;
+  border: 1px solid #2a3a4b;
+  border-radius: 12px;
+  background: #151e2a;
+}
+.mermaid-wrapper > .mermaid {
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.mermaid-toolbar {
+  position: static;
+  align-items: center;
+  border-top: 1px solid #2a3a4b;
+}
+.mermaid-toolbar button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  color: #b8d9f4;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 1;
+}
+.mermaid-toolbar button:hover, .mermaid-toolbar button:focus-visible { color: #eef6ff; background: #203142; }
+.mermaid-toolbar button:focus-visible { outline-offset: -2px; }
+.mermaid-modal-close { opacity: 1 !important; min-width: 44px; min-height: 44px; }
 .mermaid-modal-close { top: Max(8px,env(safe-area-inset-top,0px)); right: Max(8px,env(safe-area-inset-right,0px)); }
 .mermaid, .mermaid svg { max-width: 100%; }
 .mermaid-zoom-overlay { padding: env(safe-area-inset-top, 0px) 8px env(safe-area-inset-bottom, 0px); }
