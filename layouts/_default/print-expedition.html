@@ -10,18 +10,22 @@
     <div class="wk-topic-wallpaper" aria-hidden="true">
       {{/* Original artwork: https://assets.xboxservices.com/assets/38/74/38740001-90b4-4404-83bb-154475213631.jpg */}}
       <picture>
-        <source media="(max-aspect-ratio: 4/5)" srcset="{{ "prints/expedition-33/key-art-portrait.webp" | relURL }}" width="832" height="864">
+        <source media="(max-aspect-ratio: 4/5)" srcset="{{ "prints/expedition-33/scene-loop-mobile-poster.webp" | relURL }}" width="960" height="720">
         <img src="{{ "prints/expedition-33/key-art.webp" | relURL }}" width="1920" height="1080" alt="" fetchpriority="high">
       </picture>
       {{/* Loop footage: https://motionbgs.com/clair-obscur */}}
       <video data-topic-video muted playsinline loop preload="none" disablepictureinpicture disableremoteplayback></video>
       <template data-topic-video-sources>
-        <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-portrait-v1.mp4" | relURL }}" type="video/mp4">
-        <source src="{{ "prints/expedition-33/scene-loop-v1.mp4" | relURL }}" type="video/mp4">
+        <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-4k-mobile-2x.webm" | relURL }}" type='video/webm; codecs="av01.0.12M.08"'>
+        <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-4k-mobile-2x.mp4" | relURL }}" type='video/mp4; codecs="avc1.640033"'>
+        <source src="{{ "prints/expedition-33/scene-loop-4k-2x.webm" | relURL }}" type='video/webm; codecs="av01.0.12M.08"'>
+        <source src="{{ "prints/expedition-33/scene-loop-4k-2x.mp4" | relURL }}" type='video/mp4; codecs="avc1.640033"'>
       </template>
     </div>
     <div class="wk-shell wk-topic-inner">
-      <a class="wk-topic-control" href="{{ "prints/" | relURL }}">← 返回工坊</a>
+      <div class="wk-breadcrumb">
+        <a href="{{ "prints/" | relURL }}">← 返回工坊</a>
+      </div>
       <h1 id="expedition-title">{{ .Title }}</h1>
     </div>
   </article>

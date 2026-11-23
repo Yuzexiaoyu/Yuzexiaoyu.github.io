@@ -10,7 +10,6 @@ body.template-workshop {
     position: relative;
     min-height: 100svh;
     --topic-ink: #f7ebd7;
-    --topic-gold: #e7c892;
     --topic-bg: #0b1014;
     color: var(--topic-ink);
     background: var(--topic-bg);
@@ -62,22 +61,7 @@ body.template-workshop {
     gap: 24px;
   }
 
-  .wk-topic-control {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    width: fit-content;
-    min-height: 44px;
-    padding: 7px 14px;
-    color: var(--topic-ink);
-    border: 1px solid #e7c89255;
-    border-radius: 8px;
-    background: #111919d9;
-    font-size: 13px;
-  }
-
-  .wk-topic-control:hover { border-color: var(--topic-gold); }
+  .wk-topic-inner .wk-breadcrumb { margin: 0; }
 
   .wk-topic-inner h1 {
     margin: 0;
@@ -97,10 +81,10 @@ body.template-workshop {
   .wk-topic-status { grid-column: 1/-1; margin: 0; color: #b6b7b3; }
 
   @media (max-aspect-ratio: 4/5) {
-    .wk-topic { --topic-art-height: Min(99vw, 66svh); }
+    .wk-topic { --topic-art-height: 75vw; }
     .wk-topic-scene { min-height: calc(var(--topic-art-height) + 59px); }
     .wk-topic-wallpaper { bottom: auto; height: var(--topic-art-height); }
-    .wk-topic-wallpaper :is(img, video) { object-position: 50% 27%; }
+    .wk-topic-wallpaper :is(img, video) { object-fit: contain; object-position: center; }
     .wk-topic-wallpaper::after {
       background: linear-gradient(0deg, var(--topic-bg), #0b101455 12%, transparent 32%),
         linear-gradient(180deg, #0b101450, transparent 24%);
@@ -116,7 +100,7 @@ body.template-workshop {
 html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
   .container.main-container.flex.on-phone--column { padding-bottom: 0 !important; }
   .wk-topic { min-height: calc(100svh - var(--m-header-height, 60px)); }
-  .wk-topic-inner { padding: 12px 0 8px; }
+  .wk-topic-inner { padding: 8px 0; }
   .wk-topic-inner h1 { font-size: Clamp(32px, 8vw, 48px); }
   .wk-topic-items { padding-bottom: Max(28px, env(safe-area-inset-bottom, 0px)); }
   .wk-topic-items > h2 { margin-bottom: 12px; font-size: 16px; }

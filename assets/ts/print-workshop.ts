@@ -74,19 +74,22 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
   const video = root.querySelector<HTMLVideoElement>('[data-topic-video]');
   const sources = root.querySelector<HTMLTemplateElement>('[data-topic-video-sources]');
   if (!video || !sources) return;
-  const [portrait, landscape] = sources.content.querySelectorAll('source');
-  const portraitView = matchMedia(portrait.media);
+  const variants = Array.from(sources.content.querySelectorAll('source'));
+  const portraitView = matchMedia(variants.find(source => source.media)?.media ?? '(max-aspect-ratio: 4/5)');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let activePortrait: boolean | undefined;
   const update = () => {
     if (reducedMotion.matches) {
       video.pause();
       video.classList.remove('is-playing');
       return;
     }
-    const source = (portraitView.matches ? portrait : landscape).getAttribute('src')!;
-    if (video.getAttribute('src') !== source) {
+    if (activePortrait !== portraitView.matches) {
+      activePortrait = portraitView.matches;
       video.classList.remove('is-playing');
-      video.src = source;
+      const candidates = variants.filter(source => Boolean(source.media) === activePortrait);
+      video.replaceChildren(...candidates.map(source => source.cloneNode(true)));
+      video.load();
     }
     video.muted = true;
     void video.play().catch(() => {});
@@ -95,6 +98,10 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
   video.addEventListener('error', () => video.classList.remove('is-playing'), {signal});
   portraitView.addEventListener('change', update, {signal});
   reducedMotion.addEventListener('change', update, {signal});
+  signal.addEventListener('abort', () => {
+    video.replaceChildren();
+    video.load();
+  }, {once: true});
   update();
 }
 
