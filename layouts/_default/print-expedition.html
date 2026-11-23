@@ -1,0 +1,39 @@
+{{ define "body-class" }}template-workshop{{ end }}
+{{ define "left-sidebar" }}<!-- Workshop uses its own navigation. -->{{ end }}
+{{ define "right-sidebar" }}{{ end }}
+{{ define "main" }}
+<div class="wk-topic" data-workshop="topic">
+  <div class="wk-shell wk-topic-header">
+    {{ partial "workshop/header.html" . }}
+  </div>
+  <article class="wk-topic-scene" aria-labelledby="expedition-title">
+    <div class="wk-topic-wallpaper" aria-hidden="true">
+      <picture>
+        <source media="(max-aspect-ratio: 4/5)" srcset="{{ "prints/expedition-33/key-art-portrait.webp" | relURL }}" width="832" height="864">
+        <img src="{{ "prints/expedition-33/key-art.webp" | relURL }}" width="1920" height="1080" alt="" fetchpriority="high">
+      </picture>
+      <div class="wk-topic-light"></div>
+      <div class="wk-topic-mist"></div>
+    </div>
+    <div class="wk-shell wk-topic-inner">
+      <div class="wk-topic-toolbar">
+        <a class="wk-topic-control" href="{{ "prints/" | relURL }}">← 返回工坊</a>
+        <label class="wk-topic-control wk-topic-pause">
+          <input type="checkbox">
+          <span>暂停动效</span>
+        </label>
+      </div>
+      <div class="wk-topic-story">
+        <p class="wk-topic-name" lang="en">Clair Obscur · Expedition 33</p>
+        <h1 id="expedition-title">{{ .Title }}</h1>
+        <p class="wk-topic-description">{{ .Description }}</p>
+        <div class="wk-topic-links">
+          <a class="wk-topic-trailer" href="https://www.youtube.com/watch?v=ejgW-upPMgk" target="_blank" rel="noopener noreferrer">观看官方预告</a>
+          <a class="wk-topic-site" href="https://www.expedition33.com/" target="_blank" rel="noopener noreferrer">游戏官网</a>
+        </div>
+        <a class="wk-topic-credit" href="https://assets.xboxservices.com/assets/38/74/38740001-90b4-4404-83bb-154475213631.jpg?n=74189653_GLP-Page-Hero-1084_1920x1080.jpg" target="_blank" rel="noopener noreferrer">原画 © Sandfall Interactive / Kepler Interactive</a>
+      </div>
+    </div>
+  </article>
+</div>
+{{ end }}

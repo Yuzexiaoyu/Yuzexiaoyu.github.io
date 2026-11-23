@@ -53,7 +53,7 @@ export function preloadCatalogEntries(root: HTMLElement, entries: Entry[], signa
   const pending = new AbortController();
   const stop = () => pending.abort();
   signal.addEventListener('abort', stop, {once: true});
-  const cards = Array.from(root.querySelectorAll<HTMLAnchorElement>('.wk-card'));
+  const cards = Array.from(root.querySelectorAll<HTMLAnchorElement>('[data-workshop-item]'));
   const items = new Map(cards.map((card, i) => [card, entries[i]]));
   const prioritize = (event: Event) => {
     const card = (event.target as Element).closest<HTMLAnchorElement>('.wk-card');

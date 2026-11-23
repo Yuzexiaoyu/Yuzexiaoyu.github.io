@@ -7,6 +7,14 @@
   <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
     <div class="wk-collection-toolbar"><div class="wk-tabs" role="tablist" aria-label="内容栏目"><button type="button" role="tab" data-catalog-tab="work">可选 <span data-count="work">—</span></button><button type="button" role="tab" data-catalog-tab="product">现货 <span data-count="product">—</span></button></div></div>
     <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty wk-catalog-loading"><span>正在打开工坊…</span></p></div>
+    {{ with .Site.GetPage "/page/expedition-33" }}
+    <template data-catalog-topic>
+      <a class="wk-card wk-topic-card" href="{{ .RelPermalink }}">
+        <div class="wk-card-image"><img src="{{ "prints/expedition-33/key-art-cover.webp" | relURL }}" width="500" height="400" alt="" decoding="async"></div>
+        <div class="wk-card-info"><h2>{{ .Title }}</h2></div>
+      </a>
+    </template>
+    {{ end }}
   </section>
 </div>
 <script>window.__runWorkshop?.();</script>
