@@ -70,7 +70,36 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
   }
 }
 
+function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
+  const video = root.querySelector<HTMLVideoElement>('[data-topic-video]');
+  const sources = root.querySelector<HTMLTemplateElement>('[data-topic-video-sources]');
+  if (!video || !sources) return;
+  const [portrait, landscape] = sources.content.querySelectorAll('source');
+  const portraitView = matchMedia(portrait.media);
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const update = () => {
+    if (reducedMotion.matches) {
+      video.pause();
+      video.classList.remove('is-playing');
+      return;
+    }
+    const source = (portraitView.matches ? portrait : landscape).getAttribute('src')!;
+    if (video.getAttribute('src') !== source) {
+      video.classList.remove('is-playing');
+      video.src = source;
+    }
+    video.muted = true;
+    void video.play().catch(() => {});
+  };
+  video.addEventListener('playing', () => video.classList.add('is-playing'), {signal});
+  video.addEventListener('error', () => video.classList.remove('is-playing'), {signal});
+  portraitView.addEventListener('change', update, {signal});
+  reducedMotion.addEventListener('change', update, {signal});
+  update();
+}
+
 async function topic(root: HTMLElement, signal: AbortSignal) {
+  playTopicWallpaper(root, signal);
   const grid = root.querySelector<HTMLElement>('[data-topic-grid]')!;
   const topicId = root.dataset.topic;
   try {

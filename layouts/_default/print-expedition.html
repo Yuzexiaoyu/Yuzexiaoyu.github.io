@@ -13,22 +13,15 @@
         <source media="(max-aspect-ratio: 4/5)" srcset="{{ "prints/expedition-33/key-art-portrait.webp" | relURL }}" width="832" height="864">
         <img src="{{ "prints/expedition-33/key-art.webp" | relURL }}" width="1920" height="1080" alt="" fetchpriority="high">
       </picture>
-      <div class="wk-topic-light"></div>
-      <div class="wk-topic-mist"></div>
-      <div class="wk-topic-embers">
-        {{ range slice (slice 8 77 6 1) (slice 20 60 5 3) (slice 29 84 7 2) (slice 35 52 5 1) (slice 45 76 6 4) (slice 55 65 7 3) (slice 63 83 5 2) (slice 70 59 6 1) (slice 79 76 8 3) (slice 88 64 6 2) (slice 94 83 7 5) }}
-        <i style="{{ printf "--x:%d%%;--y:%d%%;--duration:%ds;--delay:-%ds" (index . 0) (index . 1) (index . 2) (index . 3) | safeCSS }}"></i>
-        {{ end }}
-      </div>
+      {{/* Loop footage: https://motionbgs.com/clair-obscur */}}
+      <video data-topic-video muted playsinline loop preload="none" disablepictureinpicture disableremoteplayback></video>
+      <template data-topic-video-sources>
+        <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-portrait-v1.mp4" | relURL }}" type="video/mp4">
+        <source src="{{ "prints/expedition-33/scene-loop-v1.mp4" | relURL }}" type="video/mp4">
+      </template>
     </div>
     <div class="wk-shell wk-topic-inner">
-      <div class="wk-topic-toolbar">
-        <a class="wk-topic-control" href="{{ "prints/" | relURL }}">← 返回工坊</a>
-        <label class="wk-topic-control wk-topic-pause">
-          <input type="checkbox">
-          <span>暂停动效</span>
-        </label>
-      </div>
+      <a class="wk-topic-control" href="{{ "prints/" | relURL }}">← 返回工坊</a>
       <h1 id="expedition-title">{{ .Title }}</h1>
     </div>
   </article>
