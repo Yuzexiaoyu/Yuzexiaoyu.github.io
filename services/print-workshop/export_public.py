@@ -9,9 +9,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from server import ROOT, Problem, Store, integer, normalize_color_previews, normalize_color_prices, single_weight
+from server import ROOT, WORKSHOP_TOPICS, Problem, Store, integer, normalize_color_previews, normalize_color_prices, single_weight
 
-ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews", "color_prices"}
+ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "topic", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews", "color_prices"}
 ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)")
 
 
@@ -41,6 +41,8 @@ def verify_snapshot(folder):
     for entry in payload["entries"]:
         if set(entry) - (ENTRY_FIELDS | {"images", "videos", "model", "colors"}) or entry["status"] != "published":
             raise ValueError("Private or unpublished entry in public catalog")
+        if "topic" in entry and entry["topic"] not in WORKSHOP_TOPICS:
+            raise ValueError("Invalid workshop topic")
         if "fixed_infill" in entry:
             if entry["kind"] != "work":
                 raise ValueError("Fixed infill requires a configurable entry")

@@ -48,6 +48,15 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(payload["entries"], [])
         self.assertEqual(list((self.output / "media").iterdir()), [])
 
+    def test_topic_survives_older_editor_updates_and_can_be_removed(self):
+        entry_id = self.product["id"]
+        assigned = self.store.save_entry(dict(self.product, topic="expedition-33"), entry_id)
+        previous_editor = {key: value for key, value in assigned.items() if key != "topic"}
+        saved = self.store.save_entry(previous_editor, entry_id)
+        self.assertEqual(export_public(self.store.folder, self.output)["entries"][0]["topic"], "expedition-33")
+        self.store.save_entry(dict(saved, topic=""), entry_id)
+        self.assertNotIn("topic", export_public(self.store.folder, self.output)["entries"][0])
+
     def test_configurable_weights_and_multiple_images_are_exported_in_order(self):
         second = self.store.save_asset('second.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>', trusted_demo=True)
         work = self.store.save_entry({'name':'Configurable', 'kind':'work', 'status':'published',

@@ -2,18 +2,24 @@
 {{ define "left-sidebar" }}<!-- Workshop uses its own navigation. -->{{ end }}
 {{ define "right-sidebar" }}{{ end }}
 {{ define "main" }}
-<div class="wk-topic" data-workshop="topic">
+<div class="wk-topic" data-workshop="topic" data-topic="expedition-33" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
   <div class="wk-shell wk-topic-header">
     {{ partial "workshop/header.html" . }}
   </div>
   <article class="wk-topic-scene" aria-labelledby="expedition-title">
     <div class="wk-topic-wallpaper" aria-hidden="true">
+      {{/* Original artwork: https://assets.xboxservices.com/assets/38/74/38740001-90b4-4404-83bb-154475213631.jpg */}}
       <picture>
         <source media="(max-aspect-ratio: 4/5)" srcset="{{ "prints/expedition-33/key-art-portrait.webp" | relURL }}" width="832" height="864">
         <img src="{{ "prints/expedition-33/key-art.webp" | relURL }}" width="1920" height="1080" alt="" fetchpriority="high">
       </picture>
       <div class="wk-topic-light"></div>
       <div class="wk-topic-mist"></div>
+      <div class="wk-topic-embers">
+        {{ range slice (slice 8 77 6 1) (slice 20 60 5 3) (slice 29 84 7 2) (slice 35 52 5 1) (slice 45 76 6 4) (slice 55 65 7 3) (slice 63 83 5 2) (slice 70 59 6 1) (slice 79 76 8 3) (slice 88 64 6 2) (slice 94 83 7 5) }}
+        <i style="{{ printf "--x:%d%%;--y:%d%%;--duration:%ds;--delay:-%ds" (index . 0) (index . 1) (index . 2) (index . 3) | safeCSS }}"></i>
+        {{ end }}
+      </div>
     </div>
     <div class="wk-shell wk-topic-inner">
       <div class="wk-topic-toolbar">
@@ -23,17 +29,14 @@
           <span>暂停动效</span>
         </label>
       </div>
-      <div class="wk-topic-story">
-        <p class="wk-topic-name" lang="en">Clair Obscur · Expedition 33</p>
-        <h1 id="expedition-title">{{ .Title }}</h1>
-        <p class="wk-topic-description">{{ .Description }}</p>
-        <div class="wk-topic-links">
-          <a class="wk-topic-trailer" href="https://www.youtube.com/watch?v=ejgW-upPMgk" target="_blank" rel="noopener noreferrer">观看官方预告</a>
-          <a class="wk-topic-site" href="https://www.expedition33.com/" target="_blank" rel="noopener noreferrer">游戏官网</a>
-        </div>
-        <a class="wk-topic-credit" href="https://assets.xboxservices.com/assets/38/74/38740001-90b4-4404-83bb-154475213631.jpg?n=74189653_GLP-Page-Hero-1084_1920x1080.jpg" target="_blank" rel="noopener noreferrer">原画 © Sandfall Interactive / Kepler Interactive</a>
-      </div>
+      <h1 id="expedition-title">{{ .Title }}</h1>
     </div>
   </article>
+  <section class="wk-shell wk-topic-items" aria-labelledby="expedition-items-title">
+    <h2 id="expedition-items-title">相关物品</h2>
+    <div class="wk-grid" data-topic-grid aria-live="polite">
+      <p class="wk-topic-status">正在读取物品…</p>
+    </div>
+  </section>
 </div>
 {{ end }}

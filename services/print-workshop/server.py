@@ -29,6 +29,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 MAX_UPLOAD = 64 * 1024 * 1024
 PRICE_LIMIT = 10_000_000
+WORKSHOP_TOPICS = ("expedition-33",)
 
 
 class Problem(Exception):
@@ -259,8 +260,13 @@ class Store:
                 raise Problem("内容不存在", 404)
             if old and data.get("revision") != old["revision"]:
                 raise Problem("内容已在其他页面更新，请重新打开后编辑", 409)
+            previous = json.loads(old["payload"]) if old else {}
+            topic = data.get("topic", previous.get("topic", ""))
+            if topic != "":
+                if topic not in WORKSHOP_TOPICS:
+                    raise Problem("请选择正确的所属专题")
+                payload["topic"] = topic
             if kind == "work":
-                previous = json.loads(old["payload"]) if old else {}
                 fixed_infill = data.get("fixed_infill", previous.get("fixed_infill"))
                 if fixed_infill is not None:
                     payload["fixed_infill"] = integer(fixed_infill, "固定填充比例", 15, 100)

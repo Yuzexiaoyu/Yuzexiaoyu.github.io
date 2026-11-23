@@ -27,6 +27,21 @@ function loadViewer(): Promise<void> {
 
 function empty(message: string, extra = '') {return `<div class="wk-empty"><span class="wk-empty-mark" aria-hidden="true">◇</span><h2>${e(message)}</h2>${extra}</div>`;}
 
+function entryCard(entry: Entry, index: number, topic?: string): string {
+  const configurable = entry.kind === 'work';
+  const [price, high] = configurable ? workPriceRange(entry) : [entry.fixed_price, entry.fixed_price];
+  const isRange = price !== high || (!entry.color_prices && entry.fixed_infill == null);
+  const suffix = configurable ? (isRange ? '起' : '') : entry.weight_g ? `${e(entry.weight_g)} g` : '';
+  const query = new URLSearchParams({id: entry.id!});
+  if (topic) query.set('from', topic);
+  const badge = entry.is_demo ? '演示内容' : topic ? (configurable ? '可选' : '现货') : '';
+  const heading = topic ? 'h3' : 'h2';
+  return `<a class="wk-card" data-workshop-item href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
+    <div class="wk-card-image"><img src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" loading="${index < 2 ? 'eager' : 'lazy'}" fetchpriority="${index === 0 ? 'high' : 'auto'}" decoding="async">${badge ? `<span class="wk-badge">${badge}</span>` : ''}</div>
+    <div class="wk-card-info"><div><${heading}>${e(entry.name)}</${heading}></div><span class="wk-card-price">${money(price)}${suffix ? `<small>${suffix}</small>` : ''}</span></div>
+  </a>`;
+}
+
 async function catalog(root: HTMLElement, signal: AbortSignal) {
   const grid = root.querySelector<HTMLElement>('[data-catalog-grid]')!;
   const topic = root.querySelector<HTMLTemplateElement>('[data-catalog-topic]')?.innerHTML ?? '';
@@ -41,12 +56,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
       root.querySelectorAll<HTMLElement>('[data-count]').forEach(n=>n.textContent = String(entries.filter(p=>p.kind === n.dataset.count).length).padStart(2,'0'));
       root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
       root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
-      const cards = items.map((p,i)=>{
-        const [price,high]=tab==='work'?workPriceRange(p):[p.fixed_price,p.fixed_price];
-        const isRange=price!==high||(!p.color_prices&&p.fixed_infill==null);
-        const suffix=tab==='work'?(isRange?'起':''):p.weight_g?`${e(p.weight_g)} g`:'';
-        return `<a class="wk-card" data-workshop-item href="/prints/detail/?id=${encodeURIComponent(p.id!)}" style="--card-index:${i}"><div class="wk-card-image"><img src="${e(p.images[0]?.url)}" alt="${e(p.name)}" loading="${i<2?'eager':'lazy'}" fetchpriority="${i===0?'high':'auto'}" decoding="async">${p.is_demo?'<span class="wk-badge">演示内容</span>':''}</div><div class="wk-card-info"><div><h2>${e(p.name)}</h2></div><span class="wk-card-price">${money(price)}${suffix?`<small>${suffix}</small>`:''}</span></div></a>`;
-      }).join('');
+      const cards = items.map((entry, index) => entryCard(entry, index)).join('');
       grid.innerHTML = (cards + (tab==='work' ? topic : '')) || empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
       w.WorkshopIntro?.refresh?.(root);
       stopPreload = preloadCatalogEntries(root, items, signal);
@@ -57,6 +67,22 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
     if(signal.aborted || abortError(error)) return;
     grid.innerHTML = (tab==='work' ? topic : '') + empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);
     w.WorkshopIntro?.refresh?.(root);
+  }
+}
+
+async function topic(root: HTMLElement, signal: AbortSignal) {
+  const grid = root.querySelector<HTMLElement>('[data-topic-grid]')!;
+  const topicId = root.dataset.topic;
+  try {
+    const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
+    if (signal.aborted) return;
+    const items = entries.filter(entry => topicId && entry.topic === topicId && entry.status === 'published');
+    grid.innerHTML = items.length
+      ? items.map((entry, index) => entryCard(entry, index, topicId)).join('')
+      : '<p class="wk-topic-status">暂无上架物品</p>';
+    preloadCatalogEntries(root, items, signal);
+  } catch (error) {
+    if (!signal.aborted && !abortError(error)) grid.innerHTML = '<p class="wk-topic-status">相关物品暂未加载，请刷新重试。</p>';
   }
 }
 
@@ -88,7 +114,11 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const previews=configurable?entry.color_previews:undefined;
     document.title=`${entry.name} · 雨泽小鱼的工坊`;
     root.querySelector<HTMLElement>('[data-detail-breadcrumb]')!.textContent=`${configurable?'可选':'现货'} / ${entry.name}`;
-    root.querySelector<HTMLAnchorElement>('[data-detail-back]')!.href=`/prints/?tab=${entry.kind}`;
+    const back = root.querySelector<HTMLAnchorElement>('[data-detail-back]')!;
+    if (entry.topic && params.get('from') === entry.topic) {
+      back.href = `/prints/${encodeURIComponent(entry.topic)}/`;
+      back.textContent = '← 返回专题';
+    } else back.href = `/prints/?tab=${entry.kind}`;
     root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab===entry.kind));
     let color: Color|undefined=entry.colors.find(c=>c.id===params.get('color'))||entry.colors[0];
     const activePreview=()=>color?previews?.[color.id]:undefined;
@@ -396,5 +426,17 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
 }
 
 function destroy(){controller?.abort();cleanup?.();cleanup=null;currentRoot?.querySelectorAll<HTMLVideoElement>('video').forEach(v=>{v.pause();v.removeAttribute('src');});currentRoot?.querySelectorAll<any>('model-viewer').forEach(v=>{v.pause?.();v.removeAttribute('src');v.remove();});currentRoot?.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach(d=>d.close());controller=null;currentRoot=null;}
-function init(){const root=document.querySelector<HTMLElement>('[data-workshop]');if(root===currentRoot)return;destroy();if(!root||root.dataset.workshop==='topic')return;currentRoot=root;controller=new AbortController();const signal=controller.signal;if(root.dataset.workshop==='catalog')void catalog(root,signal);else if(root.dataset.workshop==='detail')void detail(root,signal);else if(root.dataset.workshop==='admin')cleanup=initAdmin(root,signal);}
+function init() {
+  const root = document.querySelector<HTMLElement>('[data-workshop]');
+  if (root === currentRoot) return;
+  destroy();
+  if (!root) return;
+  currentRoot = root;
+  controller = new AbortController();
+  const signal = controller.signal;
+  if (root.dataset.workshop === 'catalog') void catalog(root, signal);
+  else if (root.dataset.workshop === 'detail') void detail(root, signal);
+  else if (root.dataset.workshop === 'topic') void topic(root, signal);
+  else if (root.dataset.workshop === 'admin') cleanup = initAdmin(root, signal);
+}
 w.WorkshopApp={init,destroy,preload:preloadPublicCatalog};

@@ -36,11 +36,12 @@
     // Legacy head content can start body before its template classes are parsed.
     // Restore the scope after parsing and after every Swup body replacement.
     document.body.classList.toggle('template-workshop', !!root);
-    if (!root || root.dataset.workshop === 'topic') return;
-    if (window.WorkshopIntro) window.WorkshopIntro.enter(root);
+    if (!root) return;
+    var kind = root.dataset.workshop;
+    if (kind !== 'topic' && window.WorkshopIntro) window.WorkshopIntro.enter(root);
     if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
-    prepare(root.dataset.workshop === 'catalog' ? '/prints/' : null).then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
-      var node=document.querySelector('[data-catalog-grid],[data-detail-content],[data-admin-notice]');
+    prepare(kind === 'catalog' || kind === 'topic' ? '/prints/' : null).then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
+      var node=document.querySelector('[data-catalog-grid],[data-detail-content],[data-topic-grid],[data-admin-notice]');
       if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
     });
   };

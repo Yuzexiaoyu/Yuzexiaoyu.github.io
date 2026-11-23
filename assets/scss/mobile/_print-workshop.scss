@@ -18,7 +18,7 @@ body.template-workshop {
   .wk-card-image { aspect-ratio: 1.35; }
   .wk-card-info { display: block; padding: 9px 10px 10px; }
   .wk-topic-card .wk-card-info { display: flex; }
-  .wk-card-info h2 { font-size: 15px; }
+  .wk-card-info :is(h2, h3) { font-size: 15px; }
   .wk-card-price { font-size: 17px; display: block; margin-top: 4px; }
   .wk-card-price small { display: inline; margin-left: 6px; font-size: 13px; }
   .wk-badge { top: 9px; left: 9px; font-size: 8px; padding: 3px 6px; }
