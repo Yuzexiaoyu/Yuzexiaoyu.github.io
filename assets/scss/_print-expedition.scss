@@ -16,9 +16,6 @@ body.template-workshop {
     background: var(--topic-bg);
   }
 
-  .wk-topic-header { position: absolute; inset: 0 0 auto; z-index: 2; padding: 0; }
-  .wk-topic-header .wk-nav-back { display: none; }
-
   .wk-topic-scene {
     position: relative;
     isolation: isolate;
@@ -36,10 +33,11 @@ body.template-workshop {
     pointer-events: none;
   }
 
-  .wk-topic-wallpaper img,
-  .wk-topic-wallpaper video { display: block; width: 100%; height: 100%; }
-
-  .wk-topic-wallpaper :is(img, video) {
+  .wk-topic-wallpaper > :is(img, video),
+  .wk-topic-wallpaper > noscript > img {
+    display: block;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     object-position: 62% 24%;
   }
@@ -55,27 +53,9 @@ body.template-workshop {
       linear-gradient(0deg, #0b1014f5, #0b101457 22%, transparent 52%);
   }
 
-  .wk-topic-inner {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 90px 0 24px;
-    gap: 24px;
-  }
-
+  .wk-topic-inner { padding: 24px 0; }
   .wk-topic-inner .wk-breadcrumb { margin: 0; }
-
-  .wk-topic-inner h1 {
-    margin: 0;
-    color: var(--topic-ink);
-    font-family: Georgia, "Songti SC", SimSun, serif;
-    font-size: Clamp(38px, 4vw, 64px);
-    font-weight: 600;
-    line-height: 1.08;
-    letter-spacing: -.06em;
-    text-wrap: balance;
-    text-shadow: 0 2px 14px #05090bd9;
-  }
+  .wk-topic-inner [data-topic-music-play] { padding: 0; font-size: inherit; }
 
   .wk-topic-items { padding: 12px 0 32px; }
   .wk-topic-items .wk-grid { min-height: 0; }
@@ -84,19 +64,22 @@ body.template-workshop {
 
 html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
   .container.main-container.flex.on-phone--column { padding-bottom: 0 !important; }
-  .wk-topic { --topic-back-space: 38px; min-height: calc(100svh - var(--m-header-height, 60px)); }
-  .wk-topic-scene { min-height: calc(Clamp(420px, 49vw, 680px) + var(--topic-back-space)); }
+  .wk-topic {
+    --topic-back-space: 38px;
+    --topic-screen-height: calc(100svh - var(--m-header-height, 60px));
+    min-height: var(--topic-screen-height);
+  }
+  .wk-topic-scene { min-height: var(--topic-screen-height); }
   .wk-topic-inner { padding: 8px 0; }
-  .wk-topic-inner .wk-breadcrumb { margin: 0; }
-  .wk-topic-inner h1 { font-size: Clamp(32px, 8vw, 48px); }
   .wk-topic-items { padding-bottom: Max(28px, env(safe-area-inset-bottom, 0px)); }
 
   @media (max-aspect-ratio: 4/5) {
-    .wk-topic { --topic-art-height: 75vw; }
-    .wk-topic-scene { min-height: calc(var(--topic-art-height) + var(--topic-back-space) + 59px); }
+    .wk-topic { --topic-art-height: Min(75vw, calc(var(--topic-screen-height) - var(--topic-back-space))); }
+    .wk-topic-scene { min-height: calc(var(--topic-art-height) + var(--topic-back-space)); }
     .wk-topic-wallpaper { bottom: auto; height: var(--topic-art-height); }
     // The portrait video is center-cropped from the landscape source.
-    .wk-topic-wallpaper :is(img, video) { object-position: center; }
+    .wk-topic-wallpaper > :is(img, video),
+    .wk-topic-wallpaper > noscript > img { object-position: center; }
     .wk-topic-wallpaper video { object-fit: contain; }
     .wk-topic-wallpaper::after {
       background: linear-gradient(0deg, var(--topic-bg), #0b101455 12%, transparent 32%),

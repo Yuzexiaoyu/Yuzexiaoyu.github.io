@@ -3,10 +3,8 @@
 {{ define "right-sidebar" }}{{ end }}
 {{ define "main" }}
 <div class="wk-topic" data-workshop="topic" data-topic="expedition-33" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
-  <div class="wk-shell wk-topic-header">
-    {{ partial "workshop/header.html" . }}
-  </div>
-  <article class="wk-topic-scene" aria-labelledby="expedition-title">
+  <article class="wk-topic-scene" aria-label="{{ .Title }}">
+    {{ partial "workshop/expedition-music.html" . }}
     <div class="wk-topic-wallpaper" aria-hidden="true">
       {{/* The poster is the first frame of this loop: https://motionbgs.com/clair-obscur */}}
       {{ $poster := "prints/expedition-33/scene-loop-poster.webp" | relURL }}
@@ -23,14 +21,9 @@
     <div class="wk-shell wk-topic-inner">
       <div class="wk-breadcrumb">
         <a href="{{ "prints/" | relURL }}">← 返回工坊</a>
+        <button type="button" class="wk-text-link" data-topic-music-play hidden>播放配乐</button>
       </div>
-      <h1 id="expedition-title">{{ .Title }}</h1>
     </div>
   </article>
-  <section class="wk-shell wk-topic-items" aria-label="相关物品">
-    <div class="wk-grid" data-topic-grid aria-live="polite">
-      <p class="wk-topic-status">正在读取物品…</p>
-    </div>
-  </section>
 </div>
 {{ end }}

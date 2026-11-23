@@ -1,7 +1,7 @@
 /** Reveal workshop modules as they arrive; never gate content behind the canvas. */
 (() => {
   const w = window as any;
-  const VERSION = 'module-reveal-8';
+  const VERSION = 'module-reveal-9';
   if (w.WorkshopIntro?.version === VERSION) return;
   w.WorkshopIntro?.cancel?.();
   const html = document.documentElement;
@@ -105,7 +105,10 @@
     if (element !== root || !element.isConnected) return;
     const elapsed = elapsedTime();
     const catalog = element.dataset.workshop === 'catalog';
-    const revealHeader = !compact && (!catalog || !w.__isMobileUI?.());
+    const mobile = w.__isMobileUI?.();
+    const revealHeader = !compact && (
+      !catalog || (!mobile && !!element.querySelector(':scope > .wk-nav > .wk-brand'))
+    );
     const headerDuration = catalog ? (reduced ? 120 : 220) : 560;
     const group = (selector: string, delay: number, duration: number, distance: number, x = 0) =>
       element.querySelectorAll<HTMLElement>(selector).forEach(node => show(node, delay, duration, distance, 0, x));
@@ -122,6 +125,7 @@
       const cardsAt = Math.max(elapsed, toolbarAt + toolbarDuration + stageGap);
       const stagger = reduced ? 24 : 45;
       group('.wk-collection-toolbar', toolbarAt, toolbarDuration, 8);
+      if (!mobile) group('.wk-catalog-home, .wk-catalog-notice', toolbarAt, toolbarDuration, 8);
       element.querySelectorAll<HTMLElement>('.wk-grid > .wk-card').forEach((card, index) => {
         if (seen.has(card)) return;
         const cardAt = cardsAt + Math.min(index, 2) * stagger;

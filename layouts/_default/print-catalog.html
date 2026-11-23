@@ -3,15 +3,35 @@
 {{ define "right-sidebar" }}{{ end }}
 {{ define "main" }}
 <div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
-  {{ partial "workshop/header.html" . }}
   <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
-    <div class="wk-collection-toolbar"><div class="wk-tabs" role="tablist" aria-label="内容栏目"><button type="button" role="tab" data-catalog-tab="work">可选 <span data-count="work">—</span></button><button type="button" role="tab" data-catalog-tab="product">现货 <span data-count="product">—</span></button></div></div>
+    <a class="wk-catalog-home" href="{{ "/" | relURL }}"><span aria-hidden="true">←</span> 返回主页</a>
+    <div class="wk-collection-toolbar">
+      <div class="wk-tabs" role="tablist" aria-label="内容栏目">
+        <button type="button" role="tab" data-catalog-tab="work">可选 <span data-count="work">—</span></button>
+        <button type="button" role="tab" data-catalog-tab="product">现货 <span data-count="product">—</span></button>
+      </div>
+    </div>
+    <aside class="wk-catalog-notice" aria-labelledby="wk-catalog-notice-title">
+      <h2 id="wk-catalog-notice-title">须知</h2>
+      <ol>
+        <li>推荐使用电脑浏览工坊。</li>
+        <li>六舍可送到寝，其他宿舍送至楼下。</li>
+        <li>大部分卡片点进后会自动播放音频。</li>
+        <li class="wk-notice-materials">
+          <span><strong>PLA</strong> 容易打印出清晰细节，适合摆件。</span>
+          <span><strong>PETG</strong> 通常更有韧性、更耐热，适合日用件。</span>
+          <span><strong>TPU</strong> 有弹性，可弯折，适合缓冲垫和保护套，后续可能支持。</span>
+        </li>
+        <li>支持定制<span data-catalog-contact hidden>，联系 <strong></strong>（好友申请自动通过）</span>。</li>
+      </ol>
+    </aside>
     <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty wk-catalog-loading"><span>正在打开工坊…</span></p></div>
     {{ with .Site.GetPage "/page/expedition-33" }}
     <template data-catalog-topic>
       <a class="wk-card wk-topic-card" href="{{ .RelPermalink }}">
         <div class="wk-card-image"><img src="{{ "prints/expedition-33/key-art-cover.webp" | relURL }}" width="500" height="400" alt="" decoding="async"></div>
         <div class="wk-card-info"><h2>{{ .Title }}</h2></div>
+        {{ partial "workshop/expedition-music.html" . }}
       </a>
     </template>
     {{ end }}

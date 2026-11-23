@@ -5,6 +5,7 @@ import {initMobileGallerySwipe} from './mobile-workshop-gallery';
 import {bindMobileVideoBar, mobileVideoBar} from './mobile-workshop-video';
 import {bindGalleryPhotos} from './workshop-gallery-photos';
 import {preloadCatalogEntries, takePreloadedVideo} from './workshop-preload';
+import {bindTopicMusic, primeTopicMusic} from './workshop-topic-music';
 
 const w = window as any;
 let currentRoot: HTMLElement|null = null;
@@ -45,6 +46,12 @@ function entryCard(entry: Entry, index: number, topic?: string): string {
 async function catalog(root: HTMLElement, signal: AbortSignal) {
   const grid = root.querySelector<HTMLElement>('[data-catalog-grid]')!;
   const topic = root.querySelector<HTMLTemplateElement>('[data-catalog-topic]')?.innerHTML ?? '';
+  const contact = root.querySelector<HTMLElement>('[data-catalog-contact]');
+  if (contact) {
+    contact.querySelector('strong')!.textContent = `QQ ${CONTACT_QQ}`;
+    contact.hidden = false;
+  }
+  primeTopicMusic(root, signal);
   let tab = new URLSearchParams(location.search).get('tab') === 'product' ? 'product' : 'work';
   try {
     const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
@@ -70,10 +77,13 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
   }
 }
 
-function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
+function playTopicWallpaper(root: HTMLElement, signal: AbortSignal, startMusic?: () => void) {
   const video = root.querySelector<HTMLVideoElement>('[data-topic-video]');
   const sources = root.querySelector<HTMLTemplateElement>('[data-topic-video-sources]');
-  if (!video || !sources) return;
+  if (!video || !sources) {
+    startMusic?.();
+    return;
+  }
   const poster = root.querySelector<HTMLImageElement>('[data-topic-poster]');
   const variants = Array.from(sources.content.querySelectorAll('source'));
   const portraitView = matchMedia(variants.find(source => source.media)?.media ?? '(max-aspect-ratio: 4/5)');
@@ -81,6 +91,7 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
   const showPoster = () => {
     video.classList.remove('is-playing');
     if (poster) poster.hidden = false;
+    startMusic?.();
   };
   const start = () => {
     video.muted = true;
@@ -106,6 +117,7 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
   video.addEventListener('playing', () => {
     video.classList.add('is-playing');
     root.removeEventListener('click', start);
+    startMusic?.();
   }, {signal});
   video.addEventListener('error', event => {
     if (event.target === video || event.target === video.lastElementChild) showPoster();
@@ -119,8 +131,9 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
 }
 
 async function topic(root: HTMLElement, signal: AbortSignal) {
-  playTopicWallpaper(root, signal);
-  const grid = root.querySelector<HTMLElement>('[data-topic-grid]')!;
+  playTopicWallpaper(root, signal, bindTopicMusic(root, signal));
+  const grid = root.querySelector<HTMLElement>('[data-topic-grid]');
+  if (!grid) return;
   const topicId = root.dataset.topic;
   try {
     const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
