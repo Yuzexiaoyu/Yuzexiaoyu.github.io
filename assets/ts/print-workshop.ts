@@ -76,28 +76,32 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal) {
   if (!video || !sources) return;
   const variants = Array.from(sources.content.querySelectorAll('source'));
   const portraitView = matchMedia(variants.find(source => source.media)?.media ?? '(max-aspect-ratio: 4/5)');
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let activePortrait: boolean | undefined;
+  const start = () => {
+    video.muted = true;
+    void video.play().catch((error: DOMException) => {
+      if (error.name === 'NotAllowedError' && !signal.aborted) {
+        root.addEventListener('click', start, {once: true, signal});
+      }
+    });
+  };
   const update = () => {
-    if (reducedMotion.matches) {
-      video.pause();
+    const portrait = document.documentElement.dataset.ui === 'mobile' && portraitView.matches;
+    if (activePortrait !== portrait) {
+      activePortrait = portrait;
       video.classList.remove('is-playing');
-      return;
-    }
-    if (activePortrait !== portraitView.matches) {
-      activePortrait = portraitView.matches;
-      video.classList.remove('is-playing');
-      const candidates = variants.filter(source => Boolean(source.media) === activePortrait);
+      const candidates = variants.filter(source => Boolean(source.media) === portrait);
       video.replaceChildren(...candidates.map(source => source.cloneNode(true)));
       video.load();
     }
-    video.muted = true;
-    void video.play().catch(() => {});
+    start();
   };
-  video.addEventListener('playing', () => video.classList.add('is-playing'), {signal});
+  video.addEventListener('playing', () => {
+    video.classList.add('is-playing');
+    root.removeEventListener('click', start);
+  }, {signal});
   video.addEventListener('error', () => video.classList.remove('is-playing'), {signal});
   portraitView.addEventListener('change', update, {signal});
-  reducedMotion.addEventListener('change', update, {signal});
   signal.addEventListener('abort', () => {
     video.replaceChildren();
     video.load();
