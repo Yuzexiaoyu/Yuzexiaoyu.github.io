@@ -1,6 +1,6 @@
 .template-novel-bookshelf .m-header { background: #0a0a0f; }
 .template-novel-bookshelf .container.main-container.flex.on-phone--column { display: flex !important; padding: 0 var(--m-page-gutter) calc(var(--m-bottom-obstruction) + 24px) !important; }
-.novel-bookshelf { opacity: 1 !important; transform: none !important; transition: none !important; animation: none !important; width: 100%; padding: 0; }
+.novel-bookshelf { opacity: 1 !important; transform: none !important; transition: none !important; animation: none !important; width: 100%; padding: 0; overflow: visible; }
 .bookshelf-header { padding: 20px 0 18px; text-align: left; }
 .bookshelf-header::before { content: none; }
 .bookshelf-title { margin: 0 0 6px; font-size: 20px; line-height: 1.45; font-weight: 600; letter-spacing: 0; color: #e6edf3; background: none; -webkit-text-fill-color: currentColor; }
