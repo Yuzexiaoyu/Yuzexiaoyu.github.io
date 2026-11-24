@@ -20,12 +20,12 @@ body.template-workshop {
     border-radius: 10px;
     background: #101816eb;
     color: #c1d1c8;
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 11px;
+    line-height: 1.4;
   }
-  .wk-catalog-notice h2 { margin: 0 0 5px; color: #e7eeeb; font-size: inherit; }
+  .wk-catalog-notice h2 { margin: 0 0 4px; color: #e7eeeb; font-size: inherit; }
   .wk-catalog-notice ol { margin: 0; padding-inline-start: 1.3em; }
-  .wk-catalog-notice li + li { margin-top: 4px; }
+  .wk-catalog-notice li + li { margin-top: 2px; }
   .wk-catalog-notice li::marker { color: var(--wk-accent); }
   .wk-catalog-notice strong { color: #e7eeeb; }
   .wk-catalog-notice [data-catalog-contact] strong { white-space: nowrap; }
