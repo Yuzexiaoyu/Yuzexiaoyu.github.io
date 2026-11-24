@@ -85,12 +85,21 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal, startMusic?:
     return;
   }
   const poster = root.querySelector<HTMLImageElement>('[data-topic-poster]');
+  const desktopPoster = poster?.src;
+  const portraitPoster = root.querySelector<HTMLTemplateElement>('[data-topic-portrait-poster]')
+    ?.content.querySelector('img')?.getAttribute('src');
   const variants = Array.from(sources.content.querySelectorAll('source'));
   const portraitView = matchMedia(variants.find(source => source.media)?.media ?? '(max-aspect-ratio: 4/5)');
   let activePortrait: boolean | undefined;
+  const updatePoster = () => {
+    if (poster && desktopPoster) poster.src = (activePortrait && portraitPoster) || desktopPoster;
+  };
   const showPoster = () => {
     video.classList.remove('is-playing');
-    if (poster) poster.hidden = false;
+    if (poster) {
+      updatePoster();
+      poster.hidden = false;
+    }
     startMusic?.();
   };
   const start = () => {
@@ -107,6 +116,7 @@ function playTopicWallpaper(root: HTMLElement, signal: AbortSignal, startMusic?:
     const portrait = document.documentElement.dataset.ui === 'mobile' && portraitView.matches;
     if (activePortrait !== portrait) {
       activePortrait = portrait;
+      if (poster && !poster.hidden) updatePoster();
       video.classList.remove('is-playing');
       const candidates = variants.filter(source => Boolean(source.media) === portrait);
       video.replaceChildren(...candidates.map(source => source.cloneNode(true)));

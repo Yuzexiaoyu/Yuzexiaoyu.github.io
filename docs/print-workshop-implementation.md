@@ -658,4 +658,4 @@
 
 专题 `/prints/expedition-33/` 的循环背景取自 MotionBGS 的 4K 桌面动态壁纸（3840 × 2160 MP4）。[MotionBGS · Clair Obscur: Expedition 33 Live Wallpaper](https://motionbgs.com/clair-obscur)
 
-工坊使用 2 倍速、静音循环版本。桌面保留 3840 × 2160 画面，手机竖屏使用 2880 × 2160 裁剪版。两种尺寸均优先使用 AV1/WebM，并提供 H.264/MP4 备用。产物位于 `static/prints/expedition-33/`，文件名为 `scene-loop-4k-2x.*` 和 `scene-loop-4k-mobile-2x.*`。
+工坊使用 2 倍速、静音循环版本。桌面保留 3840 × 2160 画面。手机竖屏从桌面成片的 `(1380, 8)` 开始裁出 1206 × 2144，再缩放为 1080 × 1920（9∶16）。两种尺寸均优先使用 AV1/WebM，并提供 H.264/MP4 备用。产物位于 `static/prints/expedition-33/`，文件名为 `scene-loop-4k-2x.*` 和 `scene-loop-portrait-2x.*`。

@@ -11,7 +11,6 @@ body.template-workshop {
     min-height: 100svh;
     --topic-ink: #f7ebd7;
     --topic-bg: #0b1014;
-    --topic-back-space: 0px;
     color: var(--topic-ink);
     background: var(--topic-bg);
   }
@@ -28,7 +27,7 @@ body.template-workshop {
   .wk-topic-wallpaper {
     position: absolute;
     z-index: -1;
-    inset: var(--topic-back-space) 0 0;
+    inset: 0;
     overflow: hidden;
     pointer-events: none;
   }
@@ -65,25 +64,26 @@ body.template-workshop {
 html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
   .container.main-container.flex.on-phone--column { padding-bottom: 0 !important; }
   .wk-topic {
-    --topic-back-space: 38px;
-    --topic-screen-height: calc(100svh - var(--m-header-height, 60px));
+    --topic-screen-height: calc(100dvh - var(--m-header-height, 60px));
     min-height: var(--topic-screen-height);
   }
   .wk-topic-scene { min-height: var(--topic-screen-height); }
-  .wk-topic-inner { padding: 8px 0; }
+  .wk-topic-inner { padding: 0; }
+  .wk-topic-inner .wk-breadcrumb > :is(a, button) {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--topic-ink);
+    text-shadow: 0 1px 4px #0b1014;
+  }
   .wk-topic-items { padding-bottom: Max(28px, env(safe-area-inset-bottom, 0px)); }
 
   @media (max-aspect-ratio: 4/5) {
-    .wk-topic { --topic-art-height: Min(75vw, calc(var(--topic-screen-height) - var(--topic-back-space))); }
-    .wk-topic-scene { min-height: calc(var(--topic-art-height) + var(--topic-back-space)); }
-    .wk-topic-wallpaper { bottom: auto; height: var(--topic-art-height); }
-    // The portrait video is center-cropped from the landscape source.
     .wk-topic-wallpaper > :is(img, video),
     .wk-topic-wallpaper > noscript > img { object-position: center; }
-    .wk-topic-wallpaper video { object-fit: contain; }
     .wk-topic-wallpaper::after {
-      background: linear-gradient(0deg, var(--topic-bg), #0b101455 12%, transparent 32%),
-        linear-gradient(180deg, #0b101450, transparent 24%);
+      background: linear-gradient(0deg, #0b1014b3, transparent 18%),
+        linear-gradient(180deg, #0b101489, transparent 92px);
     }
   }
 }

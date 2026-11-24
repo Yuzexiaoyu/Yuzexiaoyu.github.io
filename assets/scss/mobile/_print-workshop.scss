@@ -9,8 +9,26 @@ body.template-workshop {
   .wk-text-link { min-height: 36px; }
   .wk-collection { padding-top: 14px; }
   .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  [data-workshop="catalog"] .wk-collection-toolbar { margin-bottom: 10px; }
   .wk-tabs { width: 100%; }
   .wk-tabs button { flex: 1; justify-content: center; font-size: 14px; min-height: 34px; padding: 5px 10px; }
+  .wk-catalog-notice {
+    display: block;
+    margin: 0 0 14px;
+    padding: 9px 11px;
+    border: 1px solid #2b3c34;
+    border-radius: 10px;
+    background: #101816eb;
+    color: #c1d1c8;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .wk-catalog-notice h2 { margin: 0 0 5px; color: #e7eeeb; font-size: inherit; }
+  .wk-catalog-notice ol { margin: 0; padding-inline-start: 1.3em; }
+  .wk-catalog-notice li + li { margin-top: 4px; }
+  .wk-catalog-notice li::marker { color: var(--wk-accent); }
+  .wk-catalog-notice strong { color: #e7eeeb; }
+  .wk-catalog-notice [data-catalog-contact] strong { white-space: nowrap; }
   .wk-search { padding: 0 12px; border: 1px solid #293d30; border-radius: 7px; margin-top: 8px; }
   .wk-search input { width: 100%; min-height: 42px; font-size: 16px; }
   .wk-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 12px; min-height: 0; }
