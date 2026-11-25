@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (withinWorkshop) {
       visit.containers = ['[data-workshop]'];
     }
-    if (window.__destroyWorkshop) window.__destroyWorkshop();
+    if (window.__destroyWorkshop) window.__destroyWorkshop(visit.to.url);
     if (!withinWorkshop && window.destroyMobilePage) window.destroyMobilePage();
     if (!withinWorkshop) document.body.classList.remove('loaded');
     window.__bookshelfIntroConsumed = false;   // 每次导航重置：防 page:view 二次触发，又不卡死后续导航

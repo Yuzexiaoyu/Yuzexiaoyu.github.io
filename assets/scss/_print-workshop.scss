@@ -80,6 +80,8 @@ body.template-workshop {
     .wk-card:active::before { opacity: .7; }
   }
   .wk-empty { grid-column: 1/-1; text-align: center; padding: 55px 24px; background: #111a17; border: 1px dashed #314b3d; border-radius: 12px; color: #99b1a3; width: 100%; overflow-wrap: anywhere; }
+  [data-catalog-entries] { display: contents; }
+  .wk-grid:has(> .wk-topic-card:not([hidden])) .wk-catalog-loading { grid-column: auto; }
   .wk-empty-mark { display: block; font-size: 45px; color: #729d86; margin-bottom: 16px; }
   .wk-empty h2 { font-size: 19px; font-weight: 500; margin-bottom: 10px; }
   .wk-empty p { font-size: 13px; max-width: 600px; margin: 0 auto 20px; }

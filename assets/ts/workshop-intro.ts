@@ -1,7 +1,7 @@
 /** Reveal workshop modules as they arrive; never gate content behind the canvas. */
 (() => {
   const w = window as any;
-  const VERSION = 'module-reveal-10';
+  const VERSION = 'module-reveal-11';
   if (w.WorkshopIntro?.version === VERSION) return;
   w.WorkshopIntro?.cancel?.();
   const html = document.documentElement;
@@ -127,7 +127,7 @@
       group('.wk-collection-toolbar', toolbarAt, toolbarDuration, 8);
       group('.wk-catalog-notice', toolbarAt, toolbarDuration, 8);
       if (!mobile) group('.wk-catalog-home', toolbarAt, toolbarDuration, 8);
-      element.querySelectorAll<HTMLElement>('.wk-grid > .wk-card').forEach((card, index) => {
+      element.querySelectorAll<HTMLElement>('.wk-grid > .wk-card, [data-catalog-entries] > .wk-card').forEach((card, index) => {
         if (seen.has(card)) return;
         const cardAt = cardsAt + Math.min(index, 2) * stagger;
         show(card, cardAt, reduced ? 180 : 320, 10);

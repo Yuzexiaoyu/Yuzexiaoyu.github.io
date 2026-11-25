@@ -121,7 +121,10 @@ async function refresh(): Promise<void> {
       if (signal.aborted || !canPreload()) return;
       enqueuePages();
       afterLoadIdle(() => enqueueHomeMedia(mobile), signal);
-    }, () => preloadPage('/prints/'));
+    }, async () => {
+      await preloadPage('/prints/');
+      if (!signal.aborted && canPreload()) w.WorkshopTopic?.preloadHome();
+    });
   } else {
     enqueuePages();
   }

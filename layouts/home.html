@@ -11,6 +11,9 @@
 {{ end }}
 
 {{ define "main" }}
+    {{- with .Site.GetPage "/page/expedition-33" -}}
+        {{- partial "workshop/expedition-video-sources.html" . -}}
+    {{- end -}}
     {{- $pages := partial "home/pages.html" . -}}
     {{- $pageSize := .Site.Params.pagination.pagerSize | default 4 -}}
     {{- $totalPages := math.Ceil (div (len $pages) (float $pageSize)) -}}

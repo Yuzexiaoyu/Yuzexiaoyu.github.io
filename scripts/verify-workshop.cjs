@@ -287,7 +287,8 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await page.goto(base+'/prints/',{waitUntil:'domcontentloaded'});
       await page.locator('.wk-collection-toolbar').waitFor({state:'visible'});
       await page.waitForFunction(()=>!window.WorkshopIntro.active());
-      assert.equal(await page.locator('.wk-card').count(),0);
+      assert.equal(await page.locator('[data-workshop-item]').count(),0);
+      await page.locator('.wk-topic-card').waitFor({state:'visible'});
       assert.equal(await page.locator('[data-catalog-tab="product"]').isEnabled(),true);
       assert.equal((await state(page)).inert,false);
       assert.equal(await page.locator('.wk-collection-toolbar').evaluate(node=>getComputedStyle(node).opacity),'1');

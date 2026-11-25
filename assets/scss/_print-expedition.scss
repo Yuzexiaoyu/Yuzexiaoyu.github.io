@@ -1,5 +1,6 @@
 body.template-workshop {
-  .wk-topic-card { display: flex; flex-direction: column; }
+  .wk-topic-card:not([hidden]) { display: flex; flex-direction: column; }
+  .wk-topic-card[hidden] { display: none; }
 
   .wk-topic-card .wk-card-info {
     display: flex;

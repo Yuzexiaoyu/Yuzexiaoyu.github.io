@@ -44,34 +44,57 @@ function entryCard(entry: Entry, index: number, topic?: string): string {
 
 async function catalog(root: HTMLElement, signal: AbortSignal) {
   const grid = root.querySelector<HTMLElement>('[data-catalog-grid]')!;
-  const topic = root.querySelector<HTMLTemplateElement>('[data-catalog-topic]')?.innerHTML ?? '';
+  const list = root.querySelector<HTMLElement>('[data-catalog-entries]') || grid;
+  const topicCard = root.querySelector<HTMLAnchorElement>('a[data-catalog-topic]');
+  const legacyTopic = root.querySelector<HTMLTemplateElement>('template[data-catalog-topic]')?.innerHTML ?? '';
   const contact = root.querySelector<HTMLElement>('[data-catalog-contact]');
   if (contact) {
     contact.querySelector('strong')!.textContent = `QQ ${CONTACT_QQ}`;
     contact.hidden = false;
   }
-  w.WorkshopTopic?.primeMusic(root, signal);
   let tab = new URLSearchParams(location.search).get('tab') === 'product' ? 'product' : 'work';
-  try {
-    const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
-    if(signal.aborted) return;
-    let stopPreload: (()=>void)|undefined;
-    const render = () => {
-      stopPreload?.();
-      const items = entries.filter(p=>p.kind === tab);
-      root.querySelectorAll<HTMLElement>('[data-count]').forEach(n=>n.textContent = String(entries.filter(p=>p.kind === n.dataset.count).length).padStart(2,'0'));
-      root.querySelectorAll<HTMLElement>('[data-catalog-tab]').forEach(n=>{const active = n.dataset.catalogTab === tab; n.classList.toggle('is-active',active); n.setAttribute('aria-selected',String(active));});
-      root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab === tab));
-      const cards = items.map((entry, index) => entryCard(entry, index)).join('');
-      grid.innerHTML = (cards + (tab==='work' ? topic : '')) || empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
-      w.WorkshopIntro?.refresh?.(root);
-      stopPreload = preloadCatalogEntries(root, items, signal);
-    };
-    root.querySelectorAll<HTMLButtonElement>('[data-catalog-tab]').forEach(button=>button.addEventListener('click',()=>{tab=button.dataset.catalogTab!;const params=new URLSearchParams(location.search);params.set('tab',tab);replaceQuery(params);render();},{signal}));
+  const tabs = root.querySelectorAll<HTMLButtonElement>('[data-catalog-tab]');
+  let entries: Entry[] | undefined;
+  let stopPreload: (() => void) | undefined;
+  const syncTab = () => {
+    tabs.forEach(button => {
+      const active = tab === button.dataset.catalogTab;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-selected', String(active));
+    });
+    root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(node => node.classList.toggle('is-active', tab === node.dataset.wkTab));
+    if (topicCard) topicCard.hidden = tab !== 'work';
+  };
+  const render = () => {
+    if (!entries) return;
+    stopPreload?.();
+    const items = entries.filter(entry => entry.kind === tab);
+    const cards = items.map((entry, index) => entryCard(entry, index)).join('') + (tab === 'work' ? legacyTopic : '');
+    list.innerHTML = cards || (tab === 'work' && topicCard ? '' : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>'));
+    w.WorkshopIntro?.refresh?.(root);
+    stopPreload = preloadCatalogEntries(root, items, signal);
+  };
+  syncTab();
+  tabs.forEach(button => button.addEventListener('click', () => {
+    tab = button.dataset.catalogTab!;
+    const params = new URLSearchParams(location.search);
+    params.set('tab', tab);
+    replaceQuery(params);
+    syncTab();
     render();
-  } catch(error) {
-    if(signal.aborted || abortError(error)) return;
-    grid.innerHTML = (tab==='work' ? topic : '') + empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);
+  }, {signal}));
+  try {
+    const response = await api<{entries: Entry[]}>('/api/catalog', signal);
+    if (signal.aborted) return;
+    entries = response.entries;
+    root.querySelectorAll<HTMLElement>('[data-count]').forEach(node => {
+      const count = response.entries.filter(entry => entry.kind === node.dataset.count).length;
+      node.textContent = String(count).padStart(2,'0');
+    });
+    render();
+  } catch (error) {
+    if (signal.aborted || abortError(error)) return;
+    list.innerHTML = (tab === 'work' ? legacyTopic : '') + empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);
     w.WorkshopIntro?.refresh?.(root);
   }
 }

@@ -15,12 +15,7 @@
         <img data-tall src="{{ "prints/expedition-33/scene-loop-portrait-poster.webp" | relURL }}" alt="">
       </template>
       <video data-topic-video autoplay muted playsinline loop disablepictureinpicture disableremoteplayback></video>
-      <template data-topic-video-sources>
-        <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-portrait-2x.webm" | relURL }}" type='video/webm; codecs="av01.0.08M.08"'>
-        <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-portrait-2x.mp4" | relURL }}" type='video/mp4; codecs="avc1.640028"'>
-        <source src="{{ "prints/expedition-33/scene-loop-4k-2x.webm" | relURL }}" type='video/webm; codecs="av01.0.12M.08"'>
-        <source src="{{ "prints/expedition-33/scene-loop-4k-2x.mp4" | relURL }}" type='video/mp4; codecs="avc1.640033"'>
-      </template>
+      {{ partial "workshop/expedition-video-sources.html" . }}
     </div>
     <div class="wk-shell wk-topic-inner">
       <div class="wk-breadcrumb">

@@ -25,15 +25,18 @@
         <li>支持定制<span data-catalog-contact hidden>，联系 <strong></strong>（好友申请自动通过）</span>。</li>
       </ol>
     </aside>
-    <div class="wk-grid" data-catalog-grid aria-live="polite"><p class="wk-empty wk-catalog-loading"><span>正在打开工坊…</span></p></div>
+    <div class="wk-grid" data-catalog-grid aria-live="polite">
+      <div data-catalog-entries><p class="wk-empty wk-catalog-loading"><span>正在打开工坊…</span></p></div>
+      {{ with .Site.GetPage "/page/expedition-33" }}
+        <a class="wk-card wk-topic-card" data-catalog-topic href="{{ .RelPermalink }}">
+          <div class="wk-card-image"><img src="{{ "prints/expedition-33/key-art-cover.webp" | relURL }}" width="500" height="400" alt="" decoding="async"></div>
+          <div class="wk-card-info"><h2>{{ .Title }}</h2></div>
+          {{ partial "workshop/expedition-music.html" . }}
+        </a>
+      {{ end }}
+    </div>
     {{ with .Site.GetPage "/page/expedition-33" }}
-    <template data-catalog-topic>
-      <a class="wk-card wk-topic-card" href="{{ .RelPermalink }}">
-        <div class="wk-card-image"><img src="{{ "prints/expedition-33/key-art-cover.webp" | relURL }}" width="500" height="400" alt="" decoding="async"></div>
-        <div class="wk-card-info"><h2>{{ .Title }}</h2></div>
-        {{ partial "workshop/expedition-music.html" . }}
-      </a>
-    </template>
+      {{ partial "workshop/expedition-video-sources.html" . }}
     {{ end }}
   </section>
 </div>
