@@ -8,10 +8,13 @@
     <div class="wk-topic-wallpaper" aria-hidden="true">
       {{/* The poster is the first frame of this loop: https://motionbgs.com/clair-obscur */}}
       {{ $poster := "prints/expedition-33/scene-loop-poster.webp" | relURL }}
-      <img data-topic-poster hidden src="{{ $poster }}" width="1600" height="900" alt="" fetchpriority="low">
+      <img data-topic-poster hidden width="1600" height="900" alt="">
       <noscript><img src="{{ $poster }}" width="1600" height="900" alt=""></noscript>
-      <template data-topic-portrait-poster><img src="{{ "prints/expedition-33/scene-loop-portrait-poster.webp" | relURL }}" alt=""></template>
-      <video data-topic-video autoplay muted playsinline loop preload="none" disablepictureinpicture disableremoteplayback></video>
+      <template data-topic-posters>
+        <img data-wide src="{{ $poster }}" alt="">
+        <img data-tall src="{{ "prints/expedition-33/scene-loop-portrait-poster.webp" | relURL }}" alt="">
+      </template>
+      <video data-topic-video autoplay muted playsinline loop disablepictureinpicture disableremoteplayback></video>
       <template data-topic-video-sources>
         <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-portrait-2x.webm" | relURL }}" type='video/webm; codecs="av01.0.08M.08"'>
         <source media="(max-aspect-ratio: 4/5)" src="{{ "prints/expedition-33/scene-loop-portrait-2x.mp4" | relURL }}" type='video/mp4; codecs="avc1.640028"'>
@@ -22,9 +25,11 @@
     <div class="wk-shell wk-topic-inner">
       <div class="wk-breadcrumb">
         <a href="{{ "prints/" | relURL }}">← 返回工坊</a>
+        <button type="button" class="wk-text-link" data-topic-video-play hidden>播放背景视频</button>
         <button type="button" class="wk-text-link" data-topic-music-play hidden>播放配乐</button>
       </div>
     </div>
   </article>
+  <script>window.WorkshopTopic.mount(document.currentScript.closest('[data-workshop]'));</script>
 </div>
 {{ end }}

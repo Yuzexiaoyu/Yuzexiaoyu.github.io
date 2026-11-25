@@ -41,7 +41,9 @@ async function create(device, mode = '4g') {
       const audit = window.__preloadAudit;
       if (url.origin !== location.origin || !url.pathname.startsWith('/p/')) return original.call(this, input, options);
       const loader = document.querySelector('#page-loader');
-      audit.requests.push({url:url.pathname,ms:performance.now(),introReady:loader?.classList.contains('m-intro-ready'),introHidden:!loader || loader.classList.contains('hidden') || loader.style.display === 'none',documentState:document.readyState});
+      const cards = document.querySelectorAll('.m-home-track [aria-hidden="false"] .article-image img');
+      audit.requests.push({url:url.pathname,ms:performance.now(),introReady:loader?.classList.contains('m-intro-ready'),introHidden:!loader || loader.classList.contains('hidden') || loader.style.display === 'none',documentState:document.readyState,
+        coversReady:cards.length>0 && [...cards].every(img=>img.complete && img.naturalWidth>0),workshopReady:!!window.WorkshopApp});
       audit.maxActive = Math.max(audit.maxActive, ++audit.active);
       return original.call(this, input, options).finally(() => audit.active--);
     };
@@ -61,7 +63,7 @@ async function ready(page, targets) {
 (async () => {
   browser = await chromium.launch({headless:true,channel:process.env.BROWSER_CHANNEL || 'chrome',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   try {
-    for (const device of ['Pixel 7','iPhone 13']) await check(`${device}: preload during opening and reuse article HTML/cover`, async () => {
+    for (const device of ['Pixel 7','iPhone 13']) await check(`${device}: preload after the covers and workshop, reuse article HTML/cover`, async () => {
       const {context,page,requests,errors} = await create(device);
       try {
         await page.goto(base+'/', {waitUntil:'domcontentloaded'});
@@ -71,7 +73,7 @@ async function ready(page, targets) {
         await page.waitForFunction(() => performance.getEntriesByType('resource').filter(r=>r.name.includes('/novel/covers/')).length===4);
         const audit = await page.evaluate(() => window.__preloadAudit);
         assert.equal(audit.requests.length,targets.articles.length);
-        assert.ok(audit.requests[0].introReady && !audit.requests[0].introHidden,JSON.stringify(audit));
+        assert.ok(audit.requests[0].coversReady && audit.requests[0].workshopReady,JSON.stringify(audit));
         assert.ok(audit.maxActive<=2,JSON.stringify(audit));
         assert.equal(requests.filter(r=>/\/novel\/covers\//.test(r.url)).length,4);
         assert.ok(!requests.some(r=>/\.epub|\/novel\/animations\/|aplayer|music-uploads|\/music\//i.test(r.url)));
@@ -135,11 +137,47 @@ async function ready(page, targets) {
         assert.equal(state.avatarComplete,false);
         assert.equal(state.state,'interactive');
         assert.equal(state.loaderHidden,false);
-        assert.ok(!requests.some(r=>/\/novel\/covers\/|\/ts\/print-workshop|\/workshop\/catalog\.json/.test(r.url)));
+        assert.ok(requests.some(r=>r.url.endsWith('/workshop/catalog.json')));
+        assert.ok(!requests.some(r=>r.url.includes('/novel/covers/')));
         assert.ok(state.audit.requests[0].introReady&&!state.audit.requests[0].introHidden);
         assert.deepEqual(errors,[]);
         return state;
       } finally {await context.close();}
+    });
+    for (const device of [null,'Pixel 7']) await check((device || 'desktop')+': active covers precede the workshop and article HTML', async () => {
+      const {context,page,requests,errors} = await create(device);
+      let release;
+      const held = new Promise(resolve=>{release=resolve;});
+      let releaseCatalog;
+      const catalogHeld = new Promise(resolve=>{releaseCatalog=resolve;});
+      try {
+        await page.route('**/workshop/catalog.json', async route => { await catalogHeld; await route.continue(); });
+        await page.route('**/p/*/*.webp', async route => {
+          await held;
+          // An image error should release the queue just like a decoded cover.
+          if (device && route.request().url().endsWith('/lighthouse.webp')) await route.abort();
+          else await route.continue();
+        });
+        await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+        await page.waitForFunction(()=>window.swupReady && document.querySelector('.home-article-list .article-image img[loading="eager"]'));
+        const workshop = r => r.url.endsWith('/workshop/catalog.json') || r.url.includes('/ts/print-workshop.') ||
+          (r.type==='Fetch' && new URL(r.url).pathname==='/prints/');
+        const article = r => r.type==='Fetch' && new URL(r.url).pathname.startsWith('/p/');
+        assert.ok(requests.some(r=>r.type==='Image' && r.url.includes('/p/')));
+        assert.ok(!requests.some(r=>workshop(r) || article(r)));
+        const catalogRequest = page.waitForRequest(r=>r.url().endsWith('/workshop/catalog.json'));
+        release();
+        await catalogRequest;
+        await page.waitForFunction(()=>window.swup.cache.has('/prints/'));
+        assert.ok(!requests.some(article));
+        releaseCatalog();
+        await page.waitForFunction(()=>window.__preloadAudit.requests.length>0);
+        const firstArticle = requests.findIndex(article);
+        assert.ok(firstArticle>0);
+        assert.equal(requests.slice(0,firstArticle).filter(workshop).length,3);
+        assert.deepEqual(errors,[]);
+        return {workshopBeforeArticles:true,failedCover:!!device};
+      } finally {release();releaseCatalog();await context.close();}
     });
     await check('navigation cancels queued article work; failed preload retries on return', async () => {
       const {context,page,errors} = await create('Pixel 7');

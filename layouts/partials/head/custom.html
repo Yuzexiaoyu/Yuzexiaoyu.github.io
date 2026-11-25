@@ -45,7 +45,7 @@
 <link rel="preload" as="script" href="{{ $mainScript.RelPermalink }}" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/Swup.umd.js" fetchpriority="high">
 <link rel="preload" as="script" href="/lib/index.umd.js" fetchpriority="high">
-{{- if hasPrefix .Layout "print-" -}}
+{{- if and (hasPrefix .Layout "print-") (ne .Layout "print-expedition") -}}
 {{- $workshopScript := resources.Get "ts/print-workshop.ts" | js.Build $mainOpts | fingerprint -}}
 <link rel="preload" as="script" href="{{ $workshopScript.RelPermalink }}">
 {{- end -}}

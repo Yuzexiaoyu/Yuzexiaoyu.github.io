@@ -1,4 +1,6 @@
 {{- $workshop := resources.Get "ts/print-workshop.ts" | js.Build (dict "minify" hugo.IsProduction) | fingerprint -}}
+{{- $topic := resources.Get "ts/workshop-topic.ts" | js.Build (dict "minify" hugo.IsProduction) -}}
+<script>{{ $topic.Content | safeJS }}</script>
 <script id="workshop-loader">
 (function(){
   var source = {{ $workshop.RelPermalink | jsonify | safeJS }};
@@ -38,6 +40,10 @@
     document.body.classList.toggle('template-workshop', !!root);
     if (!root) return;
     var kind = root.dataset.workshop;
+    if (kind === 'topic') {
+      window.WorkshopTopic.mount(root);
+      if (!root.querySelector('[data-topic-grid]')) return;
+    }
     if (kind !== 'topic' && window.WorkshopIntro) window.WorkshopIntro.enter(root);
     if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
     prepare(kind === 'catalog' || kind === 'topic' ? '/prints/' : null).then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
@@ -45,7 +51,7 @@
       if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
     });
   };
-  window.__destroyWorkshop = function(){if(window.WorkshopApp)window.WorkshopApp.destroy();};
+  window.__destroyWorkshop = function(){window.WorkshopTopic.destroy();if(window.WorkshopApp)window.WorkshopApp.destroy();};
   window.__warmWorkshop = function(signal){
     if (signal.aborted || !window.__pagePreload?.allowed()) return Promise.resolve();
     return prepare('/prints/').then(function(){

@@ -64,7 +64,22 @@ function afterLoadIdle(run: () => void, signal: AbortSignal): void {
   else window.addEventListener('load', idle, {signal, once: true});
 }
 
-function refresh(): void {
+async function preloadPage(url: string): Promise<void> {
+  const result = await w.swup.preload(url);
+  // Some HTTP error documents reach the plugin cache. Let navigation retry.
+  if (result && !/<main\b[^>]*\bclass=["'][^"']*\bmain\b/.test(result.html)) w.swup.cache.delete(url);
+}
+
+function enqueueHomeMedia(mobile: boolean): void {
+  if (!mobile && !w.__isMobileDevice?.()) queue.push(() => w.__warmNextBookshelfVideo?.());
+  for (const url of (w.__preloadData?.novelCovers || []).slice(0, mobile ? 4 : 8)) {
+    queue.push(() => warmCover(url));
+  }
+  if (!mobile) queue.push(() => w.__enableAudioPreload?.());
+  pump();
+}
+
+async function refresh(): Promise<void> {
   if (!mounted || !w.swup?.preload) return;
   if (!canPreload()) { clearQueue(); return; }
   const mobile = !!w.__isMobileUI?.();
@@ -76,6 +91,18 @@ function refresh(): void {
   page = document.body;
   group = current;
   const urls = new Set<string>();
+  if (current) schedule = new AbortController();
+  const signal = schedule?.signal;
+  if (current && signal) {
+    // Use the actual cards so the paint and the preload share one image request.
+    const images = current.querySelectorAll<HTMLImageElement>('.article-image img');
+    await Promise.all(Array.from(images, image => {
+      image.fetchPriority = 'high';
+      image.loading = 'eager';
+      return image.decode().catch(() => {}); // A broken cover must release the queue, too.
+    }));
+    if (signal.aborted || !canPreload()) return;
+  }
   const articles = current?.querySelectorAll<HTMLAnchorElement>('.article-title a') || [];
   const menu = document.querySelectorAll<HTMLAnchorElement>(mobile ? '.m-navigation nav a[href]' : '#main-menu a[href]');
   for (const link of [...Array.from(articles).slice(0, 6), ...menu]) {
@@ -83,29 +110,22 @@ function refresh(): void {
     if (link.origin === location.origin && !link.target && !link.hasAttribute('download') &&
         url !== location.pathname + location.search) urls.add(url);
   }
-  if (current) schedule = new AbortController();
-  const signal = schedule?.signal;
-  const prioritizeWorkshop = mobile && urls.has('/prints/');
-  if (prioritizeWorkshop && signal) queue.push(() => w.__warmWorkshop?.(signal));
-  for (const url of urls) {
+  const enqueuePages = () => {
+    for (const url of urls) queue.push(() => preloadPage(url));
+  };
+  if (signal) {
+    urls.delete('/prints/');
     queue.push(async () => {
-      const result = await w.swup.preload(url);
-      // Some HTTP error documents reach the plugin cache. Let navigation retry.
-      if (result && !/<main\b[^>]*\bclass=["'][^"']*\bmain\b/.test(result.html)) w.swup.cache.delete(url);
-    });
+      try { await w.__warmWorkshop?.(signal); }
+      catch { /* Opening the workshop can retry. Other pages can still warm. */ }
+      if (signal.aborted || !canPreload()) return;
+      enqueuePages();
+      afterLoadIdle(() => enqueueHomeMedia(mobile), signal);
+    }, () => preloadPage('/prints/'));
+  } else {
+    enqueuePages();
   }
   pump();
-  if (!signal) return;
-
-  afterLoadIdle(() => {
-    if (!prioritizeWorkshop) queue.push(() => w.__warmWorkshop?.(signal));
-    if (!mobile && !w.__isMobileDevice?.()) queue.push(() => w.__warmNextBookshelfVideo?.());
-    for (const url of (w.__preloadData?.novelCovers || []).slice(0, mobile ? 4 : 8)) {
-      queue.push(() => warmCover(url));
-    }
-    if (!mobile) queue.push(() => w.__enableAudioPreload?.());
-    pump();
-  }, signal);
 }
 
 export const pagePreload = {

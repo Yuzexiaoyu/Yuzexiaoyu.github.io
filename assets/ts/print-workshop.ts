@@ -5,7 +5,6 @@ import {initMobileGallerySwipe} from './mobile-workshop-gallery';
 import {bindMobileVideoBar, mobileVideoBar} from './mobile-workshop-video';
 import {bindGalleryPhotos} from './workshop-gallery-photos';
 import {preloadCatalogEntries, takePreloadedVideo} from './workshop-preload';
-import {bindTopicMusic, primeTopicMusic} from './workshop-topic-music';
 
 const w = window as any;
 let currentRoot: HTMLElement|null = null;
@@ -51,7 +50,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
     contact.querySelector('strong')!.textContent = `QQ ${CONTACT_QQ}`;
     contact.hidden = false;
   }
-  primeTopicMusic(root, signal);
+  w.WorkshopTopic?.primeMusic(root, signal);
   let tab = new URLSearchParams(location.search).get('tab') === 'product' ? 'product' : 'work';
   try {
     const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
@@ -77,71 +76,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
   }
 }
 
-function playTopicWallpaper(root: HTMLElement, signal: AbortSignal, startMusic?: () => void) {
-  const video = root.querySelector<HTMLVideoElement>('[data-topic-video]');
-  const sources = root.querySelector<HTMLTemplateElement>('[data-topic-video-sources]');
-  if (!video || !sources) {
-    startMusic?.();
-    return;
-  }
-  const poster = root.querySelector<HTMLImageElement>('[data-topic-poster]');
-  const desktopPoster = poster?.src;
-  const portraitPoster = root.querySelector<HTMLTemplateElement>('[data-topic-portrait-poster]')
-    ?.content.querySelector('img')?.getAttribute('src');
-  const variants = Array.from(sources.content.querySelectorAll('source'));
-  const portraitView = matchMedia(variants.find(source => source.media)?.media ?? '(max-aspect-ratio: 4/5)');
-  let activePortrait: boolean | undefined;
-  const updatePoster = () => {
-    if (poster && desktopPoster) poster.src = (activePortrait && portraitPoster) || desktopPoster;
-  };
-  const showPoster = () => {
-    video.classList.remove('is-playing');
-    if (poster) {
-      updatePoster();
-      poster.hidden = false;
-    }
-    startMusic?.();
-  };
-  const start = () => {
-    video.muted = true;
-    void video.play().catch((error: DOMException) => {
-      if (signal.aborted || error.name === 'AbortError') return;
-      showPoster();
-      if (error.name === 'NotAllowedError') {
-        root.addEventListener('click', start, {once: true, signal});
-      }
-    });
-  };
-  const update = () => {
-    const portrait = document.documentElement.dataset.ui === 'mobile' && portraitView.matches;
-    if (activePortrait !== portrait) {
-      activePortrait = portrait;
-      if (poster && !poster.hidden) updatePoster();
-      video.classList.remove('is-playing');
-      const candidates = variants.filter(source => Boolean(source.media) === portrait);
-      video.replaceChildren(...candidates.map(source => source.cloneNode(true)));
-      video.load();
-    }
-    start();
-  };
-  video.addEventListener('playing', () => {
-    video.classList.add('is-playing');
-    root.removeEventListener('click', start);
-    startMusic?.();
-  }, {signal});
-  video.addEventListener('error', event => {
-    if (event.target === video || event.target === video.lastElementChild) showPoster();
-  }, {capture: true, signal});
-  portraitView.addEventListener('change', update, {signal});
-  signal.addEventListener('abort', () => {
-    video.replaceChildren();
-    video.load();
-  }, {once: true});
-  update();
-}
-
 async function topic(root: HTMLElement, signal: AbortSignal) {
-  playTopicWallpaper(root, signal, bindTopicMusic(root, signal));
   const grid = root.querySelector<HTMLElement>('[data-topic-grid]');
   if (!grid) return;
   const topicId = root.dataset.topic;
