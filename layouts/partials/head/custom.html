@@ -169,8 +169,7 @@ window.__runMermaid = async function() {
     {{- end -}}
   {{- end -}}
 {{- end -}}
-{{/* 头像 300KB，且被 1.5s 进场动画遮挡，无需 high 抢占关键 JS/CSS 带宽。
-     去掉 fetchpriority 后预载为 Low，让位给上面 high 的核心脚本，动画期间从容加载完。 */}}
+{{/* 头像保持默认预载优先级，给关键脚本和样式留出带宽。 */}}
 {{- if $avatarUrl }}
 <link rel="preload" as="image" href="{{ $avatarUrl }}">
 {{- end }}

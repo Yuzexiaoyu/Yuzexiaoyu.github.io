@@ -11,7 +11,7 @@ favicon        = "image/fish.jpg"
 
 [sidebar]
     subtitle = ""
-    avatar   = "image/fish.jpg"
+    avatar   = "image/fish.webp"
 
 [article]
   math = false
