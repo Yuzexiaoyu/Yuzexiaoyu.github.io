@@ -339,16 +339,20 @@ body.template-workshop {
 .wk-catalog-home, .wk-catalog-notice { display: none; }
 
 html:not([data-ui="mobile"]) body.template-workshop {
-  .wk-shell[data-workshop="catalog"] { max-width: 1120px; }
+  .wk-shell[data-workshop="catalog"] { width: Min(1400px, calc(100% - 64px)); }
 
   .wk-collection {
     display: grid;
-    grid-template-columns: Clamp(184px, 21vw, 248px) minmax(0, 1fr);
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 848px) minmax(180px, 1fr);
+    grid-template-areas:
+      "home tabs ."
+      "notice cards .";
     gap: 20px Clamp(16px, 2vw, 24px);
     align-items: start;
   }
 
   .wk-catalog-home {
+    grid-area: home;
     display: inline-flex;
     align-items: center;
     align-self: center;
@@ -365,6 +369,7 @@ html:not([data-ui="mobile"]) body.template-workshop {
   .wk-catalog-home:hover { background: #1a2a22; color: #e7eeeb; }
 
   .wk-catalog-notice {
+    grid-area: notice;
     display: block;
     padding: 17px;
     border: 1px solid #2b3c34;
@@ -383,14 +388,30 @@ html:not([data-ui="mobile"]) body.template-workshop {
   .wk-notice-materials > span { display: block; }
   .wk-notice-materials > span + span { margin-top: 4px; }
   .wk-catalog-notice [data-catalog-contact] strong { white-space: nowrap; }
-  .wk-collection-toolbar { margin-bottom: 0; }
-  .wk-collection > .wk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .wk-collection-toolbar { grid-area: tabs; margin-bottom: 0; }
+  .wk-collection > .wk-grid {
+    grid-area: cards;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: start;
+    gap: 20px;
+    --wk-catalog-card-width: calc((100% - 20px) / 2);
 
-  @media (max-width: 760px) {
-    .wk-collection > .wk-grid { grid-template-columns: minmax(0, 1fr); }
+    .wk-card,
+    &:has(> .wk-topic-card:not([hidden])) .wk-catalog-loading {
+      flex: 0 0 var(--wk-catalog-card-width);
+    }
   }
-  @media (max-width: 480px) {
-    .wk-collection { grid-template-columns: minmax(0, 1fr); }
+
+  @media (max-width: 960px) {
+    .wk-collection {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "home" "tabs" "notice" "cards";
+    }
+  }
+  @media (max-width: 760px) {
+    .wk-collection > .wk-grid { --wk-catalog-card-width: 100%; }
   }
 }
 
