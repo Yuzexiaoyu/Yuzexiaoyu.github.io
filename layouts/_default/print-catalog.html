@@ -2,7 +2,8 @@
 {{ define "left-sidebar" }}<!-- Workshop uses its own navigation. -->{{ end }}
 {{ define "right-sidebar" }}{{ end }}
 {{ define "main" }}
-<div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
+{{ $dataSource := .Site.Params.workshop.dataSource | default "static" }}
+<div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ $dataSource }}" data-active-catalog-tab="work">
   <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
     <a class="wk-catalog-home" href="{{ "/" | relURL }}"><span aria-hidden="true">←</span> 返回主页</a>
     <div class="wk-collection-toolbar">
@@ -26,7 +27,26 @@
       </ol>
     </aside>
     <div class="wk-grid" data-catalog-grid aria-live="polite">
-      <div data-catalog-entries><p class="wk-empty wk-catalog-loading"><span>正在打开工坊…</span></p></div>
+      <div data-catalog-entries>
+        {{ if and (eq $dataSource "static") (fileExists "static/workshop/catalog.json") }}
+          {{ $snapshot := readFile "static/workshop/catalog.json" | transform.Unmarshal }}
+          {{ $published := where $snapshot.entries "status" "published" }}
+          {{ range $kind := slice "work" "product" }}
+            {{ range first 1 (where $published "kind" $kind) }}
+              <a class="wk-card" data-catalog-lead="{{ .kind }}" data-catalog-id="{{ .id }}" href="{{ "prints/detail/" | relURL }}?id={{ .id | urlquery }}" style="--card-index:0">
+                <div class="wk-card-image">
+                  {{ range first 1 .images }}
+                    <img src="{{ (strings.TrimPrefix "/" .url) | absURL }}" alt="" loading="lazy" fetchpriority="high" decoding="async">
+                  {{ end }}
+                  {{ if .is_demo }}<span class="wk-badge">演示内容</span>{{ end }}
+                </div>
+                <div class="wk-card-info"><div><h2>{{ .name }}</h2></div><span class="wk-card-price"></span></div>
+              </a>
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        <p class="wk-empty wk-catalog-loading" data-catalog-status><span>正在打开工坊…</span></p>
+      </div>
       {{ with .Site.GetPage "/page/expedition-33" }}
         <a class="wk-card wk-topic-card" data-catalog-topic href="{{ .RelPermalink }}">
           <div class="wk-card-image"><img src="{{ "prints/expedition-33/key-art-cover.webp" | relURL }}" width="500" height="400" alt="" decoding="async"></div>

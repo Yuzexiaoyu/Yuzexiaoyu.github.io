@@ -1,7 +1,10 @@
 import { canPreload, connection } from './preload-policy';
 
 type Task = () => Promise<unknown> | void;
+type FetchArgs = {url: string; options: RequestInit};
 const w = window as any;
+const WORKSHOP_PAGE = '/prints/';
+const COVER_WAIT_MS = 1800;
 const covers = new Set<string>();
 let mounted = false;
 let page: HTMLElement | null = null;
@@ -9,6 +12,9 @@ let group: HTMLElement | null = null;
 let schedule: AbortController | undefined;
 let queue: Task[] = [];
 let running = 0;
+let watchingWorkshop = false;
+let workshopRequests = 0;
+let onWorkshopRequest: (() => void) | undefined;
 
 function warmCover(url: string): Promise<void> | void {
   if (covers.has(url)) return;
@@ -46,6 +52,7 @@ function pump(): void {
 function clearQueue(): void {
   schedule?.abort();
   schedule = undefined;
+  onWorkshopRequest = undefined;
   queue = [];
   page = group = null;
 }
@@ -68,6 +75,38 @@ async function preloadPage(url: string): Promise<void> {
   const result = await w.swup.preload(url);
   // Some HTTP error documents reach the plugin cache. Let navigation retry.
   if (result && !/<main\b[^>]*\bclass=["'][^"']*\bmain\b/.test(result.html)) w.swup.cache.delete(url);
+}
+
+function watchWorkshopRequests(): void {
+  if (watchingWorkshop || !w.swup?.hooks) return;
+  watchingWorkshop = true;
+  w.swup.hooks.replace('fetch:request', (visit: unknown, args: FetchArgs, send: (visit: unknown, args: FetchArgs) => Promise<Response>) => {
+    const response = send(visit, args);
+    if (args.url !== WORKSHOP_PAGE) return response;
+    workshopRequests++;
+    const notify = onWorkshopRequest;
+    onWorkshopRequest = undefined;
+    notify?.();
+    return response.finally(() => { workshopRequests--; });
+  });
+}
+
+async function preloadWorkshopPage(signal: AbortSignal): Promise<void> {
+  const warmVideo = () => {
+    if (!signal.aborted && canPreload()) w.WorkshopTopic?.preloadHomeVideo?.();
+  };
+  // Hover or focus can have already dispatched the request before the covers settle.
+  if (workshopRequests || w.swup.cache.has(WORKSHOP_PAGE)) warmVideo();
+  else onWorkshopRequest = warmVideo;
+  try {
+    await preloadPage(WORKSHOP_PAGE);
+    if (!signal.aborted && canPreload()) w.WorkshopTopic?.preloadHomePage?.();
+  } finally {
+    if (onWorkshopRequest === warmVideo) {
+      onWorkshopRequest = undefined;
+      if (w.swup.cache.has(WORKSHOP_PAGE)) warmVideo();
+    }
+  }
 }
 
 function enqueueHomeMedia(mobile: boolean): void {
@@ -96,11 +135,22 @@ async function refresh(): Promise<void> {
   if (current && signal) {
     // Use the actual cards so the paint and the preload share one image request.
     const images = current.querySelectorAll<HTMLImageElement>('.article-image img');
-    await Promise.all(Array.from(images, image => {
+    const decoded = Promise.all(Array.from(images, image => {
       image.fetchPriority = 'high';
       image.loading = 'eager';
       return image.decode().catch(() => {}); // A broken cover must release the queue, too.
     }));
+    await new Promise<void>(resolve => {
+      const finish = () => {
+        clearTimeout(timeout);
+        signal.removeEventListener('abort', finish);
+        resolve();
+      };
+      // Keep slow images loading in their reserved slots while the queue proceeds.
+      const timeout = window.setTimeout(finish, COVER_WAIT_MS);
+      signal.addEventListener('abort', finish, {once: true});
+      void decoded.then(finish);
+    });
     if (signal.aborted || !canPreload()) return;
   }
   const articles = current?.querySelectorAll<HTMLAnchorElement>('.article-title a') || [];
@@ -114,17 +164,14 @@ async function refresh(): Promise<void> {
     for (const url of urls) queue.push(() => preloadPage(url));
   };
   if (signal) {
-    urls.delete('/prints/');
+    urls.delete(WORKSHOP_PAGE);
     queue.push(async () => {
       try { await w.__warmWorkshop?.(signal); }
       catch { /* Opening the workshop can retry. Other pages can still warm. */ }
       if (signal.aborted || !canPreload()) return;
       enqueuePages();
       afterLoadIdle(() => enqueueHomeMedia(mobile), signal);
-    }, async () => {
-      await preloadPage('/prints/');
-      if (!signal.aborted && canPreload()) w.WorkshopTopic?.preloadHome();
-    });
+    }, () => preloadWorkshopPage(signal));
   } else {
     enqueuePages();
   }
@@ -133,7 +180,7 @@ async function refresh(): Promise<void> {
 
 export const pagePreload = {
   allowed: canPreload,
-  start() { mounted = true; refresh(); },
+  start() { mounted = true; watchWorkshopRequests(); refresh(); },
   stop() { mounted = false; clearQueue(); },
   refresh
 };

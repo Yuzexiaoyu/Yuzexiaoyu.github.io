@@ -1,15 +1,21 @@
 import {bindTopicMusic, primeTopicMusic} from './workshop-topic-music';
-import {canPreload} from './preload-policy';
+import {canPreload, cancelPreloadOnPause} from './preload-policy';
 
 let mounted: HTMLElement | null = null;
 let controller: AbortController | undefined;
 type Topic = {url: URL; sources: HTMLTemplateElement};
 let catalog: {root: HTMLElement; topic: Topic | undefined; frame: number; events: AbortController} | undefined;
-let warmed: {path: string; video: HTMLVideoElement} | undefined;
+let warmed: {path: string; video: HTMLVideoElement; navigating: boolean} | undefined;
 
 function releaseVideo(video: HTMLVideoElement) {
   video.removeAttribute('src');
   video.load();
+}
+
+function discardWarmVideo() {
+  const video = warmed?.video;
+  warmed = undefined;
+  if (video) releaseVideo(video);
 }
 
 function portraitQuery(template: HTMLTemplateElement) {
@@ -22,8 +28,6 @@ function selectCandidates(template: HTMLTemplateElement, video: HTMLVideoElement
   const urls = supported.map(source => new URL(source.getAttribute('src')!, document.baseURI));
   const mp4 = urls[supported.findIndex(source => source.type.startsWith('video/mp4'))];
   const candidates = mobile && mp4 ? [mp4, ...urls.filter(url => url !== mp4)] : urls;
-  // Retry the compact MP4 on Pages before trying the larger CDN encodes.
-  if (mp4 && mp4.origin !== location.origin) candidates.splice(1, 0, new URL(mp4.pathname, location.origin));
   return candidates.map(url => url.href);
 }
 
@@ -42,11 +46,11 @@ function warmVideo(topic: Topic, preload: 'metadata' | 'auto') {
     if (preload === 'auto') current.preload = 'auto';
     return;
   }
-  if (warmed) releaseVideo(warmed.video);
+  discardWarmVideo();
   video.muted = true;
   video.playsInline = true;
   video.preload = preload;
-  warmed = {path: topic.url.pathname, video};
+  warmed = {path: topic.url.pathname, video, navigating: false};
   video.addEventListener('error', () => {
     if (warmed?.video === video) warmed = undefined;
   }, {once:true});
@@ -62,19 +66,24 @@ function warmTopicPage(topic: Topic) {
   }).catch(() => {});
 }
 
-function preloadHome() {
+function preloadHomePage() {
   const topic = findTopic(document);
-  if (!topic || !canPreload()) return;
-  warmTopicPage(topic);
+  if (topic && canPreload()) warmTopicPage(topic);
+}
+
+function preloadHomeVideo() {
+  const topic = findTopic(document);
   // Let the browser buffer metadata on the homepage, upgrading on workshop entry.
-  warmVideo(topic, 'metadata');
+  if (topic && canPreload()) warmVideo(topic, 'metadata');
 }
 
 function prepareCatalog(root: HTMLElement) {
   if (catalog?.root === root) return;
   const topic = findTopic(root);
   const card = root.querySelector<HTMLAnchorElement>('a[data-catalog-topic]');
-  if (card) card.hidden = new URLSearchParams(location.search).get('tab') === 'product';
+  const productTab = new URLSearchParams(location.search).get('tab') === 'product';
+  root.dataset.activeCatalogTab = productTab ? 'product' : 'work';
+  if (card) card.hidden = productTab;
   const events = new AbortController();
   primeTopicMusic(root, events.signal);
   const frame = requestAnimationFrame(() => {
@@ -97,10 +106,8 @@ function destroy(nextUrl?: string) {
     if (catalog.topic && catalog.topic.url.pathname === nextPath) warmVideo(catalog.topic, 'auto');
     catalog = undefined;
   }
-  if (warmed && warmed.path !== nextPath && nextPath !== '/prints/') {
-    releaseVideo(warmed.video);
-    warmed = undefined;
-  }
+  if (warmed && warmed.path === nextPath) warmed.navigating = true;
+  else if (nextPath !== '/prints/') discardWarmVideo();
 }
 
 function mount(root: HTMLElement) {
@@ -197,4 +204,8 @@ function mount(root: HTMLElement) {
   selectSources();
 }
 
-(window as any).WorkshopTopic = {mount, destroy, prepareCatalog, preloadHome};
+cancelPreloadOnPause(() => {
+  if (warmed && !warmed.navigating) discardWarmVideo();
+});
+
+(window as any).WorkshopTopic = {mount, destroy, prepareCatalog, preloadHomePage, preloadHomeVideo};

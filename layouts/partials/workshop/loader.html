@@ -48,8 +48,11 @@
     if (kind !== 'topic' && window.WorkshopIntro) window.WorkshopIntro.enter(root);
     if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
     prepare(kind === 'catalog' || kind === 'topic' ? '/prints/' : null).then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
-      var node=root.querySelector('[data-catalog-entries]') || root.querySelector('[data-catalog-grid],[data-detail-content],[data-topic-grid],[data-admin-notice]');
-      if(node)node.textContent='工坊脚本加载失败，请刷新页面重试。';
+      var node=root.querySelector('[data-catalog-status]') || root.querySelector('[data-catalog-grid],[data-detail-content],[data-topic-grid],[data-admin-notice]');
+      if(node){
+        node.classList.remove('wk-catalog-loading');
+        node.textContent='工坊脚本加载失败，请刷新页面重试。';
+      }
     });
   };
   window.__destroyWorkshop = function(nextUrl){window.WorkshopTopic.destroy(nextUrl);if(window.WorkshopApp)window.WorkshopApp.destroy();};

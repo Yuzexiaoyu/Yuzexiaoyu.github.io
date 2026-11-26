@@ -150,8 +150,11 @@ async function ready(page, targets) {
       const held = new Promise(resolve=>{release=resolve;});
       let releaseCatalog;
       const catalogHeld = new Promise(resolve=>{releaseCatalog=resolve;});
+      let releaseWorkshop;
+      const workshopHeld = new Promise(resolve=>{releaseWorkshop=resolve;});
       try {
         await page.route('**/workshop/catalog.json', async route => { await catalogHeld; await route.continue(); });
+        await page.route(base+'/prints/', async route => { await workshopHeld; await route.continue(); });
         await page.route('**/p/*/*.webp', async route => {
           await held;
           // An image error should release the queue just like a decoded cover.
@@ -160,14 +163,20 @@ async function ready(page, targets) {
         });
         await page.goto(base+'/',{waitUntil:'domcontentloaded'});
         await page.waitForFunction(()=>window.swupReady && document.querySelector('.home-article-list .article-image img[loading="eager"]'));
-        const workshop = r => r.url.endsWith('/workshop/catalog.json') || r.url.includes('/ts/print-workshop.') ||
-          (r.type==='Fetch' && new URL(r.url).pathname==='/prints/');
+        const workshopPage = r => r.type==='Fetch' && new URL(r.url).pathname==='/prints/';
+        const workshop = r => r.url.endsWith('/workshop/catalog.json') || r.url.includes('/ts/print-workshop.') || workshopPage(r);
+        const videoPath = '/prints/expedition-33/scene-loop-'+(device ? 'portrait' : 'wide')+'-stream-v1.mp4';
+        const video = r => new URL(r.url).pathname===videoPath;
         const article = r => r.type==='Fetch' && new URL(r.url).pathname.startsWith('/p/');
         assert.ok(requests.some(r=>r.type==='Image' && r.url.includes('/p/')));
-        assert.ok(!requests.some(r=>workshop(r) || article(r)));
+        assert.ok(!requests.some(r=>workshop(r) || article(r) || video(r)));
         const catalogRequest = page.waitForRequest(r=>r.url().endsWith('/workshop/catalog.json'));
+        const videoRequest = page.waitForRequest(r=>new URL(r.url()).pathname===videoPath);
         release();
-        await catalogRequest;
+        await Promise.all([catalogRequest,videoRequest]);
+        assert.ok(requests.findIndex(workshopPage)>=0 && requests.findIndex(workshopPage)<requests.findIndex(video));
+        assert.equal(await page.evaluate(()=>window.swup.cache.has('/prints/')),false);
+        releaseWorkshop();
         await page.waitForFunction(()=>window.swup.cache.has('/prints/'));
         assert.ok(!requests.some(article));
         releaseCatalog();
@@ -176,8 +185,34 @@ async function ready(page, targets) {
         assert.ok(firstArticle>0);
         assert.equal(requests.slice(0,firstArticle).filter(workshop).length,3);
         assert.deepEqual(errors,[]);
-        return {workshopBeforeArticles:true,failedCover:!!device};
-      } finally {release();releaseCatalog();await context.close();}
+        return {workshopBeforeArticles:true,videoWhileWorkshopPending:true,failedCover:!!device};
+      } finally {release();releaseCatalog();releaseWorkshop();await context.close();}
+    });
+    await check('one stalled cover releases the queue, then loads; home is fetched once before navigation', async () => {
+      const {context,page,requests,errors} = await create('Pixel 7');
+      let releaseCover;
+      const held = new Promise(resolve=>{releaseCover=resolve;});
+      try {
+        await page.route('**/lighthouse.webp', async route=>{await held;await route.continue().catch(()=>{});});
+        await Promise.all([
+          page.waitForRequest(request=>request.url().endsWith('/scene-loop-portrait-stream-v1.mp4')),
+          page.goto(base+'/',{waitUntil:'domcontentloaded'})
+        ]);
+        const cover = '.m-home-track [aria-hidden="false"] img[src$="/lighthouse.webp"]';
+        assert.equal(await page.locator(cover).evaluate(image=>image.complete),false);
+        const homeRequests = requests.filter(request=>request.url===base+'/');
+        assert.deepEqual(homeRequests.map(request=>request.type),['Document']);
+        releaseCover();
+        await page.waitForFunction(selector=>document.querySelector(selector)?.naturalWidth>0,cover);
+        await page.evaluate(()=>{window.__sameHomeDocument = true;});
+        await page.locator('.m-home-track [aria-hidden="false"] .home-pinned-card .article-image a').tap();
+        await page.locator('[data-workshop="catalog"]').waitFor();
+        await page.goBack({waitUntil:'commit'});
+        await page.locator('.m-home-track [aria-hidden="false"]').waitFor();
+        assert.equal(await page.evaluate(()=>window.__sameHomeDocument),true);
+        assert.deepEqual(errors,[]);
+        return {initialHomeRequests:homeRequests.length,coverLoadedAfterTimeout:true,swupBack:true};
+      } finally {releaseCover();await context.close();}
     });
     await check('navigation cancels queued article work; failed preload retries on return', async () => {
       const {context,page,errors} = await create('Pixel 7');

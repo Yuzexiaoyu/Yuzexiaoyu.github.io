@@ -82,6 +82,10 @@ section.article-list > article {
   }
 }
 
+section.home-article-list > article .article-image {
+  background-color: var(--card-separator-color);
+}
+
 section.home-article-list > .home-pinned-card {
   .article-image {
     z-index: 1;

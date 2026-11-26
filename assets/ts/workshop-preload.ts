@@ -1,41 +1,41 @@
 import {Entry, firstVideoIndexForColor} from './workshop-shared';
-import {canPreload} from './preload-policy';
+import {canPreload, cancelPreloadOnPause} from './preload-policy';
 
-const videos = new Map<string, HTMLVideoElement>();
 const pages = new Map<string, Promise<unknown>>();
-const MAX_WARM_VIDEOS = 2;
+let warmed: {url: string; video: HTMLVideoElement; events: AbortController} | undefined;
 
-function warmVideo(entry: Entry, engaged = false) {
-  const asset = entry.videos?.[firstVideoIndexForColor(entry)];
-  if (!asset?.url) return;
-  const buffered = videos.get(asset.url);
-  const preload = engaged && asset.size <= 8 * 1024 * 1024 ? 'auto' : 'metadata';
-  if (buffered) {
-    if (preload === 'auto') buffered.preload = preload;
-    return;
-  }
-  while (videos.size >= MAX_WARM_VIDEOS) {
-    const [url, video] = videos.entries().next().value!;
-    video.removeAttribute('src');
-    video.load();
-    videos.delete(url);
-  }
-  const video = document.createElement('video');
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = preload;
-  video.src = asset.url;
-  video.addEventListener('error', () => {
-    if (videos.get(asset.url!) === video) videos.delete(asset.url!);
-  }, {once: true});
-  videos.set(asset.url, video);
+function discardWarmVideo() {
+  if (!warmed) return;
+  const {video, events} = warmed;
+  warmed = undefined;
+  events.abort();
+  video.removeAttribute('src');
   video.load();
 }
 
+function warmVideo(entry: Entry) {
+  const asset = entry.videos?.[firstVideoIndexForColor(entry)];
+  if (!asset?.url || warmed?.url === asset.url) return;
+  discardWarmVideo();
+  const video = document.createElement('video');
+  const events = new AbortController();
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = asset.size <= 8 * 1024 * 1024 ? 'auto' : 'metadata';
+  warmed = {url: asset.url, video, events};
+  cancelPreloadOnPause(discardWarmVideo, events.signal);
+  video.addEventListener('error', discardWarmVideo, {signal: events.signal, once: true});
+  video.src = asset.url;
+}
+
 export function takePreloadedVideo(url?: string | null): HTMLVideoElement | undefined {
-  if (!url) return;
-  const video = videos.get(url);
-  videos.delete(url);
+  if (!warmed || warmed.url !== url) {
+    discardWarmVideo();
+    return;
+  }
+  const {video, events} = warmed;
+  warmed = undefined;
+  events.abort();
   return video;
 }
 
@@ -56,20 +56,22 @@ export function preloadCatalogEntries(root: HTMLElement, entries: Entry[], signa
   const cards = Array.from(root.querySelectorAll<HTMLAnchorElement>('[data-workshop-item]'));
   const items = new Map(cards.map((card, i) => [card, entries[i]]));
   const prioritize = (event: Event) => {
-    const card = (event.target as Element).closest<HTMLAnchorElement>('.wk-card');
+    const card = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('.wk-card') : null;
     const entry = card && items.get(card);
     if (!entry || !canPreload()) return;
-    warmVideo(entry,true);
+    if (event.type === 'click' && event instanceof MouseEvent && !event.defaultPrevented &&
+        event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      warmVideo(entry);
+    }
     void warmPage(card!.href);
   };
-  for (const type of ['pointerover', 'focusin', 'touchstart']) {
+  for (const type of ['pointerover', 'focusin', 'touchstart', 'click']) {
     root.addEventListener(type, prioritize, {signal: pending.signal, passive: true});
   }
   const run = async () => {
-    // Start after the list paints, with bounded media work and one HTML request at a time.
-    for (const [index, card] of cards.slice(0, 4).entries()) {
+    // Warm detail HTML after the list paints. Media starts on a card's click.
+    for (const card of cards.slice(0, 4)) {
       if (pending.signal.aborted || !canPreload()) return;
-      if (index < MAX_WARM_VIDEOS) warmVideo(items.get(card)!);
       await warmPage(card.href);
     }
   };

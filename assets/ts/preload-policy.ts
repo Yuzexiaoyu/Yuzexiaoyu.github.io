@@ -5,3 +5,10 @@ export function canPreload(): boolean {
   return !document.hidden && navigator.onLine !== false && !connection?.saveData &&
     !['slow-2g', '2g', '3g'].includes(connection?.effectiveType || '');
 }
+
+export function cancelPreloadOnPause(cancel: () => void, signal?: AbortSignal): void {
+  const check = () => { if (!canPreload()) cancel(); };
+  document.addEventListener('visibilitychange', check, {signal});
+  connection?.addEventListener('change', check, {signal});
+  window.addEventListener('offline', check, {signal});
+}

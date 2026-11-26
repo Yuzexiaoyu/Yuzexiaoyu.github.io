@@ -27,24 +27,45 @@ function loadViewer(): Promise<void> {
 
 function empty(message: string, extra = '') {return `<div class="wk-empty"><span class="wk-empty-mark" aria-hidden="true">◇</span><h2>${e(message)}</h2>${extra}</div>`;}
 
-function entryCard(entry: Entry, index: number, topic?: string): string {
+function entryCardPrice(entry: Entry): string {
   const configurable = entry.kind === 'work';
   const [price, high] = configurable ? workPriceRange(entry) : [entry.fixed_price, entry.fixed_price];
   const isRange = price !== high || (!entry.color_prices && entry.fixed_infill == null);
   const suffix = configurable ? (isRange ? '起' : '') : entry.weight_g ? `${e(entry.weight_g)} g` : '';
+  return `${money(price)}${suffix ? `<small>${suffix}</small>` : ''}`;
+}
+
+function entryCard(entry: Entry, index: number, topic?: string): string {
+  const configurable = entry.kind === 'work';
   const query = new URLSearchParams({id: entry.id!});
   if (topic) query.set('from', topic);
   const badge = entry.is_demo ? '演示内容' : topic ? (configurable ? '可选' : '现货') : '';
   const heading = topic ? 'h3' : 'h2';
   return `<a class="wk-card" data-workshop-item href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
     <div class="wk-card-image"><img src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" loading="${index < 2 ? 'eager' : 'lazy'}" fetchpriority="${index === 0 ? 'high' : 'auto'}" decoding="async">${badge ? `<span class="wk-badge">${badge}</span>` : ''}</div>
-    <div class="wk-card-info"><div><${heading}>${e(entry.name)}</${heading}></div><span class="wk-card-price">${money(price)}${suffix ? `<small>${suffix}</small>` : ''}</span></div>
+    <div class="wk-card-info"><div><${heading}>${e(entry.name)}</${heading}></div><span class="wk-card-price">${entryCardPrice(entry)}</span></div>
   </a>`;
+}
+
+function hydrateCatalogLead(list: HTMLElement, entry: Entry) {
+  const card = list.querySelector<HTMLAnchorElement>(`[data-catalog-lead="${entry.kind}"]`);
+  if (!card || card.dataset.catalogId !== entry.id || entry.is_demo) return;
+  const cover = entry.images[0]?.url;
+  const image = card.querySelector('img');
+  if (image?.src !== (cover ? new URL(cover, document.baseURI).href : undefined)) return;
+
+  card.querySelector('h2')!.textContent = entry.name;
+  card.querySelector('.wk-card-price')!.innerHTML = entryCardPrice(entry);
+  card.setAttribute('data-workshop-item', '');
+  delete card.dataset.catalogLead;
+  delete card.dataset.catalogId;
+  return card;
 }
 
 async function catalog(root: HTMLElement, signal: AbortSignal) {
   const grid = root.querySelector<HTMLElement>('[data-catalog-grid]')!;
-  const list = root.querySelector<HTMLElement>('[data-catalog-entries]') || grid;
+  const earlyList = root.querySelector<HTMLElement>('[data-catalog-entries]');
+  const list = earlyList || grid;
   const topicCard = root.querySelector<HTMLAnchorElement>('a[data-catalog-topic]');
   const legacyTopic = root.querySelector<HTMLTemplateElement>('template[data-catalog-topic]')?.innerHTML ?? '';
   const contact = root.querySelector<HTMLElement>('[data-catalog-contact]');
@@ -57,6 +78,7 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
   let entries: Entry[] | undefined;
   let stopPreload: (() => void) | undefined;
   const syncTab = () => {
+    root.dataset.activeCatalogTab = tab;
     tabs.forEach(button => {
       const active = tab === button.dataset.catalogTab;
       button.classList.toggle('is-active', active);
@@ -69,8 +91,15 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
     if (!entries) return;
     stopPreload?.();
     const items = entries.filter(entry => entry.kind === tab);
-    const cards = items.map((entry, index) => entryCard(entry, index)).join('') + (tab === 'work' ? legacyTopic : '');
-    list.innerHTML = cards || (tab === 'work' && topicCard ? '' : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>'));
+    const lead = earlyList && items[0] && hydrateCatalogLead(earlyList, items[0]);
+    const start = lead ? 1 : 0;
+    const cards = items.slice(start).map((entry, index) => entryCard(entry, start + index)).join('') + (tab === 'work' ? legacyTopic : '');
+    if (lead) {
+      for (const child of Array.from(list.children)) if (child !== lead) child.remove();
+      list.insertAdjacentHTML('beforeend', cards);
+    } else {
+      list.innerHTML = cards || (tab === 'work' && topicCard ? '' : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>'));
+    }
     w.WorkshopIntro?.refresh?.(root);
     stopPreload = preloadCatalogEntries(root, items, signal);
   };
@@ -94,7 +123,13 @@ async function catalog(root: HTMLElement, signal: AbortSignal) {
     render();
   } catch (error) {
     if (signal.aborted || abortError(error)) return;
-    list.innerHTML = (tab === 'work' ? legacyTopic : '') + empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);
+    const status = empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);
+    if (earlyList?.querySelector('[data-catalog-lead]')) {
+      earlyList.querySelector('.wk-catalog-loading')?.remove();
+      earlyList.insertAdjacentHTML('beforeend', status);
+    } else {
+      list.innerHTML = (tab === 'work' ? legacyTopic : '') + status;
+    }
     w.WorkshopIntro?.refresh?.(root);
   }
 }

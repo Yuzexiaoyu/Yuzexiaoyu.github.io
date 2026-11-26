@@ -585,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
     plugins: [
       new SwupPreloadPlugin({
         throttle: 4,
-        preloadInitialPage: !!window.__pagePreload?.allowed() && !document.querySelector('[data-workshop="catalog"]'),
+        preloadInitialPage: !!window.__pagePreload?.allowed() && !document.querySelector('.home-article-list, [data-workshop="catalog"]'),
       })
     ]
   });

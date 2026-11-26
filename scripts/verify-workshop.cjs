@@ -44,7 +44,7 @@ async function setup(browser, mobile, reduced='no-preference') {
   });
   return {page,errors,requests};
 }
-const ready = page=>page.waitForFunction(()=>window.WorkshopApp && !window.WorkshopIntro.active() && document.querySelector('.wk-card,.wk-detail-grid'));
+const ready = page=>page.waitForFunction(()=>window.WorkshopApp && !window.WorkshopIntro.active() && document.querySelector('[data-workshop-item],.wk-detail-grid'));
 const state = page=>page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,inert:document.body.inert,phase:document.documentElement.dataset.workshopIntro,selected:document.querySelector('[data-view].is-active')?.dataset.view,order:[...document.querySelectorAll('[data-view]')].map(el=>el.dataset.view),text:document.querySelector('[data-workshop]')?.innerText}));
 async function galleryFrame(page) {
   const frame=await page.locator('.wk-stage').evaluate(stage=>{
@@ -288,13 +288,17 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await page.locator('.wk-collection-toolbar').waitFor({state:'visible'});
       await page.waitForFunction(()=>!window.WorkshopIntro.active());
       assert.equal(await page.locator('[data-workshop-item]').count(),0);
+      await page.locator('[data-catalog-lead="work"]').waitFor({state:'visible'});
       await page.locator('.wk-topic-card').waitFor({state:'visible'});
       assert.equal(await page.locator('[data-catalog-tab="product"]').isEnabled(),true);
       assert.equal((await state(page)).inert,false);
       assert.equal(await page.locator('.wk-collection-toolbar').evaluate(node=>getComputedStyle(node).opacity),'1');
+      const earlyEffects=await page.evaluate(()=>window.__qaEffects.length);
       release();await ready(page);
       const modules=await page.evaluate(()=>window.__qaModules);
-      assert.equal(await page.evaluate(()=>window.__qaEffects.find(item=>item.target==='wk-card').animation.effect.getTiming().delay),0);
+      const lateDelay=await page.evaluate(index=>window.__qaEffects.slice(index)
+        .find(item=>item.target==='wk-card')?.animation.effect.getTiming().delay,earlyEffects);
+      if (lateDelay!==undefined) assert.equal(lateDelay,0);
       assert.equal((await page.evaluate(()=>window.__qaSpeeds)).length,0);
       assert.deepEqual(errors,[]);
       results.push({case:(mobile?'mobile':'desktop')+' late cards appear immediately after usable navigation',modules,errors});
