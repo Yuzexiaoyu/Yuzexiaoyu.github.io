@@ -19,7 +19,7 @@ function discardWarmVideo() {
 }
 
 function portraitQuery(template: HTMLTemplateElement) {
-  return matchMedia(template.content.querySelector('source[media]')?.getAttribute('media') || '(max-aspect-ratio: 4/5)');
+  return matchMedia(template.content.querySelector('source[media]')?.getAttribute('media') || '(max-width: 80lvh)');
 }
 
 function selectCandidates(template: HTMLTemplateElement, video: HTMLVideoElement, mobile: boolean, tall: boolean) {

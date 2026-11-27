@@ -194,7 +194,13 @@ html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
     min-height: var(--topic-screen-height);
   }
   .wk-topic-scene { min-height: var(--topic-screen-height); overflow: clip; }
-  .wk-topic-wallpaper { position: fixed; inset: var(--m-header-height, 60px) 0 0; }
+  .wk-topic-wallpaper {
+    position: fixed;
+    inset: var(--m-header-height, 60px) 0 auto;
+    // Keep the cover crop fixed as the browser toolbar reveals more of the page.
+    height: calc(100vh - var(--m-header-height, 60px));
+    height: calc(100lvh - var(--m-header-height, 60px));
+  }
   .wk-topic-inner { padding: 0; }
   .wk-topic-inner .wk-breadcrumb > :is(a, button) {
     display: inline-flex;
@@ -225,7 +231,7 @@ html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
   .wk-topic-inline .wk-description { margin-top: 8px; }
   .wk-topic-inline .wk-stock-specs { order: 1; }
 
-  @media (max-aspect-ratio: 4/5) {
+  @media (max-width: 80lvh) {
     .wk-topic-wallpaper > :is(img, video),
     .wk-topic-wallpaper > noscript > img { object-position: center; }
     .wk-topic-wallpaper::after {

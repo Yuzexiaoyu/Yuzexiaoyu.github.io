@@ -47,6 +47,35 @@ test('direct mobile entry plays and rotates while the workshop requests fail', a
   } finally { await page.close(); }
 });
 
+test('mobile wallpaper keeps its crop when the visible area grows or shrinks', async () => {
+  const page = await browser.newPage(devices['iPhone 13']);
+  try {
+    await page.goto(topic);
+    await playing(page, 'scene-loop-portrait-stream-v1.mp4');
+    const video = page.locator('[data-topic-video]');
+    const bounds = await video.boundingBox();
+    const source = await video.evaluate(element => element.currentSrc);
+    const position = await video.evaluate(element => getComputedStyle(element).objectPosition);
+    assert.equal(position, '50% 50%');
+
+    // Change the fixed positioning area without resizing the large viewport, as a toolbar does.
+    const scene = page.locator('.wk-topic-scene');
+    await scene.evaluate(element => {
+      element.style.transform = 'translate(0)';
+      element.style.position = 'fixed';
+      element.style.inset = '0 0 auto';
+      element.style.minHeight = '0';
+    });
+    for (const height of [784, 844, 784]) {
+      await scene.evaluate((element, pixels) => { element.style.height = pixels + 'px'; }, height);
+      assert.equal((await scene.boundingBox()).height, height);
+      assert.deepEqual(await video.boundingBox(), bounds);
+      assert.equal(await video.evaluate(element => element.currentSrc), source);
+      assert.equal(await video.evaluate(element => getComputedStyle(element).objectPosition), position);
+    }
+  } finally { await page.close(); }
+});
+
 test('topic cards and details stay over the playing video on desktop and mobile', async () => {
   const cases = [
     [devices['Desktop Chrome'], 'scene-loop-wide-stream-v1.mp4'],
