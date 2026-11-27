@@ -2,7 +2,159 @@
   "version": 1,
   "entries": [
     {
-      "description": "枪械模型，操作时会发出机械声，模型弹不可击发！\n\n《赛博朋克 2077》中的马洛里安序曲。弹巢可弹出，可用退弹杆退出模型弹，也可以像《猎杀：对决》里一样把模型弹甩出来 🐶。\n\n双动式联动，可先扳下击锤再扣扳机，也可直接扣扳机。\n\n丝绸金 PLA 打印，成品约 320 g，附六发同色模型弹。",
+      "color_previews": {
+        "1903f0b25e2c435da275d2f304d6c374": {
+          "image_ids": [],
+          "video_ids": []
+        },
+        "15ae95cc838e42f9a247477a17db7930": {
+          "image_ids": [],
+          "video_ids": []
+        },
+        "fa2ec058dae74b53b4a1d509a72b74d9": {
+          "image_ids": [
+            "416ca4cd0a912b4483788bffb5eeae0cb307b27c2b75508acae6242f44c9d989",
+            "0400ecddcb5bcfc971ffb7baee2cf57835c10efefb8aeaeff0e0ee608bae0059",
+            "3581c476d5a8583374660782e0628a11451f27d0d8565fe0b0e579c2047eeff5",
+            "68965b37adf374b50723859e3a2bccc9b9f23ae38cbc538ee1fec3d1a93cdae8"
+          ],
+          "video_ids": []
+        }
+      },
+      "description": "以《光与影：33号远征队》中的玛埃尔为灵感。她侧身持剑，飘动的发梢与身后的哥特式尖塔交叠，镂空的明暗勾勒出优雅而坚定的姿态。底部的「33」呼应这场冒险的核心标识。",
+      "fixed_infill": 100,
+      "fixed_price": null,
+      "id": "85f83a68f4984c2eb0311a3c533f514c",
+      "is_demo": false,
+      "kind": "work",
+      "material": "",
+      "max_price": 15,
+      "max_weight_g": null,
+      "min_price": 15,
+      "min_weight_g": null,
+      "name": "玛埃尔镂空立牌",
+      "revision": 8,
+      "status": "published",
+      "topic": "expedition-33",
+      "topic_only": true,
+      "updated_at": "2026-11-26T22:13:00+0800",
+      "weight_g": 45,
+      "images": [
+        {
+          "id": "416ca4cd0a912b4483788bffb5eeae0cb307b27c2b75508acae6242f44c9d989",
+          "name": "预览图片",
+          "url": "/workshop/media/416ca4cd0a912b4483788bffb5eeae0cb307b27c2b75508acae6242f44c9d989.webp",
+          "kind": "image",
+          "size": 188998
+        },
+        {
+          "id": "0400ecddcb5bcfc971ffb7baee2cf57835c10efefb8aeaeff0e0ee608bae0059",
+          "name": "预览图片",
+          "url": "/workshop/media/0400ecddcb5bcfc971ffb7baee2cf57835c10efefb8aeaeff0e0ee608bae0059.webp",
+          "kind": "image",
+          "size": 191116
+        },
+        {
+          "id": "3581c476d5a8583374660782e0628a11451f27d0d8565fe0b0e579c2047eeff5",
+          "name": "预览图片",
+          "url": "/workshop/media/3581c476d5a8583374660782e0628a11451f27d0d8565fe0b0e579c2047eeff5.webp",
+          "kind": "image",
+          "size": 210290
+        },
+        {
+          "id": "68965b37adf374b50723859e3a2bccc9b9f23ae38cbc538ee1fec3d1a93cdae8",
+          "name": "预览图片",
+          "url": "/workshop/media/68965b37adf374b50723859e3a2bccc9b9f23ae38cbc538ee1fec3d1a93cdae8.webp",
+          "kind": "image",
+          "size": 298462
+        }
+      ],
+      "videos": [],
+      "model": {
+        "id": "e37b1d5eb6603686c0a8086b95a95a955d3789910cc10152fe2bd7ed4623e987",
+        "name": "3D 预览",
+        "url": "/workshop/media/e37b1d5eb6603686c0a8086b95a95a955d3789910cc10152fe2bd7ed4623e987.glb",
+        "kind": "model",
+        "size": 4790324
+      },
+      "colors": [
+        {
+          "id": "fa2ec058dae74b53b4a1d509a72b74d9",
+          "name": "黑色",
+          "hex": "#141414",
+          "active": 1,
+          "material": "PLA"
+        },
+        {
+          "id": "1903f0b25e2c435da275d2f304d6c374",
+          "name": "浅灰色",
+          "hex": "#8C8C8C",
+          "active": 1,
+          "material": "PLA"
+        },
+        {
+          "id": "15ae95cc838e42f9a247477a17db7930",
+          "name": "纯白",
+          "hex": "#FFFFFF",
+          "active": 1,
+          "material": "PLA"
+        }
+      ]
+    },
+    {
+      "description": "致后来者！\n\n取意于《光与影：33号远征队》的新艺术风格。标志性的「33」位于正中央，黑底衬出金色几何纹样，细微裂痕穿过边框与数字，留下斑驳的质感。\n\n颜料渐褪，金线仍在发亮。这枚钥匙扣向勇敢走向命运的远征者致意。顶部留有挂孔，可挂在钥匙圈或随身包上。",
+      "fixed_infill": 100,
+      "fixed_price": 15,
+      "id": "74a6a9fc56de4289b119d54933b21674",
+      "is_demo": false,
+      "kind": "product",
+      "material": "黑金 PLA + 丝绸金 PLA",
+      "max_price": 0,
+      "max_weight_g": null,
+      "min_price": 0,
+      "min_weight_g": null,
+      "name": "33号远征队钥匙扣",
+      "revision": 6,
+      "status": "published",
+      "topic": "expedition-33",
+      "updated_at": "2026-11-26T22:13:00+0800",
+      "weight_approximate": true,
+      "weight_g": 7,
+      "images": [
+        {
+          "id": "224815eaae87a6310a455197e1e81f09b024f2f6ed02f1d017d568fc1eebc556",
+          "name": "预览图片",
+          "url": "/workshop/media/224815eaae87a6310a455197e1e81f09b024f2f6ed02f1d017d568fc1eebc556.webp",
+          "kind": "image",
+          "size": 267976
+        },
+        {
+          "id": "dda008e9201d90887c142e1158a2f4d168a52beb0f8da289e674f83d8fdfc0b9",
+          "name": "预览图片",
+          "url": "/workshop/media/dda008e9201d90887c142e1158a2f4d168a52beb0f8da289e674f83d8fdfc0b9.webp",
+          "kind": "image",
+          "size": 227830
+        },
+        {
+          "id": "e91953d250b1739cbebd1dc5bbe368c15a9e14a7a05a5cd8e3f9997b4b4fccc4",
+          "name": "预览图片",
+          "url": "/workshop/media/e91953d250b1739cbebd1dc5bbe368c15a9e14a7a05a5cd8e3f9997b4b4fccc4.webp",
+          "kind": "image",
+          "size": 67302
+        }
+      ],
+      "videos": [],
+      "model": {
+        "id": "bad4e24bdc6dc9881c599c503e24248c57554d5278ea827d150a0454181c547b",
+        "name": "3D 预览",
+        "url": "/workshop/media/bad4e24bdc6dc9881c599c503e24248c57554d5278ea827d150a0454181c547b.glb",
+        "kind": "model",
+        "size": 7732944
+      },
+      "colors": []
+    },
+    {
+      "description": "枪械模型，操作时会发出机械声，模型弹不可击发！\n《赛博朋克 2077》中的马洛里安序曲。弹巢可弹出，可用退弹杆退出模型弹，也可以像《猎杀：对决》里一样把模型弹甩出来 🐶。\n双动式联动，可先扳下击锤再扣扳机，也可直接扣扳机。\n丝绸金 PLA 打印，成品约 320 g，附六发同色模型弹。",
       "fixed_price": 65,
       "id": "6c4c0fadb83a48e4a3f0e4736630786c",
       "is_demo": false,
@@ -13,9 +165,9 @@
       "min_price": 0,
       "min_weight_g": null,
       "name": "马洛里安-序曲",
-      "revision": 10,
+      "revision": 11,
       "status": "published",
-      "updated_at": "2026-11-22T15:10:11+0800",
+      "updated_at": "2026-11-22T17:05:11+0800",
       "weight_g": 320,
       "images": [
         {
@@ -108,7 +260,7 @@
         "143232c60d10459fb6bfd9f37ad0cfb2": 65,
         "15ae95cc838e42f9a247477a17db7930": 60
       },
-      "description": "枪械模型，操作时会发出机械声，模型弹不可击发！\n\n《赛博朋克 2077》中的马洛里安序曲。弹巢可弹出，可用退弹杆退出模型弹，也可以像《猎杀：对决》里一样把模型弹甩出来 🐶。\n\n双动式联动，可先扳下击锤再扣扳机，也可直接扣扳机。",
+      "description": "枪械模型，操作时会发出机械声，模型弹不可击发！\n《赛博朋克 2077》中的马洛里安序曲。弹巢可弹出，可用退弹杆退出模型弹，也可以像《猎杀：对决》里一样把模型弹甩出来 🐶。\n双动式联动，可先扳下击锤再扣扳机，也可直接扣扳机。",
       "fixed_infill": 50,
       "fixed_price": null,
       "id": "23871d2434de44809fd3156d5ae4addd",
@@ -120,9 +272,9 @@
       "min_price": 0,
       "min_weight_g": null,
       "name": "马洛里安-序曲",
-      "revision": 13,
+      "revision": 15,
       "status": "published",
-      "updated_at": "2026-11-21T23:00:49+0800",
+      "updated_at": "2026-11-22T17:05:06+0800",
       "weight_g": 320,
       "images": [
         {

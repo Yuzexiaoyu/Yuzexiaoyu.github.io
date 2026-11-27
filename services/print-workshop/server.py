@@ -266,10 +266,17 @@ class Store:
                 if topic not in WORKSHOP_TOPICS:
                     raise Problem("请选择正确的所属专题")
                 payload["topic"] = topic
+                if data.get("topic_only", previous.get("topic_only")) is True:
+                    payload["topic_only"] = True
+            previous_infill = previous.get("fixed_infill") if previous.get("kind") == kind else None
+            fixed_infill = data.get("fixed_infill", previous_infill)
+            if fixed_infill is not None:
+                payload["fixed_infill"] = integer(fixed_infill, "固定填充比例", 15 if kind == "work" else 0, 100)
+            if kind == "product" and payload["weight_g"] is not None:
+                if data.get("weight_approximate", previous.get("weight_approximate")) is True:
+                    payload["weight_approximate"] = True
             if kind == "work":
-                fixed_infill = data.get("fixed_infill", previous.get("fixed_infill"))
                 if fixed_infill is not None:
-                    payload["fixed_infill"] = integer(fixed_infill, "固定填充比例", 15, 100)
                     single_weight(payload["weight_g"], "固定填充重量")
                 else:
                     payload["weight_g"] = None
@@ -296,7 +303,7 @@ class Store:
                     raise Problem("可选上架前请勾选可用颜色")
                 if kind == "work" and payload["weight_g"] is None and ((payload["min_weight_g"] is None) != (payload["max_weight_g"] is None)):
                     raise Problem("请同时填写 15% 和 100% 的重量")
-                if kind == "product" and payload["weight_g"] is None:
+                if kind == "product" and payload["weight_g"] is None and not topic:
                     raise Problem("现货上架前请填写重量")
             entry_id = entry_id or uuid.uuid4().hex
             revision = old["revision"] + 1 if old else 1

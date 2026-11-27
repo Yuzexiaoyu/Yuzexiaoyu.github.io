@@ -88,8 +88,8 @@ try{
   page.once('dialog',dialog=>dialog.accept());await page.keyboard.press('Escape');assert.equal(await page.locator('[data-entry-editor]').evaluate(d=>d.open),false);
   const stock=data.entries.find(e=>e.kind==='product');await page.locator(`[data-edit="${stock.id}"]`).click();await page.locator('[data-entry-editor]').waitFor({state:'visible'});
   assert.equal(await page.locator('[data-stock-fields]').isVisible(),true);assert.equal(await page.locator('[data-configurable-fields]').isVisible(),false);
-  await page.locator('[data-entry-form] input[name="material"]').fill('PETG');await page.locator('[data-save-entry]').click();await page.waitForFunction(()=>!document.querySelector('[data-entry-editor]').open);
-  assert.equal(data.saved[1].material,'PETG');assert.deepEqual(data.saved[1].color_ids,[]);assert.equal(data.saved[1].fixed_price,stock.fixed_price);assert.deepEqual(errors,[]);
+  await page.locator('[data-entry-form] input[name="material"]').fill('PETG');await page.locator('input[name="stock_fixed_infill"]').fill('100');await page.locator('[data-save-entry]').click();await page.waitForFunction(()=>!document.querySelector('[data-entry-editor]').open);
+  assert.equal(data.saved[1].material,'PETG');assert.deepEqual(data.saved[1].color_ids,[]);assert.equal(data.saved[1].fixed_price,stock.fixed_price);assert.equal(data.saved[1].fixed_infill,100);assert.deepEqual(errors,[]);
   results.push({case:'single-page editing, keyboard focus, native validation, retained selection, cover, removal, save, dirty close and stock',saved: data.saved.map(entry=>({kind:entry.kind,colors:entry.color_ids,images:entry.image_ids.length})),errors});
   await page.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify({passed:results.length,evidence:path.resolve(out)}));
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

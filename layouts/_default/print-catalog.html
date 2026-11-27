@@ -3,20 +3,15 @@
 {{ define "right-sidebar" }}{{ end }}
 {{ define "main" }}
 {{ $dataSource := .Site.Params.workshop.dataSource | default "static" }}
-<div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ $dataSource }}" data-active-catalog-tab="work">
+{{ $hiddenEntries := .Site.Params.workshop.hiddenCatalogEntries | default slice }}
+<div class="wk-shell" data-workshop="catalog" data-workshop-source="{{ $dataSource }}" data-catalog-hidden="{{ delimit $hiddenEntries " " }}">
   <section class="wk-collection" id="wk-collection" aria-label="工坊内容">
     <a class="wk-catalog-home" href="{{ "/" | relURL }}"><span aria-hidden="true">←</span> 返回主页</a>
-    <div class="wk-collection-toolbar">
-      <div class="wk-tabs" role="tablist" aria-label="内容栏目">
-        <button type="button" role="tab" data-catalog-tab="work">可选 <span data-count="work">—</span></button>
-        <button type="button" role="tab" data-catalog-tab="product">现货 <span data-count="product">—</span></button>
-      </div>
-    </div>
     <aside class="wk-catalog-notice" aria-labelledby="wk-catalog-notice-title">
       <h2 id="wk-catalog-notice-title">须知</h2>
       <ol>
         <li>推荐使用电脑浏览工坊。</li>
-        <li>六舍可送到寝，其他宿舍送至楼下。</li>
+        <li>目前只对主校区出售。六舍可送到寝，其他宿舍送至楼下。</li>
         <li>大部分卡片点进后会自动播放音频。</li>
         <li class="wk-notice-materials">
           <span><strong>PLA</strong> 容易打印出清晰细节，适合摆件。</span>
@@ -30,19 +25,17 @@
       <div data-catalog-entries>
         {{ if and (eq $dataSource "static") (fileExists "static/workshop/catalog.json") }}
           {{ $snapshot := readFile "static/workshop/catalog.json" | transform.Unmarshal }}
-          {{ $published := where $snapshot.entries "status" "published" }}
-          {{ range $kind := slice "work" "product" }}
-            {{ range first 1 (where $published "kind" $kind) }}
-              <a class="wk-card" data-catalog-lead="{{ .kind }}" data-catalog-id="{{ .id }}" href="{{ "prints/detail/" | relURL }}?id={{ .id | urlquery }}" style="--card-index:0">
+          {{ $published := where (where $snapshot.entries "status" "published") "topic_only" "ne" true }}
+          {{ range $index, $_ := first 2 (where $published "id" "not in" $hiddenEntries) }}
+              <a class="wk-card" data-catalog-lead data-catalog-id="{{ .id }}" href="{{ "prints/detail/" | relURL }}?id={{ .id | urlquery }}" style="--card-index:{{ $index }}">
                 <div class="wk-card-image">
                   {{ range first 1 .images }}
-                    <img src="{{ (strings.TrimPrefix "/" .url) | absURL }}" alt="" loading="lazy" fetchpriority="high" decoding="async">
+                    <img src="{{ (strings.TrimPrefix "/" .url) | absURL }}" alt="" loading="lazy" fetchpriority="{{ if eq $index 0 }}high{{ else }}auto{{ end }}" decoding="async">
                   {{ end }}
                   {{ if .is_demo }}<span class="wk-badge">演示内容</span>{{ end }}
                 </div>
                 <div class="wk-card-info"><div><h2>{{ .name }}</h2></div><span class="wk-card-price"></span></div>
               </a>
-            {{ end }}
           {{ end }}
         {{ end }}
         <p class="wk-empty wk-catalog-loading" data-catalog-status><span>正在打开工坊…</span></p>
@@ -59,6 +52,7 @@
       {{ partial "workshop/expedition-video-sources.html" . }}
     {{ end }}
   </section>
+  {{ partial "workshop/cart.html" . }}
 </div>
 <script>window.__runWorkshop?.();</script>
 {{ end }}

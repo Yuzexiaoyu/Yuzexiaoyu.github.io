@@ -6,7 +6,7 @@ const base = process.argv[2] || 'http://localhost:48174';
 const topic = base + '/prints/expedition-33/';
 let browser;
 
-before(async () => { browser = await chromium.launch({channel:'chrome'}); });
+before(async () => { browser = await chromium.launch({channel:'chrome', ignoreDefaultArgs:['--hide-scrollbars']}); });
 after(async () => { await browser?.close(); });
 
 async function playing(page, suffix) {
@@ -17,20 +17,169 @@ async function playing(page, suffix) {
   },suffix,{timeout:15000});
 }
 
-test('direct mobile entry plays without the workshop bundle or catalog and rotates in place', async () => {
-  const page = await browser.newPage(devices['iPhone 13']);
-  const unnecessary = [];
+test('workshop navigation still works when the preload plugin fails to load', async () => {
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
   try {
-    await page.route(/\/ts\/print-workshop\.|\/workshop\/catalog\.json/, route => {
-      unnecessary.push(route.request().url());
-      return route.abort();
-    });
+    await page.route('**/lib/index.umd.js', route => route.abort());
+    await page.goto(base + '/prints/');
+    await page.waitForFunction(() => window.swupReady);
+    await page.evaluate(() => { window.workshopNavigationProbe = document; });
+    await page.locator('[data-catalog-topic]').click();
+    await page.waitForURL(topic);
+    await page.locator('[data-topic-item]').first().waitFor();
+    assert.equal(await page.evaluate(() => window.workshopNavigationProbe === document), true);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+test('direct mobile entry plays and rotates while the workshop requests fail', async () => {
+  const page = await browser.newPage(devices['iPhone 13']);
+  try {
+    await page.route(/\/ts\/print-workshop\.|\/workshop\/catalog\.json/, route => route.abort());
     await page.goto(topic);
     await playing(page,'scene-loop-portrait-stream-v1.mp4');
     assert.equal(await page.locator('[data-topic-video]').evaluate(v=>v.videoHeight),1280);
+    await page.getByText('工坊脚本加载失败，请刷新页面重试。').waitFor();
     await page.setViewportSize({width:844,height:390});
     await playing(page,'scene-loop-wide-stream-v1.mp4');
-    assert.deepEqual(unnecessary,[]);
+  } finally { await page.close(); }
+});
+
+test('topic cards and details stay over the playing video on desktop and mobile', async () => {
+  const cases = [
+    [devices['Desktop Chrome'], 'scene-loop-wide-stream-v1.mp4'],
+    [{...devices['iPhone 13'], viewport:{width:320,height:568}}, 'scene-loop-portrait-stream-v1.mp4'],
+    [{...devices['iPhone 13'], viewport:{width:844,height:390}}, 'scene-loop-wide-stream-v1.mp4'],
+  ];
+  for (const [device, source] of cases) {
+    const page = await browser.newPage(device);
+    try {
+      await page.goto(topic);
+      const cards = page.locator('[data-topic-grid] [data-workshop-item]');
+      await cards.nth(1).waitFor();
+      assert.equal(await page.getByText('相关物品', {exact:true}).count(), 0);
+      assert.equal(await cards.locator('.wk-badge').count(), 0);
+      assert.deepEqual(await cards.locator('.wk-card-price').allTextContents(), ['¥15', '¥15']);
+      await playing(page,source);
+      assert.ok(await cards.evaluateAll(items => {
+        const video = document.querySelector('[data-topic-video]').getBoundingClientRect();
+        return window.scrollY === 0 && items.every(item => {
+          const card = item.getBoundingClientRect();
+          return card.top >= Math.max(0, video.top) && card.bottom <= Math.min(innerHeight, video.bottom) + 1 &&
+            card.left >= video.left && card.right <= video.right;
+        });
+      }));
+      const first = cards.first();
+      const coverWidth = (await first.locator('img').boundingBox()).width;
+      const desktop = await page.locator('html').getAttribute('data-ui') !== 'mobile';
+      const name = await first.locator('h3').innerText();
+      const cover = await first.locator('img').getAttribute('src');
+      const wallpaper = await page.locator('[data-topic-video]').elementHandle();
+      const videoBounds = await wallpaper.boundingBox();
+      assert.equal(videoBounds.width, await page.evaluate(() => innerWidth));
+      const time = await wallpaper.evaluate(video => video.currentTime);
+      await first.click();
+      const detailRole = desktop ? 'dialog' : 'region';
+      const panel = page.getByRole(detailRole, {name, exact:true});
+      await panel.waitFor();
+      assert.equal(page.url(), topic);
+      assert.equal(await panel.getByRole('heading', {name, exact:true}).textContent(), name);
+      assert.doesNotMatch(await panel.locator('.wk-description').textContent(), /实拍为黑色|切换到 3D 预览查看/);
+      assert.equal(await panel.locator('[data-price]').textContent(), '¥15');
+      assert.equal(await panel.locator('[data-infill-value]').textContent(), '100%');
+      assert.equal(await panel.locator('[data-weight]').textContent(), '约 45 g');
+      assert.deepEqual(await panel.locator('[data-color-id]').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))),
+        ['黑色 · PLA', '浅灰色 · PLA', '纯白 · PLA']);
+      assert.ok(await panel.locator('.wk-config-section:has(.wk-swatches)').evaluate(section=>{
+        const palette=section.querySelector('.wk-swatches');
+        const material=section.querySelector('.wk-material');
+        return getComputedStyle(material).borderTopWidth==='1px'&&material.getBoundingClientRect().top>=palette.getBoundingClientRect().bottom;
+      }));
+      assert.equal(await panel.locator('[data-stage-image]').getAttribute('src'), cover);
+      for (const card of await cards.all()) assert.equal(await card.isVisible(), false);
+      assert.deepEqual(await wallpaper.boundingBox(), videoBounds);
+      if (desktop) {
+        assert.equal(await panel.evaluate(element => getComputedStyle(element).scrollbarWidth), 'none');
+        assert.ok(await panel.locator('.wk-detail-grid').evaluate((grid, previousWidth) => {
+          const media = grid.querySelector('.wk-stage').getBoundingClientRect();
+          const info = grid.querySelector('.wk-config').getBoundingClientRect();
+          return media.width > previousWidth * 1.5 && info.left > media.right && info.width >= 350;
+        }, coverWidth));
+      } else {
+        assert.equal(await page.locator('dialog[open]').count(), 0);
+        assert.ok(await panel.evaluate(section => section.parentElement.classList.contains('wk-topic-scene')));
+        assert.equal(await panel.evaluate(section => getComputedStyle(section).overflowY), 'visible');
+        assert.equal(await page.getByRole('button', {name:/返回物品/}).count(), 0);
+        assert.equal(await page.locator('.wk-topic-inner').evaluate(element => getComputedStyle(element).backgroundColor), 'rgba(0, 0, 0, 0)');
+        await page.evaluate(() => window.scrollTo({top:80, behavior:'instant'}));
+        assert.ok(await page.evaluate(() => window.scrollY > 0));
+        assert.deepEqual(await wallpaper.boundingBox(), videoBounds);
+      }
+      await panel.locator('[data-view="photo"]').nth(1).click();
+      await page.waitForFunction(url => document.querySelector('[data-stage-image]')?.getAttribute('src') !== url, cover);
+      await page.waitForFunction(({video, time}) => video.isConnected && !video.paused && Math.abs(video.currentTime - time) > .2, {video:wallpaper, time});
+
+      await panel.getByRole('button', {name:'加入购物车'}).click();
+      await page.locator('[data-open-cart]').click();
+      const cart = page.getByRole('dialog', {name:'购物车'});
+      await cart.getByRole('button', {name:/生成清单/}).click();
+      const contact = page.getByRole('dialog', {name:'QQ 联系'});
+      await contact.waitFor();
+      assert.match(await contact.locator('[data-contact-text]').inputValue(), /合计：¥15/);
+      assert.match(await contact.locator('[data-contact-text]').inputValue(), /材质：PLA\n颜色：黑色\n填充比例：100%/);
+      await contact.getByRole('button', {name:'关闭', exact:true}).click();
+      await contact.waitFor({state:'hidden'});
+      await cart.getByRole('button', {name:'关闭购物车'}).click();
+
+      if (desktop) {
+        await page.getByRole('button', {name:'关闭物品详情'}).click();
+      } else {
+        await page.goBack();
+        await panel.waitFor({state:'hidden'});
+        await first.waitFor();
+        await page.goForward();
+        await panel.waitFor();
+        assert.equal(page.url(), topic);
+        await page.goBack();
+      }
+      await panel.waitFor({state:'hidden'});
+      assert.equal(await first.isVisible(), true);
+      assert.deepEqual(await wallpaper.boundingBox(), videoBounds);
+      assert.equal(await first.evaluate(card => card === document.activeElement), true);
+      const second = cards.nth(1);
+      await second.click();
+      const secondDetail = page.getByRole(detailRole, {name:await second.locator('h3').textContent(), exact:true});
+      await secondDetail.waitFor();
+      assert.equal(await secondDetail.locator('[data-price]').textContent(), '¥15');
+      assert.equal(await secondDetail.locator('[data-infill-value]').textContent(), '100%');
+      assert.equal(await secondDetail.locator('[data-weight]').textContent(), '约 7 g');
+      assert.equal(await secondDetail.locator('[data-material]').textContent(), '黑金 PLA + 丝绸金 PLA');
+      assert.deepEqual(await secondDetail.locator('.wk-description').evaluate(element => [element.firstChild.textContent, element.firstChild.nextSibling.tagName, element.firstChild.nextSibling.nextSibling.tagName]),
+        ['致后来者！', 'BR', 'BR']);
+      assert.equal(await secondDetail.locator('.wk-description :is(em, hr)').count(), 0);
+      assert.equal(await secondDetail.locator('.wk-stock-specs .wk-material > span').first().textContent(), '材质');
+      assert.equal(await secondDetail.locator('.wk-stock-specs .wk-config-section--fixed-infill h2').textContent(), '固定填充比例');
+      await page.keyboard.press('Escape');
+      await secondDetail.waitFor({state:'hidden'});
+      assert.equal(page.url(), topic);
+      assert.ok(await wallpaper.evaluate(video => video.isConnected && !video.paused));
+    } finally { await page.close(); }
+  }
+});
+
+test('the initial and hydrated workshop lists contain the configurable Malorian and the topic', async () => {
+  const page = await browser.newPage();
+  try {
+    const html = await page.request.get(base+'/prints/');
+    assert.doesNotMatch(await html.text(), /玛埃尔镂空立牌|33号远征队钥匙扣|href="[^"]*id=6c4c0fadb83a48e4a3f0e4736630786c/);
+    await page.goto(base+'/prints/');
+    await page.locator('[data-catalog-entries] [data-workshop-item]').first().waitFor();
+    assert.deepEqual(await page.locator('[data-workshop-item] h2').allTextContents(), ['马洛里安-序曲']);
+    await page.locator('[data-catalog-topic]').click();
+    await page.getByRole('heading', {name:'玛埃尔镂空立牌', exact:true}).waitFor();
+    await page.getByRole('heading', {name:'33号远征队钥匙扣', exact:true}).waitFor();
   } finally { await page.close(); }
 });
 
@@ -86,7 +235,7 @@ test('home starts the video while workshop HTML is pending, reuses it and releas
     await page.waitForFunction(()=>document.querySelector('[data-topic-music]')?.currentTime>.2);
     const video = await page.locator('[data-topic-video]').elementHandle();
     const music = await page.locator('[data-topic-music]').elementHandle();
-    await page.locator('.wk-topic-inner a').tap();
+    await page.getByRole('link',{name:'← 返回工坊'}).tap();
     await page.locator('.wk-topic-card').waitFor();
     for (const media of [video,music]) assert.ok(await media.evaluate(el=>el.paused && !el.hasAttribute('src')));
   } finally { releaseWorkshop(); await page.close(); }
@@ -126,9 +275,9 @@ test('the workshop topic is usable while its catalog and bundle requests are sti
     await page.waitForFunction(()=>window.swupReady);
     assert.equal(await page.locator('[data-workshop-item]').count(),0);
     assert.equal(await page.evaluate(()=>typeof window.WorkshopApp),'undefined');
-    const lead = page.locator('[data-catalog-lead="work"]');
+    const lead = page.locator('[data-catalog-lead]').first();
     await lead.waitFor({state:'visible'});
-    await page.waitForFunction(()=>document.querySelector('[data-catalog-lead="work"] img')?.naturalWidth>0);
+    await page.waitForFunction(()=>document.querySelector('[data-catalog-lead] img')?.naturalWidth>0);
     assert.match(await lead.getAttribute('href'),/\/prints\/detail\/\?id=/);
     await page.locator('.wk-topic-card').tap();
     await playing(page,'scene-loop-portrait-stream-v1.mp4');
@@ -137,7 +286,7 @@ test('the workshop topic is usable while its catalog and bundle requests are sti
   } finally { release(); await page.close(); }
 });
 
-test('the stock lead keeps its card and cover when priced; item video waits for a click', async () => {
+test('the catalog lead keeps its card and cover when priced; item video waits for a click', async () => {
   const page = await browser.newPage(devices['Pixel 7']);
   let releaseCatalog;
   const held = new Promise(resolve => { releaseCatalog = resolve; });
@@ -153,10 +302,11 @@ test('the stock lead keeps its card and cover when priced; item video waits for 
       await route.continue().catch(()=>{});
     });
     await page.goto(base+'/prints/?tab=product',{waitUntil:'domcontentloaded'});
-    const seed = page.locator('[data-catalog-lead="product"]');
+    const seed = page.locator('[data-catalog-lead]').first();
     await seed.waitFor({state:'visible'});
-    assert.equal(await page.locator('[data-catalog-lead="work"]').isVisible(),false);
-    await page.waitForFunction(()=>document.querySelector('[data-catalog-lead="product"] img')?.naturalWidth>0);
+    assert.equal(await page.locator('[data-catalog-lead]').count(),1);
+    assert.equal(await page.getByRole('tablist').count(),0);
+    await page.waitForFunction(()=>document.querySelector('[data-catalog-lead] img')?.naturalWidth>0);
     await seed.evaluate(card=>{window.__catalogLead={card,cover:card.querySelector('img')};});
     releaseCatalog();
 

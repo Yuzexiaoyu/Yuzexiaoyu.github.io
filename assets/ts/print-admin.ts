@@ -84,6 +84,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   },{signal});
   function editorType(){
     const configurable=getField('kind').value==='work';
+    const hasTopic=getField('topic').value!=='';
     const hasFixedInfill=configurable&&getField('fixed_infill').value!=='';
     const options=root.querySelector<HTMLFieldSetElement>('[data-configurable-fields]')!;
     const stock=root.querySelector<HTMLFieldSetElement>('[data-stock-fields]')!;
@@ -92,7 +93,8 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     root.querySelector<HTMLElement>('[data-weight-range-fields]')!.hidden=hasFixedInfill;
     root.querySelector<HTMLElement>('[data-fixed-weight-field]')!.hidden=!hasFixedInfill;
     getField('fixed_weight_g').disabled=!hasFixedInfill;
-    getField('weight_g').required=!configurable&&getField('status').value==='published';
+    getField('weight_g').required=!configurable&&getField('status').value==='published'&&!hasTopic;
+    root.querySelector<HTMLElement>('[data-topic-only-field]')!.hidden=!hasTopic;
   }
   function samplePrice(){
     const fixed=getField('fixed_infill');
@@ -114,10 +116,13 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     editing=entry?JSON.parse(JSON.stringify(entry)):blank();editorSerial++;dirty=false;saving=false;
     pages.images=pages.videos=pages.colors=0;
     if(editing){editing.video_ids=editing.video_ids||[];editing.videos=editing.videos||[];}
-    form.reset();for(const name of ['name','kind','status','topic','description','material','min_price','max_price','fixed_price','fixed_infill','min_weight_g','max_weight_g'])getField(name).value=String((editing as any)[name]??'');
+    form.reset();for(const name of ['name','kind','status','topic','description','material','min_price','max_price','fixed_price','min_weight_g','max_weight_g'])getField(name).value=String((editing as any)[name]??'');
+    getField(editing.kind==='product'?'stock_fixed_infill':'fixed_infill').value=String(editing.fixed_infill??'');
     getField('weight_g').value=editing.kind==='product'?String(editing.weight_g??''):'';
+    getField('weight_approximate').checked=editing.weight_approximate===true;
     getField('fixed_weight_g').value=editing.kind==='work'&&editing.fixed_infill!=null?String(editing.weight_g??''):'';
     getField('is_demo').checked=editing!.is_demo;
+    getField('topic_only').checked=editing.topic_only===true;
     root.querySelector<HTMLElement>('#entry-editor-title')!.textContent=entry?'编辑内容':'新建内容';
     setStatus(editorNotice,'');renderAssets();renderEditorColors();editorType();samplePrice();updateSaveButton();dialog.showModal();
   }
@@ -165,7 +170,13 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     event.preventDefault();if(!editing||pending||saving)return;
     const data={...editing,name:getField('name').value,description:getField('description').value,material:getField('material').value.trim(),kind:getField('kind').value,status:getField('status').value,min_price:Number(getField('min_price').value),max_price:Number(getField('max_price').value),fixed_price:getField('fixed_price').value.trim()===''?null:Number(getField('fixed_price').value),weight_g:getField('weight_g').value.trim()===''?null:Number(getField('weight_g').value),min_weight_g:getField('min_weight_g').value.trim()===''?null:Number(getField('min_weight_g').value),max_weight_g:getField('max_weight_g').value.trim()===''?null:Number(getField('max_weight_g').value),is_demo:getField('is_demo').checked,color_ids:editing.color_ids.filter(id=>colors.some(color=>color.id===id&&color.active))};
     data.topic = getField('topic').value;
-    if(data.kind==='product'){data.color_ids=[];data.min_price=0;data.max_price=0;data.min_weight_g=null;data.max_weight_g=null;data.fixed_infill=null;}
+    data.topic_only = !!data.topic && getField('topic_only').checked;
+    if(data.kind==='product'){
+      const fixed=getField('stock_fixed_infill');
+      data.color_ids=[];data.min_price=0;data.max_price=0;data.min_weight_g=null;data.max_weight_g=null;
+      data.fixed_infill=fixed.value===''?null:fixed.valueAsNumber;
+      data.weight_approximate=data.weight_g!=null&&getField('weight_approximate').checked;
+    }
     else {
       const fixed=getField('fixed_infill'), weight=getField('fixed_weight_g');
       data.fixed_price=null;

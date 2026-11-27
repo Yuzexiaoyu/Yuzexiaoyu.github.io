@@ -5,6 +5,7 @@
 (function(){
   var source = {{ $workshop.RelPermalink | jsonify | safeJS }};
   var dataSource = {{ .Site.Params.workshop.dataSource | default "static" | jsonify | safeJS }};
+  var hiddenCatalogEntries = {{ .Site.Params.workshop.hiddenCatalogEntries | default slice | jsonify | safeJS }};
   function load(){
     if (window.WorkshopApp) return Promise.resolve();
     if (!window.__workshopLoad) {
@@ -33,6 +34,16 @@
   if (/^\/prints\/(?:detail\/)?$/.test(initialPath)) {
     prepare(initialPath).catch(function(){});
   }
+  function runApp(root, path){
+    if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
+    prepare(path).then(function(){if(root.isConnected && window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
+      var node=root.querySelector('[data-catalog-status]') || root.querySelector('[data-catalog-grid],[data-detail-content],[data-topic-grid],[data-admin-notice]');
+      if(node){
+        node.classList.remove('wk-catalog-loading');
+        node.textContent='工坊脚本加载失败，请刷新页面重试。';
+      }
+    });
+  }
   window.__runWorkshop = function(){
     var root = document.querySelector('[data-workshop]');
     // Legacy head content can start body before its template classes are parsed.
@@ -42,25 +53,22 @@
     var kind = root.dataset.workshop;
     if (kind === 'topic') {
       window.WorkshopTopic.mount(root);
-      if (!root.querySelector('[data-topic-grid]')) return;
+      runApp(root, '/prints/');
+      return;
     }
     if (kind === 'catalog') window.WorkshopTopic.prepareCatalog(root);
-    if (kind !== 'topic' && window.WorkshopIntro) window.WorkshopIntro.enter(root);
-    if (window.WorkshopApp) { window.WorkshopApp.init(); return; }
-    prepare(kind === 'catalog' || kind === 'topic' ? '/prints/' : null).then(function(){if(window.WorkshopApp)window.WorkshopApp.init();}).catch(function(){
-      var node=root.querySelector('[data-catalog-status]') || root.querySelector('[data-catalog-grid],[data-detail-content],[data-topic-grid],[data-admin-notice]');
-      if(node){
-        node.classList.remove('wk-catalog-loading');
-        node.textContent='工坊脚本加载失败，请刷新页面重试。';
-      }
-    });
+    if (window.WorkshopIntro) window.WorkshopIntro.enter(root);
+    runApp(root, kind === 'catalog' ? '/prints/' : null);
   };
-  window.__destroyWorkshop = function(nextUrl){window.WorkshopTopic.destroy(nextUrl);if(window.WorkshopApp)window.WorkshopApp.destroy();};
+  window.__destroyWorkshop = function(nextUrl){
+    window.WorkshopTopic.destroy(nextUrl);
+    if(window.WorkshopApp)window.WorkshopApp.destroy();
+  };
   window.__warmWorkshop = function(signal){
     if (signal.aborted || !window.__pagePreload?.allowed()) return Promise.resolve();
     return prepare('/prints/').then(function(){
       if (!signal.aborted && window.__pagePreload.allowed()) {
-        return window.WorkshopApp.preload(dataSource,signal);
+        return window.WorkshopApp.preload(dataSource,signal,hiddenCatalogEntries);
       }
     });
   };

@@ -7,11 +7,7 @@ body.template-workshop {
   .wk-nav nav { flex-wrap: wrap; gap: 10px; }
   .wk-eyebrow { font-size: 8px; letter-spacing: 1.5px; margin-bottom: 15px; }
   .wk-text-link { min-height: 36px; }
-  .wk-collection { padding-top: 14px; }
-  .wk-collection-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
-  [data-workshop="catalog"] .wk-collection-toolbar { margin-bottom: 10px; }
-  .wk-tabs { width: 100%; }
-  .wk-tabs button { flex: 1; justify-content: center; font-size: 14px; min-height: 34px; padding: 5px 10px; }
+  .wk-collection { padding-top: 8px; }
   .wk-catalog-notice {
     display: block;
     margin: 0 0 14px;
@@ -138,11 +134,12 @@ body.template-workshop {
     grid-template-columns: minmax(0,1fr);
     row-gap: 4px;
     > :is(.wk-label-row,.wk-material) { align-items: baseline; justify-content: flex-start; gap: 8px; margin: 0; }
+    > .wk-material { margin-top: 4px; padding-top: 8px; }
     .wk-label-row > h2, .wk-material > span:first-child { flex: 0 0 4em; }
     :is([data-color-name],[data-material]) { min-width: 0; overflow-wrap: anywhere; text-align: left; }
   }
-  .wk-material { grid-row: 2; }
-  .wk-swatches { grid-row: 3; margin-top: 4px; justify-content: space-between; gap: 8px clamp(4px,1.2vw,9px); }
+  .wk-material { grid-row: 3; }
+  .wk-swatches { grid-row: 2; margin-top: 4px; justify-content: space-between; gap: 8px clamp(4px,1.2vw,9px); }
   input.wk-range { display: block; margin: 0; height: 44px; background: transparent; touch-action: none; }
   .wk-range::-webkit-slider-runnable-track { height: 5px; border-radius: 10px; background: linear-gradient(to right,#a2d3bc var(--fill,0%),#344b3c var(--fill,0%)); }
   .wk-range::-webkit-slider-thumb { width: 23px; height: 23px; margin-top: -9px; }
@@ -154,7 +151,6 @@ body.template-workshop {
   .wk-unit { padding-bottom: 0; }
   .wk-stock-facts { order: 2; margin: 10px 0 0; }
   .wk-config > .wk-feedback { order: 5; }
-  .wk-contact-button { order: 4; position: static; width: 100%; min-height: 50px; margin-top: 20px; box-shadow: none; font-size: 14px; }
   @supports (-moz-appearance: none) {
     // Keep Firefox colors in one row, allowing proportional shrinkage when needed.
     .wk-swatches { min-width: 0; flex-wrap: nowrap; align-items: center; }
@@ -166,7 +162,6 @@ body.template-workshop {
     .wk-shell[data-workshop="detail"] { padding-bottom: calc(48px + env(safe-area-inset-bottom,0px)); }
   }
   .wk-price-note { text-align: left; }
-  .wk-mobile-price { display: block; margin-right: auto; font-size: 20px; }
   .wk-dialog { width: calc(100% - 24px); padding: 16px 20px 20px; }
   .wk-dialog textarea { font-size: 16px; height: 180px; }
   .wk-dialog h2 { font-size: 23px; }

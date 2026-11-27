@@ -46,6 +46,17 @@ async function setup(browser, mobile, reduced='no-preference') {
 }
 const ready = page=>page.waitForFunction(()=>window.WorkshopApp && !window.WorkshopIntro.active() && document.querySelector('[data-workshop-item],.wk-detail-grid'));
 const state = page=>page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,inert:document.body.inert,phase:document.documentElement.dataset.workshopIntro,selected:document.querySelector('[data-view].is-active')?.dataset.view,order:[...document.querySelectorAll('[data-view]')].map(el=>el.dataset.view),text:document.querySelector('[data-workshop]')?.innerText}));
+async function selectionList(page) {
+  await page.locator('[data-add-cart]').click();
+  await page.locator('[data-open-cart]').click();
+  await page.locator('[data-cart-checkout]').click();
+  await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
+  const list = await page.locator('[data-contact-text]').inputValue();
+  await page.locator('[data-close-dialog]').click();
+  await page.locator('[data-cart-action="remove"]').click();
+  await page.locator('[data-close-cart]').click();
+  return list;
+}
 async function galleryFrame(page) {
   const frame=await page.locator('.wk-stage').evaluate(stage=>{
     const media=stage.querySelector('img:not([hidden]),video:not([hidden]),model-viewer:not([hidden])');
@@ -146,7 +157,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await slider.press('ArrowLeft');
       assert.equal(await page.locator('[data-infill-value]').innerText(),'99%');
       await slider.evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
-      assert.equal(await page.locator('[data-contact]').isEnabled(),true);
+      assert.equal(await page.locator('[data-add-cart]').isEnabled(),true);
       assert.equal(await page.locator('[data-price]').innerText(),'¥53');
       assert.equal(await page.locator('[data-weight]').innerText(),'109.41 g');
       assert.equal(await page.locator('[data-view="photo"]').count(),2);
@@ -166,13 +177,11 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
         assert.equal(sample.percent,`${sample.fill}%`);assert.equal(sample.aria,sample.percent);assert.equal(sample.url,String(sample.fill));
       }
       await slider.evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
-      await page.locator('[data-contact]').click();await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
-      const customList=await page.locator('[data-contact-text]').inputValue();
+      const customList=await selectionList(page);
       assert.match(customList,/颜色：/);assert.match(customList,/填充比例：50%/);
-      assert.deepEqual(customList.split('\n').map(line=>line.split('：')[0]),['商品','材质','颜色','填充比例','报价']);
+      assert.deepEqual(customList.split('\n').filter(Boolean).map(line=>line.split('：')[0]),['商品','材质','颜色','填充比例','数量','单价','小计','合计']);
       assert.ok(customList.includes('材质：'+work.colors[0].material));
       assert.doesNotMatch(customList,/演示|示例/);
-      await page.locator('[data-close-dialog]').click();
       await page.locator('[data-view="model"]').click();
       await page.waitForFunction(()=>document.querySelector('[data-viewer]')?.model);
       assert.ok(await page.locator('[data-viewer]').evaluate(viewer=>viewer.getBoundingClientRect().height>50));
@@ -213,13 +222,11 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
         await page.locator('[data-view="photo"]').first().click();
       }
       sameFrames(stockFrames);
-      await page.locator('[data-contact]').click();await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
-      const stockList=await page.locator('[data-contact-text]').inputValue();
-      assert.match(stockList,/报价：¥39/);
-      assert.deepEqual(stockList.split('\n').map(line=>line.split('：')[0]),['商品','材质','报价']);
+      const stockList=await selectionList(page);
+      assert.match(stockList,/合计：¥39/);
+      assert.deepEqual(stockList.split('\n').filter(Boolean).map(line=>line.split('：')[0]),['商品','材质','数量','单价','小计','合计']);
       assert.ok(stockList.includes('材质：'+product.material));
       assert.doesNotMatch(stockList,/颜色：|填充比例：|演示|示例/);
-      await page.locator('[data-close-dialog]').click();
       assert.doesNotMatch((await state(page)).text,forbidden);
       await page.evaluate(()=>scrollTo(0,0));
       await page.screenshot({path:path.join(out,label+'-product.png'),fullPage:true});
@@ -249,13 +256,11 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       const workshopWarp=await page.evaluate(()=>({speeds:window.__qaSpeeds.map(sample=>sample.speed),slow:window.__qaSlows.length}));
       assert.deepEqual(workshopWarp,articleWarp);
       const modules=await page.evaluate(()=>window.__qaModules);
-      assert.ok(modules.some(module=>module.target.includes('wk-card')));
-      assert.ok(modules.some(module=>module.target.includes('wk-brand')));
-      assert.ok(modules.some(module=>module.target.includes('wk-nav-back')));
-      assert.ok(modules.some(module=>module.target.includes('wk-collection-toolbar')));
+      assert.ok(modules.some(module=>module.target.includes('wk-card')&&module.keyframes.some(frame=>frame.transform)));
+      assert.equal(modules.some(module=>module.target.includes('wk-catalog-home')),!mobile);
+      assert.ok(modules.some(module=>module.target.includes('wk-catalog-notice')));
       assert.ok(modules.every(module=>module.inert===false&&module.options.duration+module.options.delay<=1400));
       assert.ok(modules.every(module=>module.tag!=='BODY'&&module.target!=='wk-grid'));
-      if(reduced==='reduce')assert.ok(modules.every(module=>module.options.delay<=180&&module.keyframes.every(frame=>!frame.transform)));
       assert.equal(await page.evaluate(()=>document===window.__qaDocument),true,'navigation should use actual Swup body replacement');
       assert.equal((await state(page)).inert,false);
       assert.deepEqual(errors,[]);
@@ -285,14 +290,14 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       let release;const held=new Promise(resolve=>{release=resolve;});
       await page.route('**/workshop/catalog.json',async route=>{await held;await route.fulfill({json:catalog});});
       await page.goto(base+'/prints/',{waitUntil:'domcontentloaded'});
-      await page.locator('.wk-collection-toolbar').waitFor({state:'visible'});
+      await page.locator('.wk-catalog-notice').waitFor({state:'visible'});
       await page.waitForFunction(()=>!window.WorkshopIntro.active());
       assert.equal(await page.locator('[data-workshop-item]').count(),0);
-      await page.locator('[data-catalog-lead="work"]').waitFor({state:'visible'});
+      await page.locator('[data-catalog-lead]').first().waitFor({state:'visible'});
       await page.locator('.wk-topic-card').waitFor({state:'visible'});
-      assert.equal(await page.locator('[data-catalog-tab="product"]').isEnabled(),true);
+      assert.equal(await page.getByRole('tablist').count(),0);
       assert.equal((await state(page)).inert,false);
-      assert.equal(await page.locator('.wk-collection-toolbar').evaluate(node=>getComputedStyle(node).opacity),'1');
+      assert.equal(await page.locator('.wk-catalog-notice').evaluate(node=>getComputedStyle(node).opacity),'1');
       const earlyEffects=await page.evaluate(()=>window.__qaEffects.length);
       release();await ready(page);
       const modules=await page.evaluate(()=>window.__qaModules);
@@ -357,9 +362,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
           await page.waitForFunction(()=>document.querySelector('[data-viewer]')?.model);
           restarts.push(await restartVideoFromButton(page,1));
         }else assert.equal(await page.locator('[data-material]').innerText(),'TPU');
-        await page.locator('[data-contact]').click();await page.locator('[data-contact-dialog]').waitFor({state:'visible'});
-        assert.ok((await page.locator('[data-contact-text]').inputValue()).includes('材质：'+(kind==='work'?'PETG':'TPU')));
-        await page.locator('[data-close-dialog]').click();
+        assert.ok((await selectionList(page)).includes('材质：'+(kind==='work'?'PETG':'TPU')));
         assert.ok((await state(page)).scrollWidth<=(await state(page)).width);
         frames.push(await galleryFrame(page));sameFrames(frames);
         await page.screenshot({path:path.join(out,(mobile?'mobile':'desktop')+'-'+kind+'-gallery-video-fixture.png'),fullPage:true});
@@ -397,7 +400,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
         // A second choice while loading must become the model's final color.
         await page.locator('[data-color-id]').nth(3).click();
         releaseModel();
-        await page.waitForFunction(()=>document.querySelector('[data-viewer]')?.model);
+        await page.locator('[data-viewer-loading]').waitFor({state:'hidden'});
         const factors=()=>page.locator('[data-viewer]').evaluate(viewer=>viewer.model.materials.map(material=>Array.from(material.pbrMetallicRoughness.baseColorFactor)));
         const orange=await factors();
         assert.ok(orange.length>0);

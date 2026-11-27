@@ -147,7 +147,7 @@ function revealMobileTocChildren(toc, children) {
       : Math.max(0, children.parentElement.getBoundingClientRect().top - view.top);
   }
   if (Math.abs(delta) > 0.5) {
-    toc.scrollBy({ top: delta, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    toc.scrollBy({ top: delta, behavior: 'smooth' });
   }
 }
 
@@ -562,8 +562,7 @@ function startBookshelfIntro() {
 
 // Swup 初始化提前到 DOMContentLoaded：原来挂在 window load，要等首屏所有图片
 // （含 300KB 头像）下载完才建实例，期间导航只能走原生整页刷新，丢失 SPA 过场。
-// main.ts / Swup.umd.js / index.umd.js 均为 defer 脚本，规范保证在 DOMContentLoaded
-// 前执行完毕，故此时 Swup / SwupPreloadPlugin 必然已就绪，可安全提前。
+// defer 脚本在 DOMContentLoaded 前执行。预加载插件缺失时仍初始化 Swup。
 document.addEventListener('DOMContentLoaded', function() {
   document.body.classList.add('loaded');
 
@@ -582,24 +581,15 @@ document.addEventListener('DOMContentLoaded', function() {
     containers: ['body'],
     animationSelector: 'body',   // 抑制 "[swup] No elements found" 警告；animationDuration=0 已关闭动画
     animationDuration: 0,
-    plugins: [
+    plugins: typeof SwupPreloadPlugin === 'function' ? [
       new SwupPreloadPlugin({
         throttle: 4,
         preloadInitialPage: !!window.__pagePreload?.allowed() && !document.querySelector('.home-article-list, [data-workshop="catalog"]'),
       })
-    ]
+    ] : []
   });
 
   swupReady = true;
-  // Category tabs only change client-side state; all three URLs use the same HTML shell.
-  // Keep distinct navigation URLs so returning still selects the correct category.
-  swup.hooks.on('cache:set', function(_visit, args) {
-    var page = args.page;
-    if (new URL(page.url, location.origin).pathname !== '/prints/') return;
-    ['/prints/', '/prints/?tab=work', '/prints/?tab=product'].forEach(function(url) {
-      if (url !== page.url) swup.cache.update(url, {html: page.html});
-    });
-  });
   // Reuse the catalog already on screen instead of fetching it again just to cache it.
   if (document.querySelector('[data-workshop="catalog"]')) {
     swup.cache.set(location.pathname + location.search, {

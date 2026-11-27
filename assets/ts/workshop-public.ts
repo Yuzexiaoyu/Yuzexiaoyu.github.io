@@ -20,7 +20,7 @@ function loadLocalCatalog(signal?: AbortSignal): Promise<Entries> {
 
 function loadSnapshot(refresh = false): Promise<Catalog> {
   if (!snapshot || refresh) {
-    snapshot = (async () => {
+    const pending = (async () => {
       const earlyRequest = takeEarlyCatalogRequest();
       const response = await (earlyRequest ?? fetch('/workshop/catalog.json', {cache: 'no-cache'}));
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
@@ -31,12 +31,18 @@ function loadSnapshot(refresh = false): Promise<Catalog> {
         throw new Error('工坊内容版本不正确，请稍后刷新。');
       }
       return catalog;
-    })().catch(error => { snapshot = null; throw error; });
+    })();
+    snapshot = pending;
+    void pending.catch(() => { if (snapshot === pending) snapshot = null; });
   }
   return snapshot;
 }
 
-export async function preloadPublicCatalog(source: string, signal?: AbortSignal): Promise<void> {
+export function catalogEntries(entries: Entry[], hidden: string[]): Entry[] {
+  return entries.filter(entry => !entry.topic_only && !hidden.includes(entry.id ?? ''));
+}
+
+export async function preloadPublicCatalog(source: string, signal?: AbortSignal, hidden: string[] = []): Promise<void> {
   let catalog: Entries;
   if (source === 'local') {
     if (!localPreload) {
@@ -49,10 +55,8 @@ export async function preloadPublicCatalog(source: string, signal?: AbortSignal)
     catalog = await loadSnapshot();
   }
   if (signal?.aborted || !canPreload()) return;
-  // Warm the lead card in each catalog tab. The grid loads the rest on demand.
-  for (const kind of ['work', 'product']) {
-    const entry = catalog.entries.find(item => item.kind === kind);
-    if (!entry) continue;
+  // Warm the first two cards. The grid loads the rest on demand.
+  for (const entry of catalogEntries(catalog.entries, hidden).slice(0, 2)) {
     const url = entry.images[0]?.url;
     if (!url || covers.has(url)) continue;
     const image = new Image();
@@ -65,10 +69,10 @@ export async function preloadPublicCatalog(source: string, signal?: AbortSignal)
 }
 
 // Only the local build talks to the local API. Public hosting serves a snapshot.
-export async function publicApi<T>(url: string, signal?: AbortSignal): Promise<T> {
+export async function publicApi<T>(url: string, signal?: AbortSignal, refresh = false): Promise<T> {
   signal?.throwIfAborted();
   if (document.querySelector('[data-workshop]')?.getAttribute('data-workshop-source') === 'local') {
-    if (url === '/api/catalog') {
+    if (url === '/api/catalog' && !refresh) {
       const pending = localPreload ?? loadLocalCatalog(signal);
       localPreload = null;
       const catalog = await pending;
@@ -79,7 +83,7 @@ export async function publicApi<T>(url: string, signal?: AbortSignal): Promise<T
   }
   const request = new URL(url, location.origin);
   // Reuse the preload for navigation; confirm the latest prices when making a list.
-  const catalog = await loadSnapshot(request.pathname === '/api/quote');
+  const catalog = await loadSnapshot(refresh || request.pathname === '/api/quote');
   signal?.throwIfAborted();
   if (request.pathname === '/api/catalog') return {entries: catalog.entries} as T;
   if (request.pathname === '/api/settings') return catalog.settings as T;

@@ -50,12 +50,19 @@ class ExportTests(unittest.TestCase):
 
     def test_topic_survives_older_editor_updates_and_can_be_removed(self):
         entry_id = self.product["id"]
-        assigned = self.store.save_entry(dict(self.product, topic="expedition-33"), entry_id)
-        previous_editor = {key: value for key, value in assigned.items() if key != "topic"}
+        assigned = self.store.save_entry(dict(self.product, topic="expedition-33", topic_only=True, fixed_infill=100,
+                                              weight_g=7, weight_approximate=True), entry_id)
+        previous_editor = {key: value for key, value in assigned.items() if key not in {"topic", "topic_only", "fixed_infill", "weight_approximate"}}
         saved = self.store.save_entry(previous_editor, entry_id)
-        self.assertEqual(export_public(self.store.folder, self.output)["entries"][0]["topic"], "expedition-33")
+        exported = export_public(self.store.folder, self.output)["entries"][0]
+        self.assertEqual((exported["topic"], exported["fixed_infill"]), ("expedition-33", 100))
+        self.assertTrue(exported["topic_only"])
+        self.assertEqual(exported["weight_g"], 7)
+        self.assertTrue(exported["weight_approximate"])
         self.store.save_entry(dict(saved, topic=""), entry_id)
-        self.assertNotIn("topic", export_public(self.store.folder, self.output)["entries"][0])
+        unassigned = export_public(self.store.folder, self.output)["entries"][0]
+        self.assertNotIn("topic", unassigned)
+        self.assertNotIn("topic_only", unassigned)
 
     def test_configurable_weights_and_multiple_images_are_exported_in_order(self):
         second = self.store.save_asset('second.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>', trusted_demo=True)

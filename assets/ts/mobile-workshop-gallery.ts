@@ -68,8 +68,8 @@ export function initMobileGallerySwipe(stage: HTMLElement, buttons: HTMLButtonEl
       run.animations.forEach(animation => animation.cancel());
       clear();
     };
-    const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : Math.max(140,Math.min(260,Math.abs(destination-offset)/width*260));
-    if (!duration || Math.abs(destination-offset)<.5) {finish(); return;}
+    if (Math.abs(destination-offset)<.5) {finish(); return;}
+    const duration = Math.max(140,Math.min(260,Math.abs(destination-offset)/width*260));
     const animate = (element: HTMLElement, shift: number) => {
       const animation = element.animate([
         {transform:`translate3d(${offset+shift}px,0,0)`},

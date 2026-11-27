@@ -1,12 +1,15 @@
-import {abortError, escapeHTML as e, firstVideoIndexForColor, workPriceAt, workPriceRange, workWeightAt, grams, money, replaceQuery, setStatus, CONTACT_QQ, Entry, Color, Settings} from './workshop-shared';
-import {publicApi as api, preloadPublicCatalog} from './workshop-public';
+import {abortError, escapeHTML as e, firstVideoIndexForColor, workPriceAt, workPriceRange, workWeightAt, grams, money, replaceQuery, setStatus, CONTACT_QQ, Entry, Color} from './workshop-shared';
+import {publicApi as api, catalogEntries, preloadPublicCatalog} from './workshop-public';
 import {initAdmin} from './print-admin';
 import {initMobileGallerySwipe} from './mobile-workshop-gallery';
 import {bindMobileVideoBar, mobileVideoBar} from './mobile-workshop-video';
 import {bindGalleryPhotos} from './workshop-gallery-photos';
 import {preloadCatalogEntries, takePreloadedVideo} from './workshop-preload';
+import {bindWorkshopContact} from './workshop-contact';
+import {bindWorkshopCart} from './workshop-cart';
 
 const w = window as any;
+type AddToCart = ReturnType<typeof bindWorkshopCart>;
 let currentRoot: HTMLElement|null = null;
 let controller: AbortController|null = null;
 let cleanup: (()=>void)|null = null;
@@ -27,29 +30,34 @@ function loadViewer(): Promise<void> {
 
 function empty(message: string, extra = '') {return `<div class="wk-empty"><span class="wk-empty-mark" aria-hidden="true">◇</span><h2>${e(message)}</h2>${extra}</div>`;}
 
+function stockWeightLabel(entry: Entry): string {
+  return entry.weight_g == null ? '' : `${entry.weight_approximate ? '约 ' : ''}${entry.weight_g} g`;
+}
+
 function entryCardPrice(entry: Entry): string {
   const configurable = entry.kind === 'work';
   const [price, high] = configurable ? workPriceRange(entry) : [entry.fixed_price, entry.fixed_price];
   const isRange = price !== high || (!entry.color_prices && entry.fixed_infill == null);
-  const suffix = configurable ? (isRange ? '起' : '') : entry.weight_g ? `${e(entry.weight_g)} g` : '';
-  return `${money(price)}${suffix ? `<small>${suffix}</small>` : ''}`;
+  const suffix = configurable ? (isRange ? '起' : '') : entry.topic === 'expedition-33' ? '' : stockWeightLabel(entry);
+  return `${money(price)}${suffix ? `<small>${e(suffix)}</small>` : ''}`;
 }
 
-function entryCard(entry: Entry, index: number, topic?: string): string {
-  const configurable = entry.kind === 'work';
+function entryCard(entry: Entry, index: number, inTopic = false): string {
   const query = new URLSearchParams({id: entry.id!});
-  if (topic) query.set('from', topic);
-  const badge = entry.is_demo ? '演示内容' : topic ? (configurable ? '可选' : '现货') : '';
-  const heading = topic ? 'h3' : 'h2';
-  return `<a class="wk-card" data-workshop-item href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
+  if (inTopic && entry.topic) query.set('from', entry.topic);
+  const badge = entry.is_demo ? '演示内容' : '';
+  const heading = inTopic ? 'h3' : 'h2';
+  const topicControl = document.documentElement.dataset.ui === 'mobile'
+    ? 'aria-controls="topic-detail-inline" aria-expanded="false"'
+    : 'aria-haspopup="dialog" aria-controls="topic-detail"';
+  return `<a class="wk-card" data-workshop-item ${inTopic ? `data-topic-item="${e(entry.id)}" data-no-swup ${topicControl}` : ''} href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
     <div class="wk-card-image"><img src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" loading="${index < 2 ? 'eager' : 'lazy'}" fetchpriority="${index === 0 ? 'high' : 'auto'}" decoding="async">${badge ? `<span class="wk-badge">${badge}</span>` : ''}</div>
     <div class="wk-card-info"><div><${heading}>${e(entry.name)}</${heading}></div><span class="wk-card-price">${entryCardPrice(entry)}</span></div>
   </a>`;
 }
 
-function hydrateCatalogLead(list: HTMLElement, entry: Entry) {
-  const card = list.querySelector<HTMLAnchorElement>(`[data-catalog-lead="${entry.kind}"]`);
-  if (!card || card.dataset.catalogId !== entry.id || entry.is_demo) return;
+function hydrateCatalogLead(card: HTMLAnchorElement | undefined, entry: Entry) {
+  if (!card || entry.is_demo) return;
   const cover = entry.images[0]?.url;
   const image = card.querySelector('img');
   if (image?.src !== (cover ? new URL(cover, document.baseURI).href : undefined)) return;
@@ -63,78 +71,47 @@ function hydrateCatalogLead(list: HTMLElement, entry: Entry) {
 }
 
 async function catalog(root: HTMLElement, signal: AbortSignal) {
-  const grid = root.querySelector<HTMLElement>('[data-catalog-grid]')!;
-  const earlyList = root.querySelector<HTMLElement>('[data-catalog-entries]');
-  const list = earlyList || grid;
+  const list = root.querySelector<HTMLElement>('[data-catalog-entries]')!;
   const topicCard = root.querySelector<HTMLAnchorElement>('a[data-catalog-topic]');
-  const legacyTopic = root.querySelector<HTMLTemplateElement>('template[data-catalog-topic]')?.innerHTML ?? '';
   const contact = root.querySelector<HTMLElement>('[data-catalog-contact]');
   if (contact) {
     contact.querySelector('strong')!.textContent = `QQ ${CONTACT_QQ}`;
     contact.hidden = false;
   }
-  let tab = new URLSearchParams(location.search).get('tab') === 'product' ? 'product' : 'work';
-  const tabs = root.querySelectorAll<HTMLButtonElement>('[data-catalog-tab]');
-  let entries: Entry[] | undefined;
-  let stopPreload: (() => void) | undefined;
-  const syncTab = () => {
-    root.dataset.activeCatalogTab = tab;
-    tabs.forEach(button => {
-      const active = tab === button.dataset.catalogTab;
-      button.classList.toggle('is-active', active);
-      button.setAttribute('aria-selected', String(active));
-    });
-    root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(node => node.classList.toggle('is-active', tab === node.dataset.wkTab));
-    if (topicCard) topicCard.hidden = tab !== 'work';
-  };
-  const render = () => {
-    if (!entries) return;
-    stopPreload?.();
-    const items = entries.filter(entry => entry.kind === tab);
-    const lead = earlyList && items[0] && hydrateCatalogLead(earlyList, items[0]);
-    const start = lead ? 1 : 0;
-    const cards = items.slice(start).map((entry, index) => entryCard(entry, start + index)).join('') + (tab === 'work' ? legacyTopic : '');
-    if (lead) {
-      for (const child of Array.from(list.children)) if (child !== lead) child.remove();
-      list.insertAdjacentHTML('beforeend', cards);
-    } else {
-      list.innerHTML = cards || (tab === 'work' && topicCard ? '' : empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>'));
-    }
-    w.WorkshopIntro?.refresh?.(root);
-    stopPreload = preloadCatalogEntries(root, items, signal);
-  };
-  syncTab();
-  tabs.forEach(button => button.addEventListener('click', () => {
-    tab = button.dataset.catalogTab!;
-    const params = new URLSearchParams(location.search);
-    params.set('tab', tab);
-    replaceQuery(params);
-    syncTab();
-    render();
-  }, {signal}));
+  const seeds = new Map(Array.from(list.querySelectorAll<HTMLAnchorElement>('[data-catalog-lead]'))
+    .map(card => [card.dataset.catalogId, card]));
   try {
-    const response = await api<{entries: Entry[]}>('/api/catalog', signal);
+    const {entries} = await api<{entries: Entry[]}>('/api/catalog', signal);
     if (signal.aborted) return;
-    entries = response.entries;
-    root.querySelectorAll<HTMLElement>('[data-count]').forEach(node => {
-      const count = response.entries.filter(entry => entry.kind === node.dataset.count).length;
-      node.textContent = String(count).padStart(2,'0');
+    const items = catalogEntries(entries, root.dataset.catalogHidden?.split(' ') ?? []);
+    let next = list.firstChild;
+    const template = document.createElement('template');
+    items.forEach((entry, index) => {
+      const seed = hydrateCatalogLead(seeds.get(entry.id), entry);
+      if (seed) seed.style.setProperty('--card-index', String(index));
+      else template.innerHTML = entryCard(entry, index);
+      const card = seed ?? template.content.firstElementChild!;
+      if (card === next) next = card.nextSibling;
+      else list.insertBefore(card, next);
     });
-    render();
+    while (next) {
+      const stale = next;
+      next = next.nextSibling;
+      stale.remove();
+    }
+    if (!items.length && !topicCard) list.innerHTML = empty('新的创作，正在路上','<p>首批内容整理中，稍后再来看看。</p>');
+    w.WorkshopIntro?.refresh?.(root);
+    preloadCatalogEntries(root, items, signal);
   } catch (error) {
     if (signal.aborted || abortError(error)) return;
     const status = empty('工坊暂时没有打开',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="${e(location.href)}" data-no-swup>重新连接</a>`);
-    if (earlyList?.querySelector('[data-catalog-lead]')) {
-      earlyList.querySelector('.wk-catalog-loading')?.remove();
-      earlyList.insertAdjacentHTML('beforeend', status);
-    } else {
-      list.innerHTML = (tab === 'work' ? legacyTopic : '') + status;
-    }
+    list.querySelector('.wk-catalog-loading')?.remove();
+    list.insertAdjacentHTML('beforeend', status);
     w.WorkshopIntro?.refresh?.(root);
   }
 }
 
-async function topic(root: HTMLElement, signal: AbortSignal) {
+async function topic(root: HTMLElement, signal: AbortSignal, addToCart: AddToCart) {
   const grid = root.querySelector<HTMLElement>('[data-topic-grid]');
   if (!grid) return;
   const topicId = root.dataset.topic;
@@ -143,23 +120,139 @@ async function topic(root: HTMLElement, signal: AbortSignal) {
     if (signal.aborted) return;
     const items = entries.filter(entry => topicId && entry.topic === topicId && entry.status === 'published');
     grid.innerHTML = items.length
-      ? items.map((entry, index) => entryCard(entry, index, topicId)).join('')
+      ? items.map((entry, index) => entryCard(entry, index, true)).join('')
       : '<p class="wk-topic-status">暂无上架物品</p>';
-    preloadCatalogEntries(root, items, signal);
+    bindTopicDetails(root, grid, items, signal, addToCart);
   } catch (error) {
-    if (!signal.aborted && !abortError(error)) grid.innerHTML = '<p class="wk-topic-status">相关物品暂未加载，请刷新重试。</p>';
+    if (!signal.aborted && !abortError(error)) grid.innerHTML = '<p class="wk-topic-status">物品暂未加载，请刷新重试。</p>';
   }
 }
 
-async function detail(root: HTMLElement, signal: AbortSignal) {
+function bindTopicDetails(root: HTMLElement, grid: HTMLElement, items: Entry[], signal: AbortSignal, addToCart: AddToCart) {
+  const mobile = document.documentElement.dataset.ui === 'mobile';
+  const dialog = mobile ? null : root.querySelector<HTMLDialogElement>('[data-topic-detail]')!;
+  const panel = dialog ?? root.querySelector<HTMLElement>('[data-topic-inline]')!;
+  const content = panel.querySelector<HTMLElement>('[data-detail-content]')!;
+  const title = panel.querySelector<HTMLElement>('[data-topic-detail-title]')!;
+  const backToWorkshop = root.querySelector<HTMLAnchorElement>('[data-topic-back-workshop]')!;
+  const list = root.querySelector<HTMLElement>('#topic-items')!;
+  const cartTrigger = root.querySelector<HTMLButtonElement>('[data-open-cart]')!;
+  const entries = new Map(items.map(entry => [entry.id, entry]));
+  const topicUrl = location.href;
+  let active: AbortController | undefined;
+  let trigger: HTMLAnchorElement | undefined;
+  let listScrollTop = 0;
+
+  function releaseDetail() {
+    active?.abort();
+    active = undefined;
+    if (dialog && cartTrigger.parentElement === dialog) root.append(cartTrigger);
+    content.querySelectorAll('video').forEach(video => {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    });
+    content.querySelector('model-viewer')?.removeAttribute('src');
+    content.replaceChildren();
+  }
+
+  function showInline(open: boolean) {
+    panel.hidden = !open;
+    list.hidden = backToWorkshop.hidden = open;
+    trigger?.setAttribute('aria-expanded', String(open));
+    window.scrollTo({top: open ? 0 : listScrollTop, behavior: 'instant'});
+    if (open) title.focus({preventScroll:true});
+  }
+
+  function restoreList() {
+    releaseDetail();
+    trigger?.focus({preventScroll:true});
+    trigger = undefined;
+  }
+
+  function openDetail(card: HTMLAnchorElement, entry: Entry) {
+    trigger = card;
+    title.textContent = entry.name;
+    active = new AbortController();
+    if (dialog) {
+      dialog.setAttribute('aria-label', entry.name);
+      // A modal makes its siblings inert, so keep the same floating control inside it.
+      dialog.append(cartTrigger);
+      dialog.showModal();
+      dialog.scrollTop = 0;
+    } else {
+      showInline(true);
+    }
+    void detail(panel, active.signal, addToCart, entry);
+  }
+
+  grid.addEventListener('click', event => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const card = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('[data-topic-item]') : null;
+    const entry = entries.get(card?.dataset.topicItem);
+    if (!card || !entry) return;
+    event.preventDefault();
+    if (active) return;
+    if (!dialog) {
+      listScrollTop = window.scrollY;
+      // Keep the same URL and video while giving browser Back and Forward an entry to visit.
+      history.pushState({...history.state, workshopTopicDetail: {id: entry.id, listScrollTop}}, '');
+    }
+    openDetail(card, entry);
+  }, {signal});
+
+  if (dialog) {
+    dialog.querySelector('[data-close-topic-detail]')!.addEventListener('click', () => dialog.close(), {signal});
+    dialog.addEventListener('click', event => {
+      if (event.target !== dialog) return;
+      const bounds = dialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+        dialog.close();
+      }
+    }, {signal});
+    dialog.addEventListener('close', () => { if (!dialog.open) restoreList(); }, {signal});
+  } else {
+    function syncInlineHistory() {
+      if (location.href !== topicUrl) return;
+      const selection = history.state?.workshopTopicDetail;
+      const entry = entries.get(selection?.id);
+      if (!entry) {
+        if (active) {
+          showInline(false);
+          restoreList();
+        }
+        return;
+      }
+      if (trigger?.dataset.topicItem === entry.id) return;
+      const card = grid.querySelector<HTMLAnchorElement>(`[data-topic-item="${CSS.escape(entry.id!)}"]`);
+      if (!card) return;
+      releaseDetail();
+      listScrollTop = selection.listScrollTop;
+      openDetail(card, entry);
+    }
+    window.addEventListener('popstate', syncInlineHistory, {signal});
+    syncInlineHistory();
+    root.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && active && !event.defaultPrevented && !root.querySelector('dialog[open]')) history.back();
+    }, {signal});
+  }
+  signal.addEventListener('abort', () => {
+    releaseDetail();
+    if (dialog?.open) dialog.close();
+  }, {once:true});
+}
+
+async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCart, topicItem?: Entry) {
   const container = root.querySelector<HTMLElement>('[data-detail-content]')!;
-  const params = new URLSearchParams(location.search);
-  const id = params.get('id');
+  const params = new URLSearchParams(topicItem ? '' : location.search);
+  const id = topicItem?.id ?? params.get('id');
   if(!id){container.innerHTML=empty('先挑一个喜欢的形状','<a class="wk-button wk-primary" href="/prints/">浏览工坊</a>');return;}
   try {
-    let entry = await api<Entry>(`/api/entry/${encodeURIComponent(id)}`,signal);
+    const entry = topicItem ?? await api<Entry>(`/api/entry/${encodeURIComponent(id)}`,signal);
     if(signal.aborted)return;
     const configurable=entry.kind==='work';
+    const expeditionItem=entry.topic==='expedition-33';
+    const cameraOrbit=expeditionItem?'8deg 86deg 135%':DEFAULT_CAMERA_ORBIT;
     const stockLink=root.querySelector<HTMLAnchorElement>('[data-stock-link]');
     if(configurable&&stockLink) {
       void api<{entries: Entry[]}>('/api/catalog',signal).then(({entries})=>{
@@ -171,20 +264,21 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       }).catch(()=>{});
     }
     const mobile=document.documentElement.dataset.ui==='mobile';
-    const description=mobile
+    const description=mobile&&!expeditionItem
       ? entry.description.split(/\r\n?|\n/).filter(line=>line.trim()).map(e).join('<br>')
-      : e(entry.description).replace(/\n/g,'<br>');
+      : e(entry.description).replace(/\r\n?|\n/g,'<br>');
     const videos=entry.videos||[];
     const photos=entry.images;
     const previews=configurable?entry.color_previews:undefined;
-    document.title=`${entry.name} · 雨泽小鱼的工坊`;
-    root.querySelector<HTMLElement>('[data-detail-breadcrumb]')!.textContent=`${configurable?'可选':'现货'} / ${entry.name}`;
-    const back = root.querySelector<HTMLAnchorElement>('[data-detail-back]')!;
-    if (entry.topic && params.get('from') === entry.topic) {
-      back.href = `/prints/${encodeURIComponent(entry.topic)}/`;
-      back.textContent = '← 返回专题';
-    } else back.href = `/prints/?tab=${entry.kind}`;
-    root.querySelectorAll<HTMLElement>('[data-wk-tab]').forEach(n=>n.classList.toggle('is-active',n.dataset.wkTab===entry.kind));
+    if (!topicItem) {
+      document.title=`${entry.name} · 雨泽小鱼的工坊`;
+      root.querySelector<HTMLElement>('[data-detail-breadcrumb]')!.textContent=entry.name;
+      const back = root.querySelector<HTMLAnchorElement>('[data-detail-back]')!;
+      if (entry.topic && params.get('from') === entry.topic) {
+        back.href = `/prints/${encodeURIComponent(entry.topic)}/`;
+        back.textContent = '← 返回专题';
+      } else back.href = '/prints/';
+    }
     let color: Color|undefined=entry.colors.find(c=>c.id===params.get('color'))||entry.colors[0];
     const activePreview=()=>color?previews?.[color.id]:undefined;
     const initialPreview=activePreview();
@@ -192,9 +286,18 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     const initialVideo=videos[initialVideoIndex];
     const preloadedVideo=takePreloadedVideo(initialVideo?.url);
     const cover=initialPreview?photos.find(image=>initialPreview.image_ids.includes(image.id)):photos[0];
-    const fixedInfill=configurable?entry.fixed_infill:null;
+    const fixedInfill=entry.fixed_infill;
     let infill = fixedInfill??Number(params.get('infill')||15);
     if(!Number.isInteger(infill)||infill<15||infill>100)infill=15;
+    const material=e((configurable?color?.material:entry.material)||'—');
+    const materialRow=`<div class="wk-material"><span>材质</span><span data-material>${material}</span></div>`;
+    const infillSection=configurable||fixedInfill!=null?`
+      <div class="wk-config-section${fixedInfill==null?'':' wk-config-section--fixed-infill'}">
+        <div class="wk-label-row"><h2>${fixedInfill==null?'填充比例':'固定填充比例'}</h2><output class="wk-infill-value" data-infill-value>${fixedInfill??infill}%</output></div>
+        ${fixedInfill==null?`<input class="wk-range" type="range" min="15" max="100" step="1" value="${infill}" data-infill-range aria-label="调整填充比例">`:''}
+      </div>`:'';
+    const stockWeight=stockWeightLabel(entry);
+    const stockInfill=fixedInfill==null?'':`<span aria-hidden="true">·</span><span>填充比例 <span data-infill-value>${e(fixedInfill)}%</span></span>`;
     container.innerHTML=`<div class="wk-detail-grid"><div class="wk-gallery">
       <div class="wk-stage">
         ${videos.length?`<video class="wk-stage-video" data-stage-video ${!preloadedVideo&&initialVideo?.url?`src="${e(initialVideo.url)}"`:''} ${cover?.url?`poster="${e(cover.url)}"`:''} ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} ${initialVideo?'autoplay':'hidden'} playsinline preload="auto"></video>`:''}
@@ -202,7 +305,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         <img class="wk-stage-image" data-stage-image ${cover?.url?`src="${e(cover.url)}"`:''} alt="${e(entry.name)}" ${videos.length||!cover?'hidden':''}>
         <span class="wk-photo-status" data-photo-status role="status" hidden></span>
         ${previews?'<p class="wk-color-placeholder" data-color-placeholder role="status" hidden></p>':''}
-        ${entry.model?`<model-viewer data-viewer alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${DEFAULT_CAMERA_ORBIT}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
+        ${entry.model?`<model-viewer data-viewer ${expeditionItem?'data-topic-model':''} alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${cameraOrbit}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
         ${mobile&&videos.length?mobileVideoBar:''}
       </div>
       <div class="wk-gallery-tools">
@@ -214,7 +317,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
         ${entry.model?'<button type="button" class="wk-text-link" data-reset-view hidden>↺ 重置视角</button>':''}
       </div>
     </div><aside class="wk-config">
-      <h1>${e(entry.name)}</h1>
+      ${topicItem && mobile ? '' : `<h1>${e(entry.name)}</h1>`}
       <p class="wk-description">${description}</p>
       ${configurable?`
         <div class="wk-config-section">
@@ -224,25 +327,30 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
             const swatch=accent?`linear-gradient(135deg,${c.hex} 50%,${accent} 50%)`:c.hex;
             return `<button type="button" class="wk-swatch" data-color-id="${e(c.id)}" style="--swatch:${e(swatch)}" aria-label="${e(c.name)}${c.material?` · ${e(c.material)}`:''}" title="${e(c.name)}${c.material?` · ${e(c.material)}`:''}" aria-pressed="${c.id===color?.id}"><span></span></button>`;
           }).join('')}</div>
-          <div class="wk-material"><span>材质</span><span data-material>${e(color?.material||'—')}</span></div>
+          ${materialRow}
         </div>
-        <div class="wk-config-section${fixedInfill==null?'':' wk-config-section--fixed-infill'}">
-          <div class="wk-label-row"><h2>${fixedInfill==null?'填充比例':'固定填充比例'}</h2><output class="wk-infill-value" data-infill-value>${infill}%</output></div>
-          ${fixedInfill==null?`<input class="wk-range" type="range" min="15" max="100" step="1" value="${infill}" data-infill-range aria-label="调整填充比例">`:''}
-        </div>
+        ${infillSection}
         <div class="wk-price-box"><div><span>当前报价</span><strong data-price></strong></div><span class="wk-unit">重量 <span data-weight>—</span></span></div>
+      `:expeditionItem?`
+        <div class="wk-stock-specs">${materialRow}${infillSection}</div>
+        <div class="wk-price-box"><div><span>售价</span><strong data-price>${money(entry.fixed_price)}</strong></div>
+          ${stockWeight?`<span class="wk-unit">重量 <span data-weight>${e(stockWeight)}</span></span>`:''}
+        </div>
       `:`
-        <p class="wk-stock-facts" aria-label="售价、重量与材质"><span data-price>${money(entry.fixed_price)}</span><span aria-hidden="true">·</span><span data-weight>${e(entry.weight_g)} g</span><span aria-hidden="true">·</span><span>材质 <span data-material>${e(entry.material||'—')}</span></span></p>
+        <p class="wk-stock-facts" aria-label="成品信息">
+          <span data-price>${money(entry.fixed_price)}</span>${stockWeight?`<span aria-hidden="true">·</span><span data-weight>${e(stockWeight)}</span>`:''}
+          <span aria-hidden="true">·</span><span>材质 <span data-material>${material}</span></span>${stockInfill}
+        </p>
       `}
-      <button type="button" class="wk-button wk-primary wk-contact-button" data-contact><strong class="wk-mobile-price" data-mobile-price></strong><span>${configurable?'生成清单 · QQ 联系':'联系购买 · QQ'}</span><span>↗</span></button>
-      <p class="wk-feedback" data-contact-error role="status"></p>
+      <button type="button" class="wk-button wk-primary wk-add-cart" data-add-cart>加入购物车</button>
+      <p class="wk-feedback" data-detail-feedback role="status"></p>
     </aside></div>`;
     if(preloadedVideo){
       const placeholder=container.querySelector<HTMLVideoElement>('[data-stage-video]')!;
       for(const attribute of Array.from(placeholder.attributes))preloadedVideo.setAttribute(attribute.name,attribute.value);
       placeholder.replaceWith(preloadedVideo);
     }
-    w.WorkshopIntro?.refresh?.(root);
+    if(!topicItem)w.WorkshopIntro?.refresh?.(root);
     const viewer=container.querySelector<any>('[data-viewer]');
     const stageImage=container.querySelector<HTMLImageElement>('[data-stage-image]')!;
     const stageVideo=container.querySelector<HTMLVideoElement>('[data-stage-video]');
@@ -342,7 +450,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       selectView(view);
       if(view==='video')playVideo(true,event.isTrusted);
     },{signal}));
-    function showColorMedia(preferVideo=false) {
+    function showColorMedia(preferVideo=false, keepModel=false) {
       const preview=activePreview();
       const filter=(buttons: HTMLButtonElement[], ids: string[]|undefined, assets: Entry['images'], label: string) => {
         buttons.forEach((button,index)=>{button.hidden=!!ids&&!ids.includes(assets[index].id);});
@@ -353,7 +461,8 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       const firstPhoto=filter(photoButtons,preview?.image_ids,photos,'▧ 图片');
       const firstVideo=filter(videoButtons,preview?.video_ids,videos,'▷ 视频');
       const firstMedia=preferVideo?(firstVideo||firstPhoto):(firstPhoto||firstVideo);
-      const defaultButton=firstMedia||mediaButtons.find(button=>button.dataset.view==='model');
+      const modelButton=mediaButtons.find(button=>button.dataset.view==='model');
+      const defaultButton=keepModel&&modelButton?modelButton:firstMedia||modelButton;
       const posterIndex=firstPhoto?Number(firstPhoto.dataset.mediaIndex):null;
       const poster=posterIndex==null?null:photos[posterIndex].url;
       if(stageVideo&&poster)stageVideo.poster=poster;
@@ -373,7 +482,7 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
     if(viewer){
       viewer.addEventListener('load',()=>{if(signal.aborted)return;viewerReady=true;viewerFailed=false;loading!.hidden=true;failed!.hidden=true;paint();},{signal});
       viewer.addEventListener('error',viewerError,{signal});
-      container.querySelector('[data-reset-view]')!.addEventListener('click',()=>{selectView('model');viewer.cameraOrbit=DEFAULT_CAMERA_ORBIT;viewer.cameraTarget='auto auto auto';viewer.fieldOfView='auto';viewer.jumpCameraToGoal?.();},{signal});
+      container.querySelector('[data-reset-view]')!.addEventListener('click',()=>{selectView('model');viewer.cameraOrbit=cameraOrbit;viewer.cameraTarget='auto auto auto';viewer.fieldOfView='auto';viewer.jumpCameraToGoal?.();},{signal});
       container.querySelector('[data-retry-viewer]')!.addEventListener('click',()=>{viewerFailed=false;failed!.hidden=true;loading!.hidden=false;openModel(true);},{signal});
     }
     if(stageVideo)stageVideo.muted=false;
@@ -384,15 +493,16 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
       if(stageVideo)playVideo(false);
     }
     const range=container.querySelector<HTMLInputElement>('[data-infill-range]');
-    const contact=container.querySelector<HTMLButtonElement>('[data-contact]')!;
+    const add=container.querySelector<HTMLButtonElement>('[data-add-cart]')!;
+    const feedback=container.querySelector<HTMLElement>('[data-detail-feedback]');
     const update=()=>{
       let displayPrice:string;
       if(configurable){
         const value=range?.valueAsNumber??infill;
         const valid=Number.isInteger(value)&&value>=15&&value<=100&&!!color;
-        contact.disabled=!valid;
+        add.disabled=!valid;
         range?.setAttribute('aria-invalid',String(!valid));
-        setStatus(container.querySelector('[data-contact-error]'),valid?'':'请选择颜色与填充比例',!valid);
+        setStatus(feedback,valid?'':'请选择颜色与填充比例',!valid);
         displayPrice=valid?money(workPriceAt(entry,color!.id,value)):'—';
         const approximate=fixedInfill!=null&&entry.weight_g!=null;
         container.querySelector<HTMLElement>('[data-weight]')!.textContent=valid?`${approximate?'约 ':''}${grams(workWeightAt(entry,value))}`:'—';
@@ -402,92 +512,31 @@ async function detail(root: HTMLElement, signal: AbortSignal) {
           container.querySelector<HTMLOutputElement>('[data-infill-value]')!.value=`${infill}%`;
           container.querySelector<HTMLElement>('[data-color-name]')!.textContent=color!.name;
           container.querySelectorAll<HTMLElement>('[data-color-id]').forEach(n=>n.setAttribute('aria-pressed',String(n.dataset.colorId===color!.id)));
-          const current=new URLSearchParams(location.search);current.set('color',color!.id);current.set('infill',String(infill));replaceQuery(current);paint();
+          if(!topicItem){const current=new URLSearchParams(location.search);current.set('color',color!.id);current.set('infill',String(infill));replaceQuery(current);}
+          paint();
         }
       }else{
         displayPrice=money(entry.fixed_price);
-        contact.disabled=entry.fixed_price==null;
-        contact.hidden=contact.disabled;
-        container.querySelector<HTMLElement>('[data-weight]')!.textContent=`${entry.weight_g} g`;
-        const current=new URLSearchParams(location.search);current.delete('color');current.delete('infill');replaceQuery(current);
+        add.hidden=add.disabled=entry.fixed_price==null;
+        if(!topicItem){const current=new URLSearchParams(location.search);current.delete('color');current.delete('infill');replaceQuery(current);}
       }
       container.querySelector<HTMLElement>('[data-price]')!.textContent=displayPrice;
       container.querySelector<HTMLElement>('[data-material]')!.textContent=(configurable?color?.material:entry.material)||'—';
-      container.querySelector<HTMLElement>('[data-mobile-price]')!.textContent=displayPrice;
     };
     range?.addEventListener('input',update,{signal});
     container.querySelectorAll<HTMLElement>('[data-color-id]').forEach(n=>n.addEventListener('click',()=>{
       color=entry.colors.find(c=>c.id===n.dataset.colorId);
       update();
-      if(previews)showColorMedia();
+      if(previews)showColorMedia(false,expeditionItem&&!!viewer&&!viewer.hidden);
       else if(viewer)selectView('model');
     },{signal}));
     update();
-    const dialog=root.querySelector<HTMLDialogElement>('[data-contact-dialog]')!;
-    const dialogBody=dialog.querySelector<HTMLElement>('.wk-contact-body')!;
-    const text=root.querySelector<HTMLTextAreaElement>('[data-contact-text]')!;
-    const number=root.querySelector<HTMLElement>('[data-contact-number]')!;
-    const feedback=root.querySelector<HTMLElement>('[data-copy-feedback]')!;
-    number.textContent=CONTACT_QQ;
-    root.querySelector('[data-close-dialog]')!.addEventListener('click',()=>dialog.close(),{signal});
-    dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}},{signal});
-    let copyAttempt=0;
-    dialog.addEventListener('close',()=>{copyAttempt++;},{signal});
-    async function copy(value:string, message:string, fallback:()=>string) {
-      const attempt=++copyAttempt;
-      const active=()=>!signal.aborted&&dialog.open&&attempt===copyAttempt;
-      try {
-        await navigator.clipboard.writeText(value);
-      } catch {
-        if(active())setStatus(feedback,fallback(),true);
-        return;
+    add.addEventListener('click',event=>{
+      if (!addToCart({id,name:entry.name,...(configurable?{colorId:color!.id,infill}:{})},event,signal)) {
+        setStatus(feedback,'此规格已达到 99 件。',true);
       }
-      if(active())setStatus(feedback,message);
-    }
-    root.querySelector('[data-copy-again]')!.addEventListener('click',()=>{
-      void copy(text.value,'清单已复制，可以粘贴到 QQ。',()=>{
-        text.focus();
-        text.select();
-        return '已选中清单，请手动复制。';
-      });
     },{signal});
-    root.querySelector('[data-copy-qq]')!.addEventListener('click',()=>{
-      void copy(CONTACT_QQ,'QQ 号已复制。',()=>{
-        number.scrollIntoView({block:'nearest'});
-        const selection=window.getSelection();
-        const selectionRange=document.createRange();
-        selectionRange.selectNodeContents(number);
-        selection?.removeAllRanges();
-        selection?.addRange(selectionRange);
-        return '请长按或选中上方 QQ 号手动复制。';
-      });
-    },{signal});
-    contact.addEventListener('click',async()=>{
-      contact.disabled=true;
-      const controls=[range,...Array.from(container.querySelectorAll<HTMLButtonElement>('[data-color-id]'))].filter((control):control is HTMLInputElement|HTMLButtonElement=>!!control);
-      controls.forEach(control=>control.disabled=true);
-      try{
-        const query=new URLSearchParams({id});
-        if(configurable){query.set('color',color!.id);query.set('infill',String(infill));}
-        const [q,settings]=await Promise.all([api<{entry:Entry;color?:Color;infill?:number;price:number|null;weight_g:number|null;material:string}>(`/api/quote?${query}`,signal),api<Settings>('/api/settings',signal)]);
-        if(signal.aborted)return;
-        if(q.entry.kind!==entry.kind)throw new Error('内容栏目已更新，请刷新页面后重新选择。');
-        if((q.entry.fixed_infill??null)!==(entry.fixed_infill??null))throw new Error('填充比例已更新，请刷新详情后重新生成清单。');
-        const changed=entry.revision!==q.entry.revision;entry=q.entry;color=q.color;update();
-        if(q.price==null)return;
-        text.value=[`商品：${entry.name}`,`材质：${q.material||'—'}`,
-          ...(configurable?[`颜色：${color!.name}`,`填充比例：${q.infill??infill}%`]:[]),
-          `报价：${money(q.price)}`].join('\n');
-        root.querySelector<HTMLElement>('[data-contact-qr]')!.innerHTML=settings.qq_image?`<img class="wk-contact-qr" src="${e(settings.qq_image.url)}" alt="店主 QQ 联系二维码">`:'';
-        setStatus(feedback,changed?'商品信息已更新，清单已使用最新报价。':'');
-        dialog.showModal();
-        dialogBody.scrollTop=0;
-        text.setSelectionRange(0,0);
-        text.scrollTop=0;
-      }catch(error){if(!abortError(error))setStatus(container.querySelector('[data-contact-error]'),(error as Error).message,true);}
-      finally{if(!signal.aborted){controls.forEach(control=>control.disabled=false);contact.disabled=configurable?(range?.getAttribute('aria-invalid')==='true'||!color):entry.fixed_price==null;}}
-    },{signal});
-  }catch(error){if(!abortError(error))container.innerHTML=empty('暂时找不到这件作品',`<p>${e((error as Error).message)}</p><a class="wk-button wk-secondary" href="/prints/">返回工坊</a>`);}
+  }catch(error){if(!abortError(error))container.innerHTML=empty('暂时找不到这件作品',`<p>${e((error as Error).message)}</p>${topicItem?'':'<a class="wk-button wk-secondary" href="/prints/">返回工坊</a>'}`);}
 }
 
 function destroy(){controller?.abort();cleanup?.();cleanup=null;currentRoot?.querySelectorAll<HTMLVideoElement>('video').forEach(v=>{v.pause();v.removeAttribute('src');});currentRoot?.querySelectorAll<any>('model-viewer').forEach(v=>{v.pause?.();v.removeAttribute('src');v.remove();});currentRoot?.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach(d=>d.close());controller=null;currentRoot=null;}
@@ -499,9 +548,13 @@ function init() {
   currentRoot = root;
   controller = new AbortController();
   const signal = controller.signal;
+  if (root.dataset.workshop === 'admin') {
+    cleanup = initAdmin(root, signal);
+    return;
+  }
+  const addToCart = bindWorkshopCart(root, signal, bindWorkshopContact(root, signal));
   if (root.dataset.workshop === 'catalog') void catalog(root, signal);
-  else if (root.dataset.workshop === 'detail') void detail(root, signal);
-  else if (root.dataset.workshop === 'topic') void topic(root, signal);
-  else if (root.dataset.workshop === 'admin') cleanup = initAdmin(root, signal);
+  else if (root.dataset.workshop === 'detail') void detail(root, signal, addToCart);
+  else if (root.dataset.workshop === 'topic') void topic(root, signal, addToCart);
 }
 w.WorkshopApp={init,destroy,preload:preloadPublicCatalog};

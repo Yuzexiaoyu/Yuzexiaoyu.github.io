@@ -49,16 +49,14 @@ async function mount(browser,reducedMotion='no-preference'){
    }
    await cancel();
    const released=await state();
-   if(reduced==='no-preference'){
-    assert.ok(released.animations.length>0,'release must animate back rather than switch instantly');
-    assert.ok(released.x<0,'snap-back must start from the dragged position');
-   }
+   assert.ok(released.animations.length>0,'release must animate back rather than switch instantly');
+   assert.ok(released.x<0,'snap-back must start from the dragged position');
    await idle(page);assert.equal((await state()).x,0);assert.equal((await state()).index,0);assert.equal(await page.locator('.wk-swipe-preview').count(),0);
    await start();await move(-60);await page.waitForTimeout(120);await end();await idle(page);
    assert.equal((await state()).index,0,'short slow drag must return to the same image');
    await start();await move(-140);await end();
    const settling=await state();
-   if(reduced==='no-preference')assert.ok(settling.animations.length>0&&settling.x<0&&settling.x>-box.width,'release must visibly settle toward the next item');
+   assert.ok(settling.animations.length>0&&settling.x<0&&settling.x>-box.width,'release must visibly settle toward the next item');
    await idle(page);const final=await state();assert.equal(final.index,1);assert.equal(final.x,0);assert.equal(final.swiping,false);
    assert.equal(await page.locator('[data-stage-image]').getAttribute('src'),work.images[1].url);
    assert.equal(final.width,box.width);assert.equal(final.height,box.height);assert.deepEqual(errors,[]);

@@ -36,7 +36,7 @@ export function createMobileReaderSwipe(content: HTMLElement, viewport: HTMLElem
     if (page !== options.page()) options.goTo(page);
     const to = -options.page() * options.width();
     position(to);
-    if (Math.abs(from-to) < .5 || matchMedia('(prefers-reduced-motion: reduce)').matches) { reset(); return; }
+    if (Math.abs(from-to) < .5) { reset(); return; }
     viewport.classList.add('m-reader-dragging');
     const snap = content.animate([
       {transform:`translate3d(${from}px,0,0)`},

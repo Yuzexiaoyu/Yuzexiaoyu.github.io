@@ -73,3 +73,7 @@ lang = "zh-CN"
 # Mobile layout is enabled in production.
 [mobile]
   enabled = true
+
+[workshop]
+  # The stock Malorian and the keychain are reachable from their related detail and topic.
+  hiddenCatalogEntries = ["6c4c0fadb83a48e4a3f0e4736630786c", "74a6a9fc56de4289b119d54933b21674"]

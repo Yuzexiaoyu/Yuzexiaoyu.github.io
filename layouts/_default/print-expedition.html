@@ -19,12 +19,31 @@
     </div>
     <div class="wk-shell wk-topic-inner">
       <div class="wk-breadcrumb">
-        <a href="{{ "prints/" | relURL }}">← 返回工坊</a>
+        <a href="{{ "prints/" | relURL }}" data-topic-back-workshop>← 返回工坊</a>
         <button type="button" class="wk-text-link" data-topic-video-play hidden>播放背景视频</button>
         <button type="button" class="wk-text-link" data-topic-music-play hidden>播放配乐</button>
       </div>
     </div>
+    <section class="wk-shell wk-topic-items" id="topic-items" aria-label="专题物品">
+      <div class="wk-grid" data-topic-grid aria-live="polite">
+        <p class="wk-topic-status">正在读取物品…</p>
+      </div>
+    </section>
+    <section class="wk-shell wk-topic-inline" id="topic-detail-inline" data-topic-inline aria-labelledby="topic-inline-title" hidden>
+      <h2 id="topic-inline-title" data-topic-detail-title tabindex="-1"></h2>
+      <div data-detail-content></div>
+    </section>
   </article>
-  <script>window.WorkshopTopic.mount(document.currentScript.closest('[data-workshop]'));</script>
+  <dialog class="wk-topic-detail" data-topic-detail id="topic-detail" aria-label="物品详情">
+    <header class="wk-topic-detail-header">
+      <h2 data-topic-detail-title></h2>
+      <button type="button" class="wk-icon-button wk-dialog-close" data-close-topic-detail aria-label="关闭物品详情" autofocus>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+    <div data-detail-content></div>
+  </dialog>
+  {{ partial "workshop/cart.html" . }}
+  <script>window.__runWorkshop?.();</script>
 </div>
 {{ end }}

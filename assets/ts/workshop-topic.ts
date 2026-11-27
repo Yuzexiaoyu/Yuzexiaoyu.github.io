@@ -80,14 +80,10 @@ function preloadHomeVideo() {
 function prepareCatalog(root: HTMLElement) {
   if (catalog?.root === root) return;
   const topic = findTopic(root);
-  const card = root.querySelector<HTMLAnchorElement>('a[data-catalog-topic]');
-  const productTab = new URLSearchParams(location.search).get('tab') === 'product';
-  root.dataset.activeCatalogTab = productTab ? 'product' : 'work';
-  if (card) card.hidden = productTab;
   const events = new AbortController();
   primeTopicMusic(root, events.signal);
   const frame = requestAnimationFrame(() => {
-    if (!topic || card?.hidden || !canPreload()) return;
+    if (!topic || !canPreload()) return;
     warmTopicPage(topic);
     warmVideo(topic, 'auto');
   });

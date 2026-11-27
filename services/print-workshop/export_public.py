@@ -11,7 +11,7 @@ from pathlib import Path
 
 from server import ROOT, WORKSHOP_TOPICS, Problem, Store, integer, normalize_color_previews, normalize_color_prices, single_weight
 
-ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "topic", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews", "color_prices"}
+ENTRY_FIELDS = {"id", "revision", "name", "description", "material", "kind", "status", "topic", "topic_only", "min_price", "max_price", "fixed_price", "fixed_infill", "weight_g", "weight_approximate", "min_weight_g", "max_weight_g", "is_demo", "updated_at", "color_previews", "color_prices"}
 ASSET_NAME = re.compile(r"[0-9a-f]{64}\.(?:png|jpg|jpeg|webp|svg|mp4|webm|mov|glb)")
 
 
@@ -43,11 +43,20 @@ def verify_snapshot(folder):
             raise ValueError("Private or unpublished entry in public catalog")
         if "topic" in entry and entry["topic"] not in WORKSHOP_TOPICS:
             raise ValueError("Invalid workshop topic")
-        if "fixed_infill" in entry:
-            if entry["kind"] != "work":
-                raise ValueError("Fixed infill requires a configurable entry")
+        if "topic_only" in entry and (entry["topic_only"] is not True or not entry.get("topic")):
+            raise ValueError("Topic-only visibility requires a workshop topic")
+        if "weight_approximate" in entry:
+            if entry["weight_approximate"] is not True or entry["kind"] != "product" or entry.get("weight_g") is None:
+                raise ValueError("Approximate stock weight requires a weight value")
             try:
-                integer(entry["fixed_infill"], "固定填充比例", 15, 100)
+                single_weight(entry["weight_g"], "现货重量")
+            except Problem as error:
+                raise ValueError("Invalid approximate stock weight") from error
+        if "fixed_infill" in entry:
+            if entry["kind"] not in ("work", "product"):
+                raise ValueError("Invalid entry kind for fixed infill")
+            try:
+                integer(entry["fixed_infill"], "固定填充比例", 15 if entry["kind"] == "work" else 0, 100)
                 single_weight(entry.get("weight_g"), "固定填充重量")
             except Problem as error:
                 raise ValueError("Invalid public fixed infill or weight") from error

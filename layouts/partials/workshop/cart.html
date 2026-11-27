@@ -1,0 +1,23 @@
+<button type="button" class="wk-cart-fab" data-open-cart data-swup-persist="workshop-cart-trigger" aria-label="购物车" aria-haspopup="dialog" aria-controls="wk-cart" title="购物车" hidden>
+  {{ partial "helper/icon" "workshop-cart" }}
+  <span class="wk-cart-badge" data-cart-count aria-hidden="true" hidden></span>
+</button>
+<dialog class="wk-cart" id="wk-cart" data-cart aria-labelledby="wk-cart-title">
+  <header class="wk-cart-heading">
+    <h2 id="wk-cart-title">购物车</h2>
+    <button type="button" class="wk-icon-button wk-dialog-close" data-close-cart aria-label="关闭购物车" autofocus>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+  </header>
+  <div class="wk-cart-body">
+    <p class="wk-cart-empty" data-cart-empty>购物车还是空的。</p>
+    <ul class="wk-cart-list" data-cart-list hidden></ul>
+  </div>
+  <footer class="wk-cart-footer" data-cart-footer hidden>
+    <p class="wk-feedback" data-cart-feedback role="status"></p>
+    <button type="button" class="wk-button wk-secondary" data-cart-retry hidden>重新获取报价</button>
+    <div class="wk-cart-total"><span>合计</span><strong data-cart-total>—</strong></div>
+    <button type="button" class="wk-button wk-primary" data-cart-checkout>生成清单 · QQ 联系</button>
+  </footer>
+</dialog>
+{{ partial "workshop/contact-dialog.html" . }}

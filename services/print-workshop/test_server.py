@@ -147,6 +147,19 @@ class StoreTests(unittest.TestCase):
         self.store.save_entry(dict(published, fixed_price=39), published["id"])
         self.assertEqual(self.store.get_entry(published["id"])["fixed_price"], 39)
 
+    def test_topic_stock_can_be_priced_before_weight_is_known(self):
+        data = self.configurable(kind="product", topic="expedition-33")
+        entry = self.store.save_entry(data)
+        published = self.store.get_entry(entry["id"])
+        self.assertEqual((published["topic"], published["fixed_price"], published["weight_g"]),
+                         ("expedition-33", None, None))
+        priced = self.store.save_entry(dict(entry, fixed_price=15, fixed_infill=100), entry["id"])
+        self.assertEqual((priced["fixed_price"], priced["weight_g"], priced["fixed_infill"]), (15, None, 100))
+        with self.assertRaises(Problem):
+            self.store.save_entry(dict(priced, fixed_infill=101), priced["id"])
+        with self.assertRaises(Problem):
+            self.store.save_entry(dict(priced, topic=""), priced["id"])
+
     def test_revision_conflict_and_unpublish(self):
         entry = self.store.save_entry(self.configurable())
         updated = self.store.save_entry(dict(entry, status="archived"), entry["id"])

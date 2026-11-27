@@ -1,7 +1,7 @@
 /** Reveal workshop modules as they arrive; never gate content behind the canvas. */
 (() => {
   const w = window as any;
-  const VERSION = 'module-reveal-11';
+  const VERSION = 'module-reveal-12';
   if (w.WorkshopIntro?.version === VERSION) return;
   w.WorkshopIntro?.cancel?.();
   const html = document.documentElement;
@@ -12,7 +12,6 @@
   let seen = new WeakSet<HTMLElement>();
   let visibleAt: number | null = null;
   let hiddenAt: number | null = null;
-  let reduced = false;
   let compact = false;
   let nextCompact = false;
 
@@ -72,15 +71,13 @@
     if (seen.has(element)) return;
     seen.add(element);
     if (typeof element.animate !== 'function') return;
-    const keyframes: Keyframe[] = reduced || (!distance && !x)
-      ? [{opacity: reduced ? 0 : opacity}, {opacity: 1}]
+    const keyframes: Keyframe[] = !distance && !x
+      ? [{opacity}, {opacity: 1}]
       : [{opacity, transform: `translate3d(${x}px,${distance}px,0)`}, {opacity: 1, transform: 'translate3d(0,0,0)'}];
-    const shortenDefault = reduced && root?.dataset.workshop !== 'catalog';
-    const scheduled = shortenDefault ? Math.min(startAt,180) : startAt;
     const animation = element.animate(keyframes, {
-      delay: scheduled,
-      duration: shortenDefault ? 260 : duration,
-      easing: reduced ? 'linear' : 'cubic-bezier(.2,.6,.3,1)',
+      delay: startAt,
+      duration,
+      easing: 'cubic-bezier(.2,.6,.3,1)',
       fill: 'both'
     });
     animation.id = 'workshop-reveal';
@@ -88,7 +85,7 @@
     animation.currentTime = 0;
     element.dataset.workshopReveal = 'true';
     html.dataset.workshopIntro = 'reveal';
-    animations.set(animation, {element, startAt: scheduled, launched: false});
+    animations.set(animation, {element, startAt, launched: false});
     pending.add(animation);
     animation.onfinish = () => {
       animation.cancel();
@@ -109,7 +106,7 @@
     const revealHeader = !compact && (
       !catalog || (!mobile && !!element.querySelector(':scope > .wk-nav > .wk-brand'))
     );
-    const headerDuration = catalog ? (reduced ? 120 : 220) : 560;
+    const headerDuration = catalog ? 220 : 560;
     const group = (selector: string, delay: number, duration: number, distance: number, x = 0) =>
       element.querySelectorAll<HTMLElement>(selector).forEach(node => show(node, delay, duration, distance, 0, x));
 
@@ -121,23 +118,22 @@
     if (catalog) {
       const stageGap = 16;
       const toolbarAt = revealHeader ? headerDuration + stageGap : 0;
-      const toolbarDuration = reduced ? 100 : 180;
+      const toolbarDuration = 180;
       const cardsAt = Math.max(elapsed, toolbarAt + toolbarDuration + stageGap);
-      const stagger = reduced ? 24 : 45;
-      group('.wk-collection-toolbar', toolbarAt, toolbarDuration, 8);
+      const stagger = 45;
       group('.wk-catalog-notice', toolbarAt, toolbarDuration, 8);
       if (!mobile) group('.wk-catalog-home', toolbarAt, toolbarDuration, 8);
       element.querySelectorAll<HTMLElement>('.wk-grid > .wk-card, [data-catalog-entries] > .wk-card').forEach((card, index) => {
         if (seen.has(card)) return;
         const cardAt = cardsAt + Math.min(index, 2) * stagger;
-        show(card, cardAt, reduced ? 180 : 320, 10);
+        show(card, cardAt, 320, 10);
         const cover = card.querySelector<HTMLImageElement>('.wk-card-image > img');
         if (!cover || cover.complete || typeof cover.animate !== 'function') return;
         cover.dataset.workshopCoverPending = 'true';
         cover.addEventListener('load', () => {
           const loadedAt = elapsedTime();
           if (element === root && cover.isConnected && loadedAt >= cardAt) {
-            show(cover, loadedAt, reduced ? 180 : 260, 0);
+            show(cover, loadedAt, 260, 0);
           }
           delete cover.dataset.workshopCoverPending;
         }, {once: true});
@@ -154,7 +150,7 @@
     element.querySelectorAll<HTMLElement>('.wk-config-section').forEach((section, index) =>
       show(section, detailStart + (compact ? 70 : 240) + Math.min(index * (compact ? 35 : 70),compact ? 70 : 140), compact ? 320 : 500, compact ? 8 : 16));
     group('.wk-price-box, .wk-stock-facts', detailStart + (compact ? 105 : 380), compact ? 300 : 460, compact ? 8 : 14);
-    group('.wk-contact-button', detailStart + (compact ? 140 : 460), compact ? 280 : 430, compact ? 8 : 10);
+    group('.wk-add-cart:not([hidden])', detailStart + (compact ? 140 : 460), compact ? 280 : 430, compact ? 8 : 10);
   }
   w.WorkshopIntro = {
     version: VERSION,
@@ -171,7 +167,6 @@
         cancel();
         compact = internalVisit;
         root = element;
-        reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
         html.dataset.workshopEntry = 'true';
       }
       refresh(element);
