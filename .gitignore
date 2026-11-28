@@ -32,8 +32,9 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Claude Code（AI 助手配置）
+# 本地助手配置与工作记录
 .claude/
+/.workbuddy/
 
 # Local workshop database, uploaded files, builds and verification artifacts
 .local/
