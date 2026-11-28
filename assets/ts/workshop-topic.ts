@@ -114,6 +114,13 @@ function mount(root: HTMLElement) {
   mounted = root;
   controller = new AbortController();
   const {signal} = controller;
+  const imprint = root.querySelector<HTMLTemplateElement>('template[data-expedition-imprint]');
+  if (imprint) {
+    // Load the decoration independently of the catalog and only on its own topic.
+    void import(imprint.dataset.expeditionImprint!).then(({bindExpeditionImprint}) => {
+      if (!signal.aborted) bindExpeditionImprint(root, imprint, signal);
+    }).catch(() => {});
+  }
   const startMusic = bindTopicMusic(root, signal);
   let video = root.querySelector<HTMLVideoElement>('[data-topic-video]')!;
   const template = root.querySelector<HTMLTemplateElement>('[data-topic-video-sources]');

@@ -15,14 +15,14 @@ body.template-workshop {
     padding: 0;
     border: 1px solid #465664;
     border-radius: 50%;
-    color: #dbe6ed;
+    color: var(--wk-theme-blue);
     background: #101820;
   }
   .wk-cart-fab:hover, .wk-cart-fab:focus-visible {
-    border-color: #8aabbc;
-    color: #fff;
+    border-color: var(--wk-theme-blue);
+    color: var(--wk-theme-blue-hover);
   }
-  .wk-cart-fab:focus-visible { outline-color: #96c3d8; }
+  .wk-cart-fab:focus-visible { outline-color: var(--wk-theme-blue); }
   .wk-cart-fab > svg { width: 20px; height: 20px; }
   .wk-cart-flight {
     position: fixed;
@@ -32,8 +32,8 @@ body.template-workshop {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #69caff;
-    box-shadow: 0 0 9px #4dafff9c;
+    background: var(--wk-theme-blue);
+    box-shadow: 0 0 9px #8dc3ef9c;
     pointer-events: none;
   }
   .wk-cart-badge {
@@ -59,17 +59,17 @@ body.template-workshop {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    border: 1px solid #3c5448;
+    border: 1px solid #34495e;
     border-radius: 16px;
-    background: #111b17;
-    color: #e7eeeb;
+    background: #101820;
+    color: #e1edf7;
     box-shadow: 0 16px 48px #000b;
     font-size: 14px;
     line-height: 1.5;
   }
   .wk-cart[open] { display: flex; flex-direction: column; }
-  .wk-cart::backdrop { background: #07100b55; }
-  .wk-cart :focus-visible { outline-offset: -2px; }
+  .wk-cart::backdrop { background: #07101b55; }
+  .wk-cart :focus-visible { outline-color: var(--wk-theme-blue); outline-offset: -2px; }
   .wk-cart-heading {
     display: flex;
     align-items: center;
@@ -77,12 +77,12 @@ body.template-workshop {
     flex: none;
     gap: 12px;
     padding: 6px 8px 6px 16px;
-    border-bottom: 1px solid #2b3c34;
+    border-bottom: 1px solid #2a3a4b;
   }
   .wk-cart-heading h2 { margin: 0; color: inherit; font-size: 17px; font-weight: 600; }
-  .wk-cart-heading button { width: 44px; height: 44px; }
+  .wk-cart-heading button { width: 44px; height: 44px; background: #203142; color: #bed5ea; }
   .wk-cart-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
-  .wk-cart-empty { padding: 26px 16px 34px; margin: 0; color: #b7cbbf; text-align: center; }
+  .wk-cart-empty { padding: 26px 16px 34px; margin: 0; color: #b8cbdc; text-align: center; }
   .wk-cart-list { list-style: none; padding: 0 14px; margin: 0; }
   .wk-cart-line {
     display: grid;
@@ -91,13 +91,13 @@ body.template-workshop {
     align-items: start;
     column-gap: 10px;
     padding: 12px 0 6px;
-    border-bottom: 1px solid #2b3c34;
+    border-bottom: 1px solid #2a3a4b;
     &:last-child { border-bottom: 0; }
   }
-  .wk-cart-cover { grid-area: cover; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: #23352d; }
+  .wk-cart-cover { grid-area: cover; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: #223447; }
   .wk-cart-cover img { width: 100%; height: 100%; object-fit: cover; }
   .wk-cart-item { grid-area: item; overflow-wrap: anywhere; }
-  .wk-cart-item p { margin: 3px 0 0; font-size: 12px; color: #a9bfb2; }
+  .wk-cart-item p { margin: 3px 0 0; font-size: 12px; color: #a8bed1; }
   .wk-cart-item .wk-cart-unavailable { color: #edaf9b; }
   .wk-cart-subtotal {
     grid-area: subtotal;
@@ -106,24 +106,64 @@ body.template-workshop {
     grid-area: quantity;
     display: flex;
     align-items: center;
+    align-self: center;
     justify-self: start;
-    gap: 5px;
+    gap: 2px;
     font-variant-numeric: tabular-nums;
   }
-  .wk-cart-quantity button, .wk-cart-remove {
+  .wk-cart-quantity button {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 34px;
+    padding: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #b8d9f4;
+    font-size: 16px;
+    line-height: 1;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      width: 24px;
+      height: 24px;
+      margin: auto;
+      border-radius: 6px;
+      background: var(--wk-cart-step-bg, #203142);
+      pointer-events: none;
+    }
+    &:is(:hover, :focus-visible):not(:disabled)::before { background: var(--wk-cart-step-hover, #304860); }
+  }
+  @media (pointer: coarse) {
+    .wk-cart-quantity button { width: 36px; height: 40px; }
+  }
+  .wk-cart-remove {
+    grid-area: remove;
+    justify-self: center;
     height: 44px;
     min-width: 44px;
     padding: 0 5px;
     border-radius: 7px;
     background: transparent;
-    color: #bed7ca;
+    color: #b8d9f4;
+    font-size: 12px;
   }
-  .wk-cart-quantity button { font-size: 20px; }
-  .wk-cart-quantity button:hover:not(:disabled), .wk-cart-remove:hover { background: #273a31; }
-  .wk-cart-remove { grid-area: remove; justify-self: center; font-size: 12px; }
-  .wk-cart-footer { padding: 10px 14px 14px; border-top: 1px solid #2b3c34; }
+  .wk-cart-remove:hover { background: #263a4e; }
+  .wk-cart-footer { padding: 10px 14px 14px; border-top: 1px solid #2a3a4b; }
   .wk-cart-footer .wk-feedback { margin: 0 0 8px; }
+  .wk-cart-footer .wk-feedback:not(.is-error) { color: #b8cbdc; }
   .wk-cart-footer > .wk-button { width: 100%; min-height: 44px; }
+  .wk-cart [data-cart-retry] { border-color: #34495e; background: #203142; color: #b8d9f4; }
+  .wk-cart [data-cart-checkout] {
+    background: var(--wk-theme-blue);
+    color: #0b223b;
+    &:is(:hover, :focus-visible) { background: var(--wk-theme-blue-hover); }
+  }
   .wk-cart-total {
     display: grid;
     grid-template-columns: minmax(0, 1fr) var(--wk-cart-amount-column);
@@ -137,7 +177,7 @@ body.template-workshop {
     overflow-wrap: anywhere;
     text-align: center;
     font-variant-numeric: tabular-nums;
-    color: #ceead9;
+    color: var(--wk-theme-blue);
   }
   .wk-cart-total strong { font-size: 20px; }
   .wk-cart button:disabled { cursor: default; }
@@ -147,6 +187,75 @@ body.template-workshop {
   @media (max-width: 760px) {
     --wk-cart-right: Max(16px, env(safe-area-inset-right, 0px));
     --wk-cart-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+body.template-workshop :is([data-topic="expedition-33"], [data-workshop="detail"][data-expedition-detail]) {
+  .wk-cart-fab {
+    color: var(--exp33-gold);
+    background: #46252f;
+    border-color: #c09160;
+    box-shadow: inset 0 0 0 3px #291920, 0 4px 14px #140b1099;
+
+    &:is(:hover, :focus-visible) {
+      color: #fff1d6;
+      border-color: #f4dbad;
+    }
+  }
+  .wk-cart-badge {
+    background: var(--exp33-gold);
+    border-color: #46252f;
+    color: #321922;
+  }
+  .wk-cart-flight {
+    background: var(--exp33-gold);
+    box-shadow: 0 0 9px #e1aa68bf;
+  }
+
+  .wk-cart {
+    --wk-cart-step-bg: #34252b;
+    --wk-cart-step-hover: #52333d;
+    background: #1e171a;
+    color: var(--exp33-ink);
+    border-color: #b68a5c8c;
+    border-radius: 12px;
+  }
+  .wk-cart::backdrop { background: #10091066; }
+  .wk-cart :focus-visible, .wk-cart-fab:focus-visible { outline-color: var(--exp33-gold); }
+  .wk-cart-heading {
+    background: linear-gradient(110deg, #422933, #261c21 82%);
+    border-color: var(--exp33-rule);
+  }
+  .wk-cart-heading h2 {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font: 600 21px/1.25 $exp33-title-font;
+
+    &::before {
+      content: "";
+      width: 9px;
+      height: 21px;
+      background: linear-gradient(#d6a179, var(--exp33-wine));
+      clip-path: $exp33-ribbon;
+    }
+  }
+  .wk-cart-heading .wk-dialog-close { background: #412c34; color: #f6dfc2; }
+  .wk-cart :is(.wk-cart-empty, .wk-cart-item p, .wk-feedback:not(.is-error)) { color: #d8c3b0; }
+  .wk-cart :is(.wk-cart-unavailable, .wk-feedback.is-error) { color: #ffc3aa; }
+  .wk-cart-line, .wk-cart-footer { border-color: var(--exp33-rule); }
+  .wk-cart-cover { background: #39292f; border-radius: 4px; }
+  .wk-cart :is(.wk-cart-subtotal, .wk-cart-total strong) { color: var(--exp33-gold); }
+
+  .wk-cart :is(.wk-cart-quantity button, .wk-cart-remove) { color: #ead3bb; }
+  :is(.wk-cart-remove:hover, .wk-cart-heading button:hover) {
+    background: #52333d;
+  }
+  [data-cart-retry] { background: #39292f; border-color: var(--exp33-rule); color: var(--exp33-ink); }
+  [data-cart-checkout] {
+    background: var(--exp33-wine);
+    color: #fff0dc;
+    &:is(:hover, :focus-visible) { background: var(--exp33-wine-hover); }
   }
 }
 

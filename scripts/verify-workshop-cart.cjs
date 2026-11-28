@@ -74,21 +74,29 @@ for (const [name, device] of [
       }
 
       const cart = page.getByRole('dialog', {name: '购物车', exact: true});
+      const trigger = page.locator('[data-open-cart]');
+      const backgroundOf = locator => locator.evaluate(node => getComputedStyle(node).backgroundColor);
       await page.getByRole('button', {name: '购物车', exact: true}).click();
       await cart.getByText('购物车还是空的。').waitFor();
+      const catalogTriggerBackground = await backgroundOf(trigger);
+      const catalogCartBackground = await backgroundOf(cart);
       await page.keyboard.press('Escape');
       await cart.waitFor({state: 'hidden'});
       await openKeychainDetail(page);
       await checkFlight(page, page.locator('[data-add-cart]'));
+      const topicTriggerBackground = await backgroundOf(trigger);
+      assert.notEqual(topicTriggerBackground, catalogTriggerBackground);
       await page.getByRole('button', {name: '购物车，1 件'}).waitFor();
       assert.equal(await page.getByText('已加入购物车。', {exact:true}).count(), 0);
       assert.equal(await page.getByRole('button', {name: /生成清单|联系购买/}).count(), 0);
       await page.getByRole('link', {name: '← 返回工坊'}).click();
+      await page.locator('[data-workshop="catalog"] [data-open-cart]').waitFor();
+      assert.equal(await backgroundOf(trigger), catalogTriggerBackground);
       await page.locator('[data-catalog-topic]').click();
       const address = base + '/prints/expedition-33/';
       await page.waitForURL(address);
-      const trigger = page.locator('[data-open-cart]');
       await trigger.waitFor();
+      assert.equal(await backgroundOf(trigger), topicTriggerBackground);
       const initialPosition = await trigger.boundingBox();
       const originalTrigger = await trigger.elementHandle();
       await page.getByRole('link', {name: /玛埃尔镂空立牌/}).click();
@@ -98,12 +106,14 @@ for (const [name, device] of [
       assert.equal(await detail.getByRole('button', {name: /生成清单|联系购买/}).count(), 0);
       assert.equal(await trigger.evaluate((button, previous) => button === previous, originalTrigger), true);
       assert.deepEqual(await trigger.boundingBox(), initialPosition);
+      assert.equal(await backgroundOf(trigger), topicTriggerBackground);
       await detail.getByRole('button', {name: '浅灰色 · PLA'}).click();
       await checkFlight(page, detail.getByRole('button', {name: '加入购物车'}));
       await detail.getByRole('button', {name: '纯白 · PLA'}).click();
       await detail.getByRole('button', {name: '加入购物车'}).click();
       await page.getByRole('button', {name: /购物车，3 件/}).click();
       await cart.locator('[data-cart-total]').getByText('¥45', {exact: true}).waitFor();
+      assert.notEqual(await backgroundOf(cart), catalogCartBackground);
       const gray = cart.locator('[data-cart-line]').filter({hasText: '浅灰色'});
       await gray.getByRole('button', {name: '增加数量'}).click();
       assert.equal(await cart.locator('[data-cart-total]').innerText(), '¥60');
@@ -122,7 +132,8 @@ for (const [name, device] of [
       const list = contact.getByRole('textbox', {name: '完整选购清单'});
       const text = await list.inputValue();
       assert.match(text, /黑金 PLA \+ 丝绸金 PLA\n填充比例：100%\n数量：1/);
-      assert.match(text, /颜色：浅灰色\n填充比例：100%\n数量：2\n单价：¥15\n小计：¥30/);
+      assert.match(text, /颜色：浅灰色\n填充比例：100%\n数量：2\n小计：¥30/);
+      assert.doesNotMatch(text, /^单价：/m);
       assert.match(text, /颜色：纯白\n填充比例：100%\n数量：1/);
       assert.match(text, /合计：¥60$/);
       await page.keyboard.press('Escape');

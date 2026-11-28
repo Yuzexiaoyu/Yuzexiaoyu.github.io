@@ -31,6 +31,8 @@ async function mount(browser,profile){
     else if(url.pathname==='/api/admin/settings')body=catalog.settings;
     else if(req.method()==='PUT'&&url.pathname.startsWith('/api/admin/entries/')){
       body=req.postDataJSON();data.saved.push(structuredClone(body));data.entries=data.entries.map(entry=>entry.id===body.id?body:entry);
+    }else if(req.method()==='POST'&&url.pathname==='/api/admin/entries'){
+      body={...req.postDataJSON(),id:'created-entry'};data.saved.push(body);data.entries.push(body);
     }else if(url.pathname==='/api/admin/entries')body={entries:data.entries};
     else throw new Error('Unexpected fixture request: '+req.method()+' '+url.pathname);
     await route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
@@ -67,6 +69,8 @@ try{
     assert.deepEqual(errors,[]);results.push({profile:profile.name,layouts,errors});console.log(profile.name+' layout passed');await page.close();
   }
   const{page,data,errors}=await mount(browser,{width:1440,height:900});
+  assert.deepEqual(await page.locator('.wk-table-head > span').allTextContents(),['物品','报价','状态','操作']);
+  assert.equal(await page.locator('[data-entry-form] select[name="kind"]').count(),0);
   await page.locator('.wk-editor-close').focus();await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.name),'name');
   await page.locator('[data-editor-color="color-1"]').check();
   await page.locator('[data-colors-pager] [data-page-step="1"]').click();await page.locator('[data-editor-color="color-6"]').uncheck();
@@ -86,10 +90,55 @@ try{
   await page.locator(`[data-edit="${data.work.id}"]`).click();assert.equal(await page.locator('[data-images-pager] output').textContent(),'1 / 2');
   await page.locator('[data-entry-form] input[name="name"]').fill('未保存的标题');page.once('dialog',dialog=>dialog.dismiss());await page.locator('.wk-editor-close').click();assert.equal(await page.locator('[data-entry-editor]').evaluate(d=>d.open),true);
   page.once('dialog',dialog=>dialog.accept());await page.keyboard.press('Escape');assert.equal(await page.locator('[data-entry-editor]').evaluate(d=>d.open),false);
-  const stock=data.entries.find(e=>e.kind==='product');await page.locator(`[data-edit="${stock.id}"]`).click();await page.locator('[data-entry-editor]').waitFor({state:'visible'});
-  assert.equal(await page.locator('[data-stock-fields]').isVisible(),true);assert.equal(await page.locator('[data-configurable-fields]').isVisible(),false);
-  await page.locator('[data-entry-form] input[name="material"]').fill('PETG');await page.locator('input[name="stock_fixed_infill"]').fill('100');await page.locator('[data-save-entry]').click();await page.waitForFunction(()=>!document.querySelector('[data-entry-editor]').open);
-  assert.equal(data.saved[1].material,'PETG');assert.deepEqual(data.saved[1].color_ids,[]);assert.equal(data.saved[1].fixed_price,stock.fixed_price);assert.equal(data.saved[1].fixed_infill,100);assert.deepEqual(errors,[]);
-  results.push({case:'single-page editing, keyboard focus, native validation, retained selection, cover, removal, save, dirty close and stock',saved: data.saved.map(entry=>({kind:entry.kind,colors:entry.color_ids,images:entry.image_ids.length})),errors});
-  await page.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify({passed:results.length,evidence:path.resolve(out)}));
+  const fixed=data.entries.find(e=>e.kind==='product');
+  const openFixed=()=>page.locator(`[data-edit="${fixed.id}"]`).click();
+  const fixedFields=page.locator('[data-fixed-price-fields]');
+  const configurableFields=page.locator('[data-configurable-fields]');
+  const firstColor=page.locator('[data-editor-color="color-0"]');
+  const save=async()=>{
+    await page.locator('[data-save-entry]').click();
+    await page.locator('[data-entry-editor]').waitFor({state:'hidden'});
+    await page.getByRole('status').filter({hasText:'已保存到本机'}).waitFor();
+  };
+  await openFixed();
+  assert.equal(await fixedFields.isVisible(),true);
+  assert.equal(await configurableFields.isVisible(),false);
+  assert.equal(await firstColor.isVisible(),true);
+  await firstColor.check();
+  assert.equal(await fixedFields.isVisible(),false);
+  assert.equal(await configurableFields.isVisible(),true);
+  assert.equal(await page.locator('input[name="min_price"]').inputValue(),String(fixed.fixed_price));
+  await firstColor.uncheck();
+  assert.equal(await fixedFields.isVisible(),true);
+  await page.locator('[data-entry-form] input[name="material"]').fill('PETG');
+  await page.locator('input[name="fixed_infill"]').fill('100');
+  await save();
+  assert.equal(data.saved[1].material,'PETG');
+  assert.deepEqual(data.saved[1].color_ids,[]);
+  assert.equal(data.saved[1].fixed_price,fixed.fixed_price);
+  assert.equal(data.saved[1].fixed_infill,100);
+
+  await openFixed();
+  await firstColor.check();
+  await save();
+  assert.equal(data.saved[2].kind,'work');
+  assert.deepEqual(data.saved[2].color_ids,['color-0']);
+  assert.equal(data.saved[2].fixed_price,null);
+  assert.equal(data.saved[2].min_price,fixed.fixed_price);
+  assert.equal(data.saved[2].weight_g,fixed.weight_g);
+  assert.equal(data.saved[2].fixed_infill,100);
+
+  await page.getByRole('button',{name:'新建内容'}).click();
+  assert.equal(await fixedFields.isVisible(),true);
+  assert.equal(await configurableFields.isVisible(),false);
+  await page.locator('[data-entry-form] input[name="name"]').fill('统一物品表单');
+  await page.locator('input[name="fixed_price"]').fill('24');
+  await save();
+  assert.equal(data.saved[3].kind,'product');
+  assert.equal(data.saved[3].fixed_price,24);
+  assert.deepEqual(errors,[]);
+  results.push({case:'single-page editing, keyboard focus, validation, media, and pricing driven by selected colors',saved:data.saved.map(entry=>({kind:entry.kind,colors:entry.color_ids,images:entry.image_ids.length})),errors});
+  await page.close();
+
+  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify({passed:results.length,evidence:path.resolve(out)}));
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

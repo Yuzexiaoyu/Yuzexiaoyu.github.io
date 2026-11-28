@@ -34,6 +34,124 @@ test('workshop navigation still works when the preload plugin fails to load', as
   } finally { await page.close(); }
 });
 
+test('expedition imprint follows mouse clicks through dialogs and workshop navigation', async () => {
+  const page = await browser.newPage({hasTouch:true});
+  const mark = page.locator('.exp33-imprint');
+  const layer = page.locator('.exp33-imprint-layer');
+  const card = page.locator('[data-topic-item]').first();
+  const detail = page.locator('[data-topic-detail][open]');
+  try {
+    await page.goto(topic, {waitUntil:'domcontentloaded'});
+    await card.waitFor();
+    await page.waitForFunction(() => window.swupReady);
+    await page.evaluate(() => { window.imprintDocument = document; });
+    const samples = [];
+    for (const reducedMotion of ['no-preference', 'reduce']) {
+      await page.emulateMedia({reducedMotion});
+      await page.mouse.click(640, 160);
+      assert.equal(await mark.count(), 1, reducedMotion);
+      assert.equal(await mark.locator(':scope > .exp33-brush:only-child > .exp33-numerals:only-child').count(), 1);
+      const sample = await mark.evaluate(node => {
+        const {x, y} = node.getBoundingClientRect();
+        const brush = node.querySelector('.exp33-brush');
+        const arcs = ['::before', '::after'].map(side => getComputedStyle(brush, side).clipPath);
+        const animations = node.getAnimations({subtree:true}).map(animation => {
+          animation.currentTime = 260;
+          const effect = animation.effect;
+          const style = getComputedStyle(effect.target);
+          return {name:animation.animationName, timing:effect.getTiming(), end:effect.getComputedTiming().endTime, frames:effect.getKeyframes(),
+            transform:style.transform, opacity:style.opacity};
+        });
+        const scale = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+        return {point:[x, y], scale:[scale.a, scale.d], arcs, animations};
+      });
+      assert.deepEqual(sample.point, [640, 160]);
+      assert.ok(sample.scale.every(axis => Math.abs(axis - .7) < .0001));
+      assert.ok(sample.arcs.every(path => path.startsWith('path(')));
+      assert.notEqual(sample.arcs[0], sample.arcs[1]);
+      assert.deepEqual(sample.animations.map(a => a.name).sort(), ['exp33-brush-turn', 'exp33-imprint-fade']);
+      assert.ok(sample.animations.every(a => a.timing.duration === 400 && a.end === 400 && a.frames.length > 1));
+      const turn = sample.animations.find(a => a.name === 'exp33-brush-turn');
+      assert.deepEqual(turn.frames.map(frame => frame.computedOffset), [0, 1]);
+      assert.doesNotMatch(turn.frames[0].easing, /step/);
+      assert.notEqual(turn.frames[0].transform, turn.frames[1].transform);
+      samples.push(sample);
+      await layer.waitFor({state:'detached', timeout:3000});
+    }
+    assert.deepEqual(samples[1], samples[0]);
+
+    await page.mouse.click(640, 160, {button:'right'});
+    assert.equal(await mark.count(), 0);
+    await page.touchscreen.tap(640, 160);
+    assert.equal(await mark.count(), 0);
+    await card.press('Enter');
+    await detail.waitFor();
+    assert.equal(await mark.count(), 0);
+    await page.keyboard.press('Escape');
+    await card.click();
+    assert.equal(await detail.locator('.exp33-imprint').count(), 1);
+    const photo = detail.locator('[data-view="photo"]').nth(1);
+    await photo.click();
+    assert.equal(await photo.getAttribute('aria-pressed'), 'true');
+
+    await page.keyboard.press('Escape');
+    await page.locator('[data-topic-back-workshop]').click();
+    await page.locator('.wk-catalog-notice').click();
+    assert.equal(await mark.count(), 0);
+    await page.locator('[data-catalog-topic]').click();
+    await card.waitFor();
+    assert.equal(await page.evaluate(() => window.imprintDocument === document), true);
+    await page.mouse.click(640, 160);
+    assert.equal(await mark.count(), 1);
+  } finally { await page.close(); }
+});
+
+test('desktop reveals the opaque wallpaper through its dark cover or retry poster', async () => {
+  for (const retry of [false, true]) {
+    const page = await browser.newPage();
+    try {
+      if (retry) await page.addInitScript(() => {
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+          if (this.matches('[data-topic-video]') && !navigator.userActivation.isActive) {
+            this.autoplay = false;
+            return Promise.reject(new DOMException('Gesture required', 'NotAllowedError'));
+          }
+          return play.call(this);
+        };
+      });
+      await page.goto(topic, {waitUntil:'domcontentloaded'});
+      if (retry) {
+        const button = page.getByRole('button', {name:'播放背景视频'});
+        await button.waitFor();
+        assert.equal(await page.locator('[data-topic-poster]').evaluate(poster => getComputedStyle(poster).opacity), '1');
+        await button.click();
+      }
+      const samples = [];
+      for (const finished of [false, true]) {
+        const state = await page.waitForFunction(({retry, finished}) => {
+          const video = document.querySelector('[data-topic-video].is-playing');
+          if (!video || video.paused) return;
+          const wall = video.parentElement;
+          const cover = retry ? getComputedStyle(wall.querySelector('[data-topic-poster]')) : getComputedStyle(wall, '::before');
+          const opacity = Number(cover.opacity);
+          if (finished ? opacity !== 0 : opacity <= .2 || opacity >= .8) return;
+          const style = getComputedStyle(video);
+          return {video:[style.opacity, style.transitionProperty], duration:cover.animationDuration,
+            gradient:getComputedStyle(wall, '::after').backgroundImage, time:video.currentTime};
+        }, {retry, finished}, {timeout:8000});
+        const sample = await state.jsonValue();
+        assert.deepEqual(sample.video, ['1', 'none']);
+        assert.equal(sample.duration, '3s');
+        assert.match(sample.gradient, /linear-gradient/);
+        samples.push(sample);
+      }
+      assert.equal(samples[1].gradient, samples[0].gradient);
+      assert.ok(samples[1].time > samples[0].time);
+    } finally { await page.close(); }
+  }
+});
+
 test('direct mobile entry plays and rotates while the workshop requests fail', async () => {
   const page = await browser.newPage(devices['iPhone 13']);
   try {
@@ -121,10 +239,14 @@ test('topic cards and details stay over the playing video on desktop and mobile'
       assert.equal(await panel.locator('[data-weight]').textContent(), '约 45 g');
       assert.deepEqual(await panel.locator('[data-color-id]').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))),
         ['黑色 · PLA', '浅灰色 · PLA', '纯白 · PLA']);
+      assert.deepEqual(await panel.locator('.wk-config').evaluate(config => {
+        const style = getComputedStyle(config);
+        return [style.backgroundColor, style.backgroundImage, style.borderWidth];
+      }), ['rgba(0, 0, 0, 0)', 'none', '0px']);
       assert.ok(await panel.locator('.wk-config-section:has(.wk-swatches)').evaluate(section=>{
         const palette=section.querySelector('.wk-swatches');
         const material=section.querySelector('.wk-material');
-        return getComputedStyle(material).borderTopWidth==='1px'&&material.getBoundingClientRect().top>=palette.getBoundingClientRect().bottom;
+        return getComputedStyle(material).borderTopWidth==='0px'&&material.getBoundingClientRect().top>=palette.getBoundingClientRect().bottom;
       }));
       assert.equal(await panel.locator('[data-stage-image]').getAttribute('src'), cover);
       for (const card of await cards.all()) assert.equal(await card.isVisible(), false);
@@ -198,7 +320,7 @@ test('topic cards and details stay over the playing video on desktop and mobile'
   }
 });
 
-test('the initial and hydrated workshop lists contain the configurable Malorian and the topic', async () => {
+test('the workshop lists one Malorian card and its detail has no link to the other record', async () => {
   const page = await browser.newPage();
   try {
     const html = await page.request.get(base+'/prints/');
@@ -206,6 +328,10 @@ test('the initial and hydrated workshop lists contain the configurable Malorian 
     await page.goto(base+'/prints/');
     await page.locator('[data-catalog-entries] [data-workshop-item]').first().waitFor();
     assert.deepEqual(await page.locator('[data-workshop-item] h2').allTextContents(), ['马洛里安-序曲']);
+    await page.getByRole('link', {name:/马洛里安-序曲/}).click();
+    await page.getByRole('heading', {name:'马洛里安-序曲', exact:true, level:1}).waitFor();
+    assert.equal(await page.getByRole('link', {name:/查看现货/}).count(), 0);
+    await page.locator('[data-detail-back]').click();
     await page.locator('[data-catalog-topic]').click();
     await page.getByRole('heading', {name:'玛埃尔镂空立牌', exact:true}).waitFor();
     await page.getByRole('heading', {name:'33号远征队钥匙扣', exact:true}).waitFor();

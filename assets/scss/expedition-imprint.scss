@@ -1,0 +1,72 @@
+$imprint-duration: 400ms;
+
+[data-topic="expedition-33"] .exp33-imprint-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+
+  .exp33-imprint, .exp33-brush, .exp33-numerals {
+    position: absolute;
+    display: block;
+  }
+
+  .exp33-imprint {
+    width: 0;
+    height: 0;
+    transform: scale(.7);
+    animation: exp33-imprint-fade $imprint-duration linear both;
+  }
+
+  .exp33-brush {
+    left: -40px;
+    top: -40px;
+    width: 80px;
+    height: 80px;
+    filter: drop-shadow(0 1px 1px #211019);
+    animation: exp33-brush-turn $imprint-duration cubic-bezier(.25,.6,.45,1) both;
+  }
+
+  // Broken gold strokes with thin, separated bristle marks at the tips.
+  .exp33-brush::before, .exp33-brush::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(128deg, #fff1c6 16%, #daa85f 43%, #965b32 66%, #ffe6a4 88%);
+  }
+  .exp33-brush::before {
+    clip-path: path("M8 62 C-2 43 9 18 31 10 C40 7 48 6 60 9 C39 8 19 20 12 38 C9 46 8 54 10 60 L8 56 Z M5 46 C4 26 20 10 37 7 C21 13 10 25 5 46 Z M16 32 C21 20 37 12 49 12 C35 15 24 21 16 32 Z");
+  }
+  .exp33-brush::after {
+    clip-path: path("M68 18 C78 31 76 47 66 60 C63 64 58 67 53 69 C61 62 67 53 69 45 C72 36 71 27 68 18 Z");
+  }
+
+  // Two separately set impressions of the same hand-painted numeral.
+  .exp33-numerals {
+    left: 20px;
+    top: 24px;
+    width: 40px;
+    height: 32px;
+  }
+  .exp33-numerals::before, .exp33-numerals::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 31px;
+    background: linear-gradient(155deg, #fff4cf 22%, #ecc790 50%, #fff1ce 62%, #bf8948 90%);
+    clip-path: path("M1 8 C5 1 15 -1 18 3 C21 7 16 12 10 15 C15 13 19 16 17 21 C15 28 6 32 0 28 L1 24 C5 27 12 24 13 20 C14 17 10 16 5 19 L6 14 C11 11 16 7 14 5 C12 3 6 5 1 8 Z");
+  }
+  .exp33-numerals::after { left: 17px; top: -2px; transform: rotate(5deg); }
+}
+
+@keyframes exp33-imprint-fade {
+  0% { opacity: 0; }
+  6%, 54% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes exp33-brush-turn {
+  from { transform: rotate(-26deg) scale(.62); }
+  to { transform: rotate(-3deg) scale(1); }
+}

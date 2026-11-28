@@ -179,7 +179,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       await slider.evaluate(input=>{input.value='50';input.dispatchEvent(new Event('input',{bubbles:true}));});
       const customList=await selectionList(page);
       assert.match(customList,/颜色：/);assert.match(customList,/填充比例：50%/);
-      assert.deepEqual(customList.split('\n').filter(Boolean).map(line=>line.split('：')[0]),['商品','材质','颜色','填充比例','数量','单价','小计','合计']);
+      assert.deepEqual(customList.split('\n').filter(Boolean).map(line=>line.split('：')[0]),['商品','材质','颜色','填充比例','数量','小计','合计']);
       assert.ok(customList.includes('材质：'+work.colors[0].material));
       assert.doesNotMatch(customList,/演示|示例/);
       await page.locator('[data-view="model"]').click();
@@ -224,7 +224,7 @@ async function swipeStage(page,direction,{edge=false,vertical=false,short=false,
       sameFrames(stockFrames);
       const stockList=await selectionList(page);
       assert.match(stockList,/合计：¥39/);
-      assert.deepEqual(stockList.split('\n').filter(Boolean).map(line=>line.split('：')[0]),['商品','材质','数量','单价','小计','合计']);
+      assert.deepEqual(stockList.split('\n').filter(Boolean).map(line=>line.split('：')[0]),['商品','材质','数量','小计','合计']);
       assert.ok(stockList.includes('材质：'+product.material));
       assert.doesNotMatch(stockList,/颜色：|填充比例：|演示|示例/);
       assert.doesNotMatch((await state(page)).text,forbidden);

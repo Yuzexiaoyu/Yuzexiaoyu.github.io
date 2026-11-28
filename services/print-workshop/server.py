@@ -220,7 +220,7 @@ class Store:
             raise Problem("内容格式不正确")
         kind, status = data.get("kind"), data.get("status", "draft")
         if kind not in ("work", "product") or status not in ("draft", "published", "archived"):
-            raise Problem("请选择正确的栏目与状态")
+            raise Problem("报价配置或展示状态不正确")
         payload = {"kind": kind, "status": status,
                    "name": short_text(data.get("name", ""), "标题", 80, True),
                    "description": short_text(data.get("description", ""), "介绍", 5000),
@@ -242,8 +242,8 @@ class Store:
         else:
             payload.update(color_ids=[], min_price=0, max_price=0, min_weight_g=None, max_weight_g=None)
             if payload["fixed_price"] is not None:
-                integer(payload["fixed_price"], "现货售价", 0, PRICE_LIMIT)
-            single_weight(payload["weight_g"], "现货重量")
+                integer(payload["fixed_price"], "固定售价", 0, PRICE_LIMIT)
+            single_weight(payload["weight_g"], "重量")
         for key, limit in (("image_ids", 12), ("video_ids", 6), ("color_ids", 80)):
             if not isinstance(payload[key], list) or len(payload[key]) > limit or any(not isinstance(x, str) for x in payload[key]):
                 raise Problem("图片、视频或颜色列表格式不正确")
@@ -300,11 +300,11 @@ class Store:
                 if not payload["image_ids"]:
                     raise Problem("上架前请至少上传一张图片")
                 if kind == "work" and not payload["color_ids"]:
-                    raise Problem("可选上架前请勾选可用颜色")
+                    raise Problem("按配色报价的物品上架前请勾选颜色")
                 if kind == "work" and payload["weight_g"] is None and ((payload["min_weight_g"] is None) != (payload["max_weight_g"] is None)):
                     raise Problem("请同时填写 15% 和 100% 的重量")
                 if kind == "product" and payload["weight_g"] is None and not topic:
-                    raise Problem("现货上架前请填写重量")
+                    raise Problem("上架前请填写重量")
             entry_id = entry_id or uuid.uuid4().hex
             revision = old["revision"] + 1 if old else 1
             payload["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")

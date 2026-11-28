@@ -3,6 +3,16 @@
 {{ define "right-sidebar" }}{{ end }}
 {{ define "main" }}
 <div class="wk-topic" data-workshop="topic" data-topic="expedition-33" data-workshop-source="{{ .Site.Params.workshop.dataSource | default "static" }}">
+  {{- $imprintCSS := resources.Get "scss/expedition-imprint.scss" | css.Sass | minify | fingerprint }}
+  {{- $imprintJS := resources.Get "ts/expedition-imprint.ts" | js.Build (dict "format" "esm" "minify" hugo.IsProduction) | fingerprint }}
+  <link rel="stylesheet" href="{{ $imprintCSS.RelPermalink }}">
+  <template data-expedition-imprint="{{ $imprintJS.RelPermalink }}">
+    <span class="exp33-imprint">
+      <span class="exp33-brush">
+        <span class="exp33-numerals"></span>
+      </span>
+    </span>
+  </template>
   <article class="wk-topic-scene" aria-label="{{ .Title }}">
     {{ partial "workshop/expedition-music.html" . }}
     <div class="wk-topic-wallpaper" aria-hidden="true">

@@ -182,7 +182,7 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
           `商品：${item.name}`, `材质：${item.material || '—'}`,
           ...(item.color ? [`颜色：${item.color.name}`] : []),
           ...(item.infill == null ? [] : [`填充比例：${item.infill}%`]),
-          `数量：${item.quantity}`, `单价：${money(item.price)}`, `小计：${money(item.price! * item.quantity)}`,
+          `数量：${item.quantity}`, `小计：${money(item.price! * item.quantity)}`,
         ].join('\n')).join('\n\n');
         request = undefined;
         render();

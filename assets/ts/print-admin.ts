@@ -11,7 +11,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   const pages={images:0,videos:0,colors:0};
   const closeIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>';
   const getField=(name:string)=>form.elements.namedItem(name) as HTMLInputElement;
-  const blank=():Entry=>({name:'',description:'',material:'',kind:'work',status:'draft',min_price:0,max_price:0,fixed_price:null,weight_g:null,min_weight_g:null,max_weight_g:null,color_ids:[],image_ids:[],video_ids:[],model_id:null,source_id:null,images:[],videos:[],model:null,source:null,colors:[],is_demo:false});
+  const blank=():Entry=>({name:'',description:'',material:'',kind:'product',status:'draft',min_price:0,max_price:0,fixed_price:null,weight_g:null,min_weight_g:null,max_weight_g:null,color_ids:[],image_ids:[],video_ids:[],model_id:null,source_id:null,images:[],videos:[],model:null,source:null,colors:[],is_demo:false});
   const statuses={draft:'草稿',published:'已上架',archived:'已下架'};
   const write=<T>(path:string,method:string,data:unknown)=>api<T>(path,signal,{method,headers:{'Content-Type':'application/json','X-Workshop-Token':token},body:JSON.stringify(data)});
   const upload=(file:File)=>api<Asset>('/api/admin/assets',signal,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(file.name),'X-Workshop-Token':token},body:file});
@@ -19,11 +19,11 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     const query=root.querySelector<HTMLInputElement>('[data-admin-search]')!.value.trim().toLowerCase();
     const status=root.querySelector<HTMLSelectElement>('[data-admin-filter]')!.value;
     const selected=entries.filter(p=>p.name.toLowerCase().includes(query)&&(status==='all'||p.status===status));
-    root.querySelector<HTMLElement>('[data-admin-list]')!.innerHTML=selected.length?`<div class="wk-table-head"><span>作品 / 商品</span><span>栏目</span><span>报价</span><span>状态</span><span>操作</span></div>`+selected.map(p=>{
+    root.querySelector<HTMLElement>('[data-admin-list]')!.innerHTML=selected.length?`<div class="wk-table-head"><span>物品</span><span>报价</span><span>状态</span><span>操作</span></div>`+selected.map(p=>{
       const [low,high]=p.kind==='work'?workPriceRange(p):[p.fixed_price,p.fixed_price];
       const displayPrice=low===high?money(low):`${money(low)}–${money(high)}`;
-      return `<div class="wk-admin-row"><div class="wk-admin-title">${p.images[0]?`<img src="${e(p.images[0].url)}" alt="">`:'<span class="wk-admin-no-image">◇</span>'}<div><strong>${e(p.name)}</strong><small>${p.is_demo?'演示内容 · ':''}${p.model?'3D 预览已就绪':p.source?'3MF 已保存 · 待补 GLB':'图片内容'}</small></div></div><span class="wk-row-kind">${p.kind==='work'?'可选':'现货'}</span><span class="wk-row-price">${displayPrice}</span><span class="wk-state is-${p.status}">${statuses[p.status]}</span><div class="wk-row-actions"><button type="button" data-edit="${e(p.id)}">编辑</button><button type="button" data-toggle-entry="${e(p.id)}">${p.status==='published'?'下架':'上架'}</button><button type="button" data-delete-entry="${e(p.id)}" class="wk-danger">删除</button></div></div>`;
-    }).join(''):'<div class="wk-empty"><span class="wk-empty-mark">◇</span><h2>给新的想法留个位置</h2><p>点击“新建内容”，添加一件作品或商品。</p></div>';
+      return `<div class="wk-admin-row"><div class="wk-admin-title">${p.images[0]?`<img src="${e(p.images[0].url)}" alt="">`:'<span class="wk-admin-no-image">◇</span>'}<div><strong>${e(p.name)}</strong><small>${p.is_demo?'演示内容 · ':''}${p.model?'3D 预览已就绪':p.source?'3MF 已保存 · 待补 GLB':'图片内容'}</small></div></div><span class="wk-row-price">${displayPrice}</span><span class="wk-state is-${p.status}">${statuses[p.status]}</span><div class="wk-row-actions"><button type="button" data-edit="${e(p.id)}">编辑</button><button type="button" data-toggle-entry="${e(p.id)}">${p.status==='published'?'下架':'上架'}</button><button type="button" data-delete-entry="${e(p.id)}" class="wk-danger">删除</button></div></div>`;
+    }).join(''):'<div class="wk-empty"><span class="wk-empty-mark">◇</span><h2>给新的想法留个位置</h2><p>点击“新建内容”，添加一件物品。</p></div>';
   }
   function renderColors(){
     root.querySelector<HTMLElement>('[data-color-list]')!.innerHTML=colors.length?colors.map(c=>`<form data-edit-color="${e(c.id)}" class="wk-color-card"><input type="color" name="hex" value="${e(c.hex)}" aria-label="${e(c.name)}的颜色"><input name="name" value="${e(c.name)}" required maxlength="30" aria-label="颜色名称"><label class="wk-field wk-color-material">材质<input name="material" value="${e(c.material)}" maxlength="80" placeholder="如 PLA、PETG"></label><label class="wk-check"><input name="active" type="checkbox" ${c.active?'checked':''}>启用</label><button type="submit" class="wk-button wk-secondary">保存</button></form>`).join(''):'<p class="wk-empty">还没有色卡，先添加几种实际可提供的颜色。</p>';
@@ -70,8 +70,10 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   editorColors.addEventListener('change',event=>{
     const input=event.target as HTMLInputElement;if(!editing||!input.matches('[data-editor-color]'))return;
     const selected=new Set(editing.color_ids);if(input.checked)selected.add(input.dataset.editorColor!);else selected.delete(input.dataset.editorColor!);editing.color_ids=[...selected];
+    editing.kind=selected.size?'work':'product';
     const priceField=input.closest('.wk-editor-color-row')!.querySelector<HTMLInputElement>('[data-color-price]')!;
     priceField.hidden=priceField.disabled=!input.checked;
+    editorFields();
     samplePrice();
   },{signal});
   editorColors.addEventListener('input',event=>{
@@ -82,33 +84,45 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     if(input.value==='')delete prices[id];
     else prices[id]=input.valueAsNumber;
   },{signal});
-  function editorType(){
-    const configurable=getField('kind').value==='work';
+  function editorFields(){
+    const configurable=editing?.kind==='work';
     const hasTopic=getField('topic').value!=='';
-    const hasFixedInfill=configurable&&getField('fixed_infill').value!=='';
-    const options=root.querySelector<HTMLFieldSetElement>('[data-configurable-fields]')!;
-    const stock=root.querySelector<HTMLFieldSetElement>('[data-stock-fields]')!;
-    options.hidden=!configurable;options.disabled=!configurable;
-    stock.hidden=configurable;stock.disabled=configurable;
-    root.querySelector<HTMLElement>('[data-weight-range-fields]')!.hidden=hasFixedInfill;
-    root.querySelector<HTMLElement>('[data-fixed-weight-field]')!.hidden=!hasFixedInfill;
-    getField('fixed_weight_g').disabled=!hasFixedInfill;
-    getField('weight_g').required=!configurable&&getField('status').value==='published'&&!hasTopic;
+    const fixedInfill=getField('fixed_infill');
+    fixedInfill.min=configurable?'15':'0';
+    fixedInfill.placeholder=configurable?'留空可调':'选填';
+    const weightRange=configurable&&fixedInfill.value==='';
+    for(const [selector,visible] of [
+      ['[data-configurable-fields]',configurable],
+      ['[data-fixed-price-fields]',!configurable],
+      ['[data-weight-range-fields]',weightRange],
+    ] as const){
+      const fields=form.querySelector<HTMLFieldSetElement>(selector)!;
+      fields.hidden=fields.disabled=!visible;
+    }
+    const weight=getField('weight_g');
+    weight.closest('label')!.hidden=weight.disabled=weightRange;
+    weight.required=!configurable&&getField('status').value==='published'&&!hasTopic;
+    const approximate=getField('weight_approximate');
+    approximate.closest('label')!.hidden=approximate.disabled=configurable;
     root.querySelector<HTMLElement>('[data-topic-only-field]')!.hidden=!hasTopic;
   }
   function samplePrice(){
+    const example=root.querySelector<HTMLElement>('[data-price-example]')!;
+    const weightExample=root.querySelector<HTMLElement>('[data-weight-example]')!;
+    if(editing?.kind!=='work'){
+      example.textContent=weightExample.textContent='';
+      return;
+    }
     const fixed=getField('fixed_infill');
     const fill=fixed.validity.valid&&fixed.value!==''?fixed.valueAsNumber:50;
     const low=Number(getField('min_price').value),high=Number(getField('max_price').value);
-    const example=root.querySelector<HTMLElement>('[data-price-example]')!;
-    const hasDefaultPrice=!editing?.color_ids.length||editing.color_ids.some(id=>editing?.color_prices?.[id]==null);
+    const hasDefaultPrice=!editing.color_ids.length||editing.color_ids.some(id=>editing?.color_prices?.[id]==null);
     if(!Number.isInteger(low)||!Number.isInteger(high)||high<low||low<0)example.textContent='最高价应不低于最低价，请填写非负整数元。';
     else example.textContent=hasDefaultPrice?`${fill}% 填充：${money(quote(low,high,fill))}`:'';
     const rawLow=getField('min_weight_g').value,rawHigh=getField('max_weight_g').value;
     const light=Number(rawLow),solid=Number(rawHigh);
-    const fixedWeight=getField('fixed_weight_g');
+    const fixedWeight=getField('weight_g');
     const estimate=!fixedWeight.disabled&&fixedWeight.validity.valid&&fixedWeight.value!==''?fixedWeight.valueAsNumber:null;
-    const weightExample=root.querySelector<HTMLElement>('[data-weight-example]')!;
     if(estimate!=null)weightExample.textContent=`${fill}% 填充重量约 ${grams(estimate)}。`;
     else weightExample.textContent=rawLow===''&&rawHigh===''?'':rawLow!==''&&rawHigh!==''&&light>0&&solid>=light?`${fill}% 填充重量 ${grams(weightAt(light,solid,fill))}。`:'请填写两端重量，100% 重量应不低于 15% 重量。';
   }
@@ -116,21 +130,24 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
     editing=entry?JSON.parse(JSON.stringify(entry)):blank();editorSerial++;dirty=false;saving=false;
     pages.images=pages.videos=pages.colors=0;
     if(editing){editing.video_ids=editing.video_ids||[];editing.videos=editing.videos||[];}
-    form.reset();for(const name of ['name','kind','status','topic','description','material','min_price','max_price','fixed_price','min_weight_g','max_weight_g'])getField(name).value=String((editing as any)[name]??'');
-    getField(editing.kind==='product'?'stock_fixed_infill':'fixed_infill').value=String(editing.fixed_infill??'');
-    getField('weight_g').value=editing.kind==='product'?String(editing.weight_g??''):'';
+    form.reset();
+    for(const name of ['name','status','topic','description','material','min_price','max_price','fixed_price','fixed_infill','weight_g','min_weight_g','max_weight_g'] as const){
+      getField(name).value=String(editing[name]??'');
+    }
+    if(editing.kind==='product'&&editing.fixed_price!=null){
+      getField('min_price').value=getField('max_price').value=String(editing.fixed_price);
+    }
     getField('weight_approximate').checked=editing.weight_approximate===true;
-    getField('fixed_weight_g').value=editing.kind==='work'&&editing.fixed_infill!=null?String(editing.weight_g??''):'';
     getField('is_demo').checked=editing!.is_demo;
     getField('topic_only').checked=editing.topic_only===true;
     root.querySelector<HTMLElement>('#entry-editor-title')!.textContent=entry?'编辑内容':'新建内容';
-    setStatus(editorNotice,'');renderAssets();renderEditorColors();editorType();samplePrice();updateSaveButton();dialog.showModal();
+    setStatus(editorNotice,'');renderAssets();renderEditorColors();editorFields();samplePrice();updateSaveButton();dialog.showModal();
   }
   function closeEditor(){if(pending||saving){setStatus(editorNotice,'请等待上传或保存完成。');return;}if(dirty&&!window.confirm('尚有未保存的修改，确定关闭编辑器？'))return;dirty=false;editing=null;editorSerial++;dialog.close();}
   root.querySelectorAll<HTMLElement>('[data-editor-close]').forEach(n=>n.addEventListener('click',closeEditor,{signal}));
   dialog.addEventListener('cancel',event=>{event.preventDefault();closeEditor();},{signal});
   root.querySelector('[data-new-entry]')!.addEventListener('click',()=>{if(token)openEditor();},{signal});
-  form.addEventListener('input',()=>{markDirty();editorType();samplePrice();},{signal});
+  form.addEventListener('input',()=>{markDirty();editorFields();samplePrice();},{signal});
   form.addEventListener('change',markDirty,{signal});
   const beforeUnload=(event:BeforeUnloadEvent)=>{if(dirty||pending||saving){event.preventDefault();event.returnValue='';}};
   window.addEventListener('beforeunload',beforeUnload);
@@ -168,22 +185,33 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   root.querySelector('[data-remove-source]')!.addEventListener('click',()=>{if(editing){editing.source=null;editing.source_id=null;markDirty();renderAssets();}},{signal});
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(!editing||pending||saving)return;
-    const data={...editing,name:getField('name').value,description:getField('description').value,material:getField('material').value.trim(),kind:getField('kind').value,status:getField('status').value,min_price:Number(getField('min_price').value),max_price:Number(getField('max_price').value),fixed_price:getField('fixed_price').value.trim()===''?null:Number(getField('fixed_price').value),weight_g:getField('weight_g').value.trim()===''?null:Number(getField('weight_g').value),min_weight_g:getField('min_weight_g').value.trim()===''?null:Number(getField('min_weight_g').value),max_weight_g:getField('max_weight_g').value.trim()===''?null:Number(getField('max_weight_g').value),is_demo:getField('is_demo').checked,color_ids:editing.color_ids.filter(id=>colors.some(color=>color.id===id&&color.active))};
-    data.topic = getField('topic').value;
-    data.topic_only = !!data.topic && getField('topic_only').checked;
-    if(data.kind==='product'){
-      const fixed=getField('stock_fixed_infill');
-      data.color_ids=[];data.min_price=0;data.max_price=0;data.min_weight_g=null;data.max_weight_g=null;
-      data.fixed_infill=fixed.value===''?null:fixed.valueAsNumber;
-      data.weight_approximate=data.weight_g!=null&&getField('weight_approximate').checked;
-    }
-    else {
-      const fixed=getField('fixed_infill'), weight=getField('fixed_weight_g');
-      data.fixed_price=null;
-      data.material='';
-      data.fixed_infill=fixed.value===''?null:fixed.valueAsNumber;
-      data.weight_g=data.fixed_infill==null||weight.value===''?null:weight.valueAsNumber;
-    }
+    const numeric=(name:string)=>{
+      const field=getField(name);
+      return field.value===''?null:field.valueAsNumber;
+    };
+    const configurable=editing.kind==='work';
+    const topic=getField('topic').value;
+    const fixedInfill=numeric('fixed_infill');
+    const weight=configurable&&fixedInfill==null?null:numeric('weight_g');
+    const data={
+      ...editing,
+      name:getField('name').value,
+      description:getField('description').value,
+      status:getField('status').value,
+      topic,
+      topic_only:!!topic&&getField('topic_only').checked,
+      is_demo:getField('is_demo').checked,
+      fixed_infill:fixedInfill,
+      weight_g:weight,
+      weight_approximate:!configurable&&weight!=null&&getField('weight_approximate').checked,
+      material:configurable?'':getField('material').value.trim(),
+      fixed_price:configurable?null:numeric('fixed_price'),
+      min_price:configurable?getField('min_price').valueAsNumber:0,
+      max_price:configurable?getField('max_price').valueAsNumber:0,
+      min_weight_g:configurable?numeric('min_weight_g'):null,
+      max_weight_g:configurable?numeric('max_weight_g'):null,
+      color_ids:configurable?editing.color_ids.filter(id=>colors.some(color=>color.id===id&&color.active)):[],
+    };
     saving=true;updateSaveButton();setStatus(editorNotice,'正在保存…');
     try{const saved=await write<Entry>(editing.id?`/api/admin/entries/${editing.id}`:'/api/admin/entries',editing.id?'PUT':'POST',data);if(signal.aborted)return;editing=saved;dirty=false;dialog.close();await refresh();setStatus(notice,`“${saved.name}”已保存到本机${saved.status==='published'?'，本地工坊中可见':''}。发布网站后，图片与视频将通过 R2 CDN 加载。`);}
     catch(error){if(!abortError(error))setStatus(editorNotice,(error as Error).message,true);}
@@ -191,7 +219,7 @@ export function initAdmin(root: HTMLElement, signal: AbortSignal): ()=>void {
   },{signal});
   root.querySelector('[data-color-form]')!.addEventListener('submit',async event=>{
     event.preventDefault();const f=event.currentTarget as HTMLFormElement;const button=f.querySelector<HTMLButtonElement>('button')!;button.disabled=true;
-    try{const data=new FormData(f);await write('/api/admin/colors','POST',{name:data.get('name'),hex:data.get('hex'),material:data.get('material'),active:true});f.reset();await refresh();setStatus(notice,'色卡已添加，可在可选条目编辑器中勾选。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
+    try{const data=new FormData(f);await write('/api/admin/colors','POST',{name:data.get('name'),hex:data.get('hex'),material:data.get('material'),active:true});f.reset();await refresh();setStatus(notice,'色卡已添加，可在物品编辑器中勾选。');}catch(error){if(!abortError(error))setStatus(notice,(error as Error).message,true);}finally{button.disabled=false;}
   },{signal});
   root.querySelector('[data-color-list]')!.addEventListener('submit',async event=>{
     event.preventDefault();const f=event.target as HTMLFormElement;if(!f.matches('[data-edit-color]'))return;const button=f.querySelector<HTMLButtonElement>('button')!;button.disabled=true;

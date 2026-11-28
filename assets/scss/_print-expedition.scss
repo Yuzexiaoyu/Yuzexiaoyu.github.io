@@ -1,3 +1,16 @@
+$exp33-ribbon: polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%);
+$exp33-monolith: path("M5 22 C0 16 2 8 9 4 C16 0 24 5 26 12 C27 17 25 21 23 23 C26 15 23 8 18 6 C11 3 5 8 4 14 C4 18 5 20 5 22 Z M7 30 L12 12 L17 7 L17 17 L14 20 L14 24 L10 30 Z M13 30 L16 24 L16 20 L20 16 L22 29 Z");
+$exp33-foil: path("M25 2 L14 20 L12 19 Z M7 17 Q12 20 18 21 L17 23 Q11 22 6 19 Z M8 21 C5 24 9 28 13 24 L15 22 C14 29 6 29 5 24 C5 22 6 21 8 21 Z M10 22 L12 23 L7 30 L5 29 Z M5 28 L8 30 L6 32 L3 30 Z");
+$exp33-title-font: "Songti SC", "Noto Serif CJK SC", SimSun, serif;
+
+body.template-workshop :is([data-topic="expedition-33"], [data-workshop="detail"][data-expedition-detail]) {
+  --exp33-ink: #f7ebd7;
+  --exp33-gold: #ecc790;
+  --exp33-rule: #ecc79040;
+  --exp33-wine: #773846;
+  --exp33-wine-hover: #8a4654;
+}
+
 html:has(.wk-topic) {
   overflow-y: auto;
   scrollbar-width: none;
@@ -129,6 +142,115 @@ body.template-workshop {
 }
 
 html:not([data-ui="mobile"]) body.template-workshop {
+  [data-topic="expedition-33"] .wk-topic-wallpaper {
+    // Keep the video opaque throughout playback; fade its cover on a separate layer.
+    > video { opacity: 1; transition: none; }
+
+    &::before, > [data-topic-poster], > noscript > img {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+    &:has(> [data-topic-poster][hidden])::before {
+      content: "";
+      background: var(--topic-bg);
+    }
+    > [data-topic-poster] { background-color: var(--topic-bg); }
+    &:has(> video.is-playing) {
+      &::before, > [data-topic-poster] {
+        opacity: 0;
+        animation: exp33-wallpaper-reveal 3s ease-in-out;
+      }
+    }
+    &::after { z-index: 2; }
+  }
+  @keyframes exp33-wallpaper-reveal {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  [data-topic="expedition-33"] :is([data-topic-back-workshop], [data-topic-music-play]) {
+    color: #ecc790;
+    &:hover, &:focus-visible { color: #fff1c6; }
+    &:focus-visible { outline-color: currentColor; }
+  }
+
+  [data-topic="expedition-33"] .wk-topic-scene {
+    display: grid;
+    height: 100svh;
+    min-height: min-content;
+    grid-template-rows: minmax(max-content, 31.25svh) 1fr;
+    align-items: start;
+  }
+  [data-topic="expedition-33"] .wk-topic-items {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  [data-topic="expedition-33"] [data-topic-item] {
+    --ribbon: #70313c;
+    border-color: transparent;
+    border-radius: 2px;
+    background: transparent;
+    box-shadow: none;
+    &::before { content: none; }
+
+    .wk-card-image { background: var(--topic-bg); }
+    .wk-card-image::before {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      left: 10px;
+      width: 32px;
+      height: 48px;
+      background: var(--ribbon);
+      clip-path: $exp33-ribbon;
+      pointer-events: none;
+    }
+    // A split monolith and its halo, stamped in ivory on the cloth tab.
+    .wk-card-image::after {
+      inset: 4px auto auto 12px;
+      z-index: 1;
+      width: 28px;
+      height: 34px;
+      background: #fff0d1;
+      clip-path: $exp33-monolith;
+    }
+    // Maelle's fencing foil and swept guard.
+    &[data-entry-kind="work"] .wk-card-image::after {
+      clip-path: $exp33-foil;
+    }
+    .wk-card-info {
+      background: linear-gradient(108deg, rgba(246, 238, 219, .75), rgba(231, 216, 187, .70));
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+    }
+    h3 {
+      color: #2c2622;
+      font-family: $exp33-title-font;
+      font-weight: 600;
+    }
+    .exp33-price-line {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      margin-top: 3px;
+      color: #655747;
+      font-size: 13px;
+    }
+    .wk-card-price, .wk-card-price small {
+      margin-top: 0;
+      color: var(--ribbon);
+      font-weight: 600;
+    }
+
+    &:is(:hover, :focus-visible) {
+      --ribbon: #55222e;
+      h3 { color: var(--ribbon); }
+    }
+    &:focus-visible { outline-color: #fff1c6; }
+  }
+
   .wk-topic:has(.wk-topic-detail[open]) .wk-topic-items { visibility: hidden; }
 
   .wk-topic-detail {
@@ -160,11 +282,11 @@ html:not([data-ui="mobile"]) body.template-workshop {
   }
   .wk-topic-detail .wk-stage {
     max-height: none;
-    border: 1px solid #f7ebd740;
+    border: 1px solid var(--exp33-rule, #f7ebd740);
     border-radius: 14px;
     box-shadow: 0 18px 60px #0009;
   }
-  .wk-topic-detail .wk-config { text-shadow: 0 2px 8px #080c11; }
+  .wk-topic-detail:not([data-expedition-detail]) .wk-config { text-shadow: 0 2px 8px #080c11; }
   .wk-topic-detail .wk-config h1 { text-wrap: balance; }
 
   .wk-topic-detail[open] .wk-gallery { animation: wk-topic-focus-in .24s ease-out both; }
@@ -179,6 +301,145 @@ html:not([data-ui="mobile"]) body.template-workshop {
     .wk-topic-detail .wk-detail-grid { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 0; }
     .wk-topic-detail .wk-stage { max-height: 55dvh; }
   }
+}
+
+body.template-workshop [data-expedition-detail] {
+  --exp33-crest: #{$exp33-monolith};
+
+  &[data-expedition-detail="work"] { --exp33-crest: #{$exp33-foil}; }
+
+  .wk-config > h1, &.wk-topic-inline > [data-topic-detail-title] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline-start: 44px;
+    color: var(--exp33-ink);
+    font-family: $exp33-title-font;
+    font-weight: 600;
+    text-wrap: balance;
+
+    &::before, &::after {
+      content: "";
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: 0;
+      pointer-events: none;
+    }
+    &::before {
+      width: 32px;
+      height: 44px;
+      background: linear-gradient(105deg, #8b4650, #5d2837);
+      clip-path: $exp33-ribbon;
+    }
+    &::after {
+      inset-block-start: 4px;
+      inset-inline-start: 2px;
+      width: 28px;
+      height: 34px;
+      background: #fff0d1;
+      clip-path: var(--exp33-crest);
+    }
+  }
+
+  .wk-stage {
+    border: 1px solid var(--exp33-rule);
+    border-radius: 10px;
+    background: #131113;
+  }
+  .exp33-stage-frame {
+    position: absolute;
+    z-index: 1;
+    inset: 6px;
+    pointer-events: none;
+    --edge: linear-gradient(var(--exp33-gold), var(--exp33-gold));
+    background:
+      var(--edge) left top / 16px 1px, var(--edge) left top / 1px 16px,
+      var(--edge) right top / 16px 1px, var(--edge) right top / 1px 16px,
+      var(--edge) left bottom / 16px 1px, var(--edge) left bottom / 1px 16px,
+      var(--edge) right bottom / 16px 1px, var(--edge) right bottom / 1px 16px;
+    background-repeat: no-repeat;
+  }
+
+  .wk-detail-grid .wk-config {
+    padding: 0;
+    color: var(--exp33-ink);
+    text-shadow: 0 1px 3px #080609, 0 2px 10px #080c11;
+  }
+  .wk-config > h1 { margin: 0 0 16px; }
+  .wk-config > .wk-description { margin: 0; color: #eadbc8; }
+
+  .wk-config :is(.wk-config-section, .wk-price-box, .wk-config-section:has(> .wk-swatches) > .wk-material) {
+    border: 0;
+    padding-block-start: 0;
+  }
+  .wk-config :is(.wk-label-row > h2, .wk-material, .wk-price-box > div > span, .wk-unit) {
+    color: #d9c5ad;
+  }
+  .wk-config :is(.wk-label-row > span, [data-material]) { color: var(--exp33-ink); }
+  .wk-config .wk-stock-specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(Min(100%, 8rem), 1fr));
+    gap: 12px 24px;
+    margin-block-start: clamp(16px, 2.6vh, 24px);
+  }
+  .wk-config .wk-stock-specs > * { grid-row: auto; margin: 0; }
+  .wk-stock-specs :is(.wk-material, .wk-label-row) {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+  }
+  .wk-stock-specs [data-material] { text-align: start; }
+  .wk-config .wk-price-box {
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 16px;
+    margin: clamp(16px, 3vh, 26px) 0 14px;
+  }
+  .wk-price-box > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 10px;
+  }
+  .wk-price-box .wk-unit { padding-block-end: 0; }
+  .wk-config [data-price] {
+    font-size: clamp(31px, 3vw, 42px);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+  .wk-config :is([data-price], .wk-infill-value), :is(.wk-breadcrumb a, [data-reset-view]) { color: var(--exp33-gold); }
+  .wk-config .wk-swatches { justify-content: flex-start; }
+  .wk-swatch[aria-pressed="true"] { border-color: var(--exp33-gold); }
+  input.wk-range {
+    --exp33-range: linear-gradient(to right, var(--exp33-gold) var(--fill, 0%), #543d43 var(--fill, 0%));
+    background: var(--exp33-range);
+  }
+  .wk-range::-webkit-slider-thumb { background: #954654; border-color: var(--exp33-gold); }
+  .wk-range::-moz-range-thumb { background: #954654; border-color: var(--exp33-gold); }
+
+  .wk-view-switch { border: 1px solid var(--exp33-rule); background: #20191c; }
+  .wk-view-switch button { color: var(--exp33-ink); }
+  .wk-view-switch button.is-active { background: #583039; color: #fff2db; }
+  :is(.wk-dialog-close, .wk-add-cart) { color: #fff0dc; }
+  .wk-dialog-close { background: #3a2830; }
+  .wk-config .wk-add-cart {
+    width: Min(100%, 16rem);
+    background: var(--exp33-wine);
+    &:is(:hover, :focus-visible) { background: var(--exp33-wine-hover); }
+  }
+  :focus-visible { outline-color: var(--exp33-gold); }
+}
+
+html[data-ui="mobile"] body.template-workshop [data-expedition-detail] {
+  input.wk-range { background: transparent; }
+  .wk-range::-webkit-slider-runnable-track { background: var(--exp33-range); }
+  .wk-range::-moz-range-track { background: #543d43; }
+  .wk-range::-moz-range-progress { background: var(--exp33-gold); }
+  .wk-config > h1 { font-size: 26px; }
+  .wk-config > .wk-description { margin-block-start: 12px; }
+  .wk-config .wk-price-box { margin-block-end: 0; }
+  .wk-config .wk-add-cart { width: 100%; }
 }
 
 html[data-ui="mobile"] body.template-workshop .wk-stage:has(> [data-topic-model]) {
@@ -222,12 +483,12 @@ html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
     height: auto;
     max-height: 54dvh;
     aspect-ratio: 1;
-    border: 1px solid #f7ebd740;
+    border: 1px solid var(--exp33-rule, #f7ebd740);
     border-radius: 10px;
     box-shadow: 0 12px 36px #0008;
   }
   .wk-topic-inline .wk-gallery { animation: wk-topic-focus-in .24s ease-out both; }
-  .wk-topic-inline > h2, .wk-topic-inline .wk-config { text-shadow: 0 2px 8px #080c11; }
+  .wk-topic-inline > h2, .wk-topic-inline:not([data-expedition-detail]) .wk-config { text-shadow: 0 2px 8px #080c11; }
   .wk-topic-inline .wk-description { margin-top: 8px; }
   .wk-topic-inline .wk-stock-specs { order: 1; }
 

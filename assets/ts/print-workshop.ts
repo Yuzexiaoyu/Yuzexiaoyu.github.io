@@ -47,12 +47,16 @@ function entryCard(entry: Entry, index: number, inTopic = false): string {
   if (inTopic && entry.topic) query.set('from', entry.topic);
   const badge = entry.is_demo ? '演示内容' : '';
   const heading = inTopic ? 'h3' : 'h2';
-  const topicControl = document.documentElement.dataset.ui === 'mobile'
+  const mobile = document.documentElement.dataset.ui === 'mobile';
+  const topicControl = mobile
     ? 'aria-controls="topic-detail-inline" aria-expanded="false"'
     : 'aria-haspopup="dialog" aria-controls="topic-detail"';
-  return `<a class="wk-card" data-workshop-item ${inTopic ? `data-topic-item="${e(entry.id)}" data-no-swup ${topicControl}` : ''} href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
+  const price = `<span class="wk-card-price">${entryCardPrice(entry)}</span>`;
+  const priceLine = inTopic && entry.topic === 'expedition-33' && !mobile
+    ? `<div class="exp33-price-line"><span>售价</span>${price}</div>` : price;
+  return `<a class="wk-card" data-workshop-item ${inTopic ? `data-topic-item="${e(entry.id)}" data-entry-kind="${e(entry.kind)}" data-no-swup ${topicControl}` : ''} href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
     <div class="wk-card-image"><img src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" loading="${index < 2 ? 'eager' : 'lazy'}" fetchpriority="${index === 0 ? 'high' : 'auto'}" decoding="async">${badge ? `<span class="wk-badge">${badge}</span>` : ''}</div>
-    <div class="wk-card-info"><div><${heading}>${e(entry.name)}</${heading}></div><span class="wk-card-price">${entryCardPrice(entry)}</span></div>
+    <div class="wk-card-info"><div><${heading}>${e(entry.name)}</${heading}></div>${priceLine}</div>
   </a>`;
 }
 
@@ -122,6 +126,19 @@ async function topic(root: HTMLElement, signal: AbortSignal, addToCart: AddToCar
     grid.innerHTML = items.length
       ? items.map((entry, index) => entryCard(entry, index, true)).join('')
       : '<p class="wk-topic-status">暂无上架物品</p>';
+    if (topicId === 'expedition-33') {
+      grid.querySelectorAll('[data-topic-item]').forEach((card, index) => {
+        card.animate?.([
+          {opacity: 0, transform: 'translateY(8px)'},
+          {opacity: 1, transform: 'none'},
+        ], {
+          duration: 420,
+          delay: Math.min(index, 4) * 72,
+          easing: 'cubic-bezier(.2,.7,.35,1)',
+          fill: 'backwards',
+        });
+      });
+    }
     bindTopicDetails(root, grid, items, signal, addToCart);
   } catch (error) {
     if (!signal.aborted && !abortError(error)) grid.innerHTML = '<p class="wk-topic-status">物品暂未加载，请刷新重试。</p>';
@@ -154,6 +171,7 @@ function bindTopicDetails(root: HTMLElement, grid: HTMLElement, items: Entry[], 
     });
     content.querySelector('model-viewer')?.removeAttribute('src');
     content.replaceChildren();
+    delete panel.dataset.expeditionDetail;
   }
 
   function showInline(open: boolean) {
@@ -253,16 +271,6 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     const configurable=entry.kind==='work';
     const expeditionItem=entry.topic==='expedition-33';
     const cameraOrbit=expeditionItem?'8deg 86deg 135%':DEFAULT_CAMERA_ORBIT;
-    const stockLink=root.querySelector<HTMLAnchorElement>('[data-stock-link]');
-    if(configurable&&stockLink) {
-      void api<{entries: Entry[]}>('/api/catalog',signal).then(({entries})=>{
-        if(signal.aborted) return;
-        const matches=entries.filter(item=>item.kind==='product'&&item.status==='published'&&item.name===entry.name&&item.id);
-        if(matches.length!==1) return;
-        stockLink.href=`/prints/detail/?id=${encodeURIComponent(matches[0].id!)}`;
-        stockLink.hidden=false;
-      }).catch(()=>{});
-    }
     const mobile=document.documentElement.dataset.ui==='mobile';
     const description=mobile&&!expeditionItem
       ? entry.description.split(/\r\n?|\n/).filter(line=>line.trim()).map(e).join('<br>')
@@ -307,6 +315,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
         ${previews?'<p class="wk-color-placeholder" data-color-placeholder role="status" hidden></p>':''}
         ${entry.model?`<model-viewer data-viewer ${expeditionItem?'data-topic-model':''} alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${cameraOrbit}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
         ${mobile&&videos.length?mobileVideoBar:''}
+        ${expeditionItem?'<span class="exp33-stage-frame" aria-hidden="true"></span>':''}
       </div>
       <div class="wk-gallery-tools">
         <div class="wk-view-switch" role="group" aria-label="媒体选择">
@@ -337,7 +346,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
           ${stockWeight?`<span class="wk-unit">重量 <span data-weight>${e(stockWeight)}</span></span>`:''}
         </div>
       `:`
-        <p class="wk-stock-facts" aria-label="成品信息">
+        <p class="wk-stock-facts" aria-label="物品信息">
           <span data-price>${money(entry.fixed_price)}</span>${stockWeight?`<span aria-hidden="true">·</span><span data-weight>${e(stockWeight)}</span>`:''}
           <span aria-hidden="true">·</span><span>材质 <span data-material>${material}</span></span>${stockInfill}
         </p>
@@ -345,6 +354,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
       <button type="button" class="wk-button wk-primary wk-add-cart" data-add-cart>加入购物车</button>
       <p class="wk-feedback" data-detail-feedback role="status"></p>
     </aside></div>`;
+    if (expeditionItem) root.dataset.expeditionDetail = entry.kind;
     if(preloadedVideo){
       const placeholder=container.querySelector<HTMLVideoElement>('[data-stage-video]')!;
       for(const attribute of Array.from(placeholder.attributes))preloadedVideo.setAttribute(attribute.name,attribute.value);
@@ -536,7 +546,11 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
         setStatus(feedback,'此规格已达到 99 件。',true);
       }
     },{signal});
-  }catch(error){if(!abortError(error))container.innerHTML=empty('暂时找不到这件作品',`<p>${e((error as Error).message)}</p>${topicItem?'':'<a class="wk-button wk-secondary" href="/prints/">返回工坊</a>'}`);}
+  } catch (error) {
+    if (abortError(error)) return;
+    delete root.dataset.expeditionDetail;
+    container.innerHTML=empty('暂时找不到这件作品',`<p>${e((error as Error).message)}</p>${topicItem?'':'<a class="wk-button wk-secondary" href="/prints/">返回工坊</a>'}`);
+  }
 }
 
 function destroy(){controller?.abort();cleanup?.();cleanup=null;currentRoot?.querySelectorAll<HTMLVideoElement>('video').forEach(v=>{v.pause();v.removeAttribute('src');});currentRoot?.querySelectorAll<any>('model-viewer').forEach(v=>{v.pause?.();v.removeAttribute('src');v.remove();});currentRoot?.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach(d=>d.close());controller=null;currentRoot=null;}
