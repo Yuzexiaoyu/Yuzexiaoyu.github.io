@@ -207,8 +207,28 @@ test('mobile cart prepares items at add time and fetches fresh prices at checkou
     }
     assert.equal(catalogRequests, requestsBeforeOpen);
 
+    // A saved public cart can outlive the immutable URL of its cover.
+    const publicCart = await page.locator('[data-workshop]').getAttribute('data-workshop-source') === 'static';
+    const oldCover = new URL('/workshop/media/retired-cart-cover.webp', base).href;
+    let oldCoverRequests = 0;
+    let originalLine;
+    if (publicCart) {
+      page.on('request', request => { if (request.url() === oldCover) oldCoverRequests++; });
+      originalLine = await page.evaluate(cover => {
+        const [line] = JSON.parse(localStorage.getItem('workshop-cart-v1'));
+        localStorage.setItem('workshop-cart-v1', JSON.stringify([{...line, preview: {...line.preview, cover}}]));
+        return line;
+      }, oldCover);
+    }
     await page.reload();
     await page.locator('.wk-config [data-price]').getByText('¥19', {exact: true}).waitFor();
+    if (publicCart) {
+      await page.waitForFunction(cover => JSON.parse(localStorage.getItem('workshop-cart-v1'))[0].preview.cover === cover, originalLine.preview.cover);
+      assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('workshop-cart-v1'))), [originalLine]);
+      assert.equal(await cart.locator('.wk-cart-cover img').getAttribute('src'), originalLine.preview.cover);
+      assert.equal(oldCoverRequests, 0);
+      assert.equal(catalogRequests, requestsBeforeOpen + 1);
+    }
     assert.equal(await total.textContent(), '¥15');
     const requestsBeforeCheckout = catalogRequests;
     await trigger.click();

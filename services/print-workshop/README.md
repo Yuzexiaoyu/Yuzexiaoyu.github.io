@@ -55,6 +55,14 @@ python services/print-workshop/server.py --build --demo
 
 部署遵循仓库的[站点部署约定](../../AGENTS.md)。
 
+首次导出商品照片前，为本地 Python 安装 Pillow：
+
+```powershell
+python -m pip install Pillow==12.2.0
+```
+
+目录、详情和购物车共用同一张 WebP 商品图。导出从本地原图生成，保留宽高比，长边上限为 1280 像素，小图按原尺寸编码，质量为 80。带方向信息的照片会先校正方向，带 ICC 配置的照片会转换为 sRGB。本地原件保留，联系二维码按原文件导出。
+
 线上工坊使用静态公开目录，本地管理后台仍只在当前电脑运行。管理后台保存内容不会立即改变线上页面；修改完成后，在项目目录执行：
 
 ```powershell

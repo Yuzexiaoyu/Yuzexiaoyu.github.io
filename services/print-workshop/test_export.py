@@ -1,12 +1,22 @@
-import json
+import hashlib
+import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from PIL import Image
 
 from demo import vase_glb
 from export_public import export_public, verify_snapshot
 from server import Store
-from test_server import MP4, PNG, source_3mf
+from test_server import MP4, source_3mf
+
+
+def image_bytes(image, image_format="PNG", **options):
+    encoded = io.BytesIO()
+    image.save(encoded, format=image_format, **options)
+    return encoded.getvalue()
 
 
 class ExportTests(unittest.TestCase):
@@ -15,7 +25,8 @@ class ExportTests(unittest.TestCase):
         self.folder = Path(self.temp.name)
         self.store = Store(self.folder / "private")
         self.output = self.folder / "public"
-        self.image = self.store.save_asset("private-filename.png", PNG)
+        self.png = image_bytes(Image.new("RGB", (16, 12), "#397752"))
+        self.image = self.store.save_asset("private-filename.png", self.png)
         self.model = self.store.save_asset("preview.glb", vase_glb())
         self.video = self.store.save_asset("preview.mp4", MP4)
         self.original = self.store.save_asset("original.3mf", source_3mf())
@@ -36,7 +47,13 @@ class ExportTests(unittest.TestCase):
         raw = (self.output / "catalog.json").read_text(encoding="utf-8")
         for private in ["PRIVATE", "source_id", "original.3mf", self.original["id"], "private-filename"]:
             self.assertNotIn(private, raw)
-        self.assertEqual(len(list((self.output / "media").iterdir())), 3)
+        product_image = payload["entries"][0]["images"][0]
+        qr = payload["settings"]["qq_image"]
+        self.assertNotEqual(product_image["id"], qr["id"])
+        self.assertEqual(qr["id"], self.image["id"])
+        self.assertEqual(qr["url"], f'/workshop/media/{self.image["id"]}.png')
+        self.assertEqual((self.output / "media" / Path(qr["url"]).name).read_bytes(), self.png)
+        self.assertEqual(len(list((self.output / "media").iterdir())), 4)
         self.assertEqual(verify_snapshot(self.output), payload)
         self.assertEqual((payload["entries"][0]["fixed_price"], payload["entries"][0]["weight_g"]), (39, 120))
         self.assertTrue((self.store.media / f'{self.original["id"]}.3mf').exists())
@@ -76,8 +93,67 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(exported['fixed_infill'], 50)
         self.assertEqual(exported['weight_g'], 320)
         self.assertEqual(exported['color_prices'], {self.color['id']:65})
-        self.assertEqual([image['id'] for image in exported['images']], [self.image['id'], second['id']])
+        stock = next(entry for entry in payload['entries'] if entry['id'] == self.product['id'])
+        self.assertEqual(exported['images'][0], stock['images'][0])
+        self.assertNotEqual(exported['images'][0]['id'], self.image['id'])
+        svg = exported['images'][1]
+        self.assertEqual([image['id'] for image in exported['images']], [stock['images'][0]['id'], second['id']])
+        self.assertEqual(svg['url'], f'/workshop/media/{second["id"]}.svg')
+        self.assertEqual((self.output / 'media' / Path(svg['url']).name).read_bytes(),
+                         (self.store.media / f'{second["id"]}.svg').read_bytes())
         verify_snapshot(self.output)
+
+    def test_product_images_fit_inside_1280_and_use_webp_quality_80(self):
+        landscape = self.store.save_asset("landscape.jpg", image_bytes(Image.new("RGB", (1600, 800), "blue"), "JPEG"))
+        portrait = self.store.save_asset("portrait.webp", image_bytes(Image.new("RGBA", (800, 1600), (50, 90, 30, 113)),
+                                                                       "WEBP", lossless=True))
+        fixtures = [
+            (self.image, (16, 12), 255),
+            (landscape, (1280, 640), 255),
+            (portrait, (640, 1280), 113),
+        ]
+        self.store.save_entry(dict(self.product, image_ids=[asset["id"] for asset, _, _ in fixtures]), self.product["id"])
+        # The WebP container does not record the encoder's quality setting.
+        with patch.object(Image.Image, "save", autospec=True, side_effect=Image.Image.save) as save:
+            payload = export_public(self.store.folder, self.output)
+        self.assertTrue(save.called)
+        self.assertEqual({call.kwargs.get("quality") for call in save.call_args_list}, {80})
+        images = payload["entries"][0]["images"]
+        self.assertEqual(len(images), len(fixtures))
+        for public, (source, dimensions, alpha) in zip(images, fixtures):
+            with self.subTest(dimensions=dimensions):
+                data = (self.output / "media" / Path(public["url"]).name).read_bytes()
+                digest = hashlib.sha256(data).hexdigest()
+                self.assertNotEqual(digest, source["id"])
+                self.assertEqual(public["id"], digest)
+                self.assertEqual(public["url"], f"/workshop/media/{digest}.webp")
+                self.assertEqual(public["size"], len(data))
+                with Image.open(io.BytesIO(data)) as decoded:
+                    self.assertEqual((decoded.format, decoded.size), ("WEBP", dimensions))
+                    self.assertEqual(decoded.convert("RGBA").getpixel((0, 0))[3], alpha)
+
+    def test_product_image_preserves_transparent_animation_frames_and_timing(self):
+        frames = []
+        for color in ("red", "blue"):
+            frame = Image.new("RGBA", (24, 16), (0, 0, 0, 0))
+            frame.paste(color, (8, 0, 24, 16))
+            frames.append(frame)
+        data = image_bytes(frames[0], save_all=True, append_images=frames[1:], duration=[120, 240], loop=2)
+        source = self.store.save_asset("animated.png", data)
+        self.store.save_entry(dict(self.product, image_ids=[source["id"]]), self.product["id"])
+        exported = export_public(self.store.folder, self.output)["entries"][0]["images"][0]
+        with Image.open(self.output / "media" / Path(exported["url"]).name) as result:
+            self.assertEqual((result.format, result.size, result.n_frames), ("WEBP", (24, 16), 2))
+            self.assertEqual(result.info["loop"], 2)
+            for index, duration in enumerate([120, 240]):
+                result.seek(index)
+                rgba = result.convert("RGBA")
+                self.assertEqual(result.info["duration"], duration)
+                self.assertEqual(rgba.getpixel((2, 8))[3], 0)
+                red, _, blue, alpha = rgba.getpixel((18, 8))
+                self.assertEqual(alpha, 255)
+                self.assertGreater(red if index == 0 else blue, 220)
+                self.assertLess(blue if index == 0 else red, 35)
 
     def test_broken_local_asset_preserves_previous_valid_export(self):
         export_public(self.store.folder, self.output)
@@ -87,6 +163,41 @@ class ExportTests(unittest.TestCase):
             export_public(self.store.folder, self.output)
         self.assertEqual((self.output / "catalog.json").read_bytes(), before)
         verify_snapshot(self.output)
+
+    def test_watched_export_restores_catalog_and_media_when_removing_an_old_photo_fails(self):
+        second = self.store.save_asset("second.png", image_bytes(Image.new("RGB", (16, 12), "red")))
+        product = self.store.save_entry(dict(self.product, image_ids=[self.image["id"], second["id"]]), self.product["id"])
+        before = export_public(self.store.folder, self.output)
+        catalog = self.output / "catalog.json"
+        media = self.output / "media"
+        old_catalog = catalog.read_bytes()
+        old_media = {path.name: path.read_bytes() for path in media.iterdir()}
+        old_photos = {media / Path(photo["url"]).name for photo in before["entries"][0]["images"]}
+
+        replacement = self.store.save_asset("new.png", image_bytes(Image.new("RGB", (16, 12), "blue")))
+        self.store.save_entry(dict(product, image_ids=[replacement["id"]]), product["id"])
+        rename = Path.rename
+        moved_photos = []
+
+        def simulate_windows_locks(source, target):
+            if source == self.output:
+                error = PermissionError("Hugo is watching the output directory")
+                error.winerror = 5
+                raise error
+            if source in old_photos:
+                if moved_photos:
+                    self.assertFalse(moved_photos[0].exists())
+                    self.assertNotEqual(catalog.read_bytes(), old_catalog)
+                    raise PermissionError("obsolete photo is open")
+                moved_photos.append(source)
+            return rename(source, target)
+
+        with patch.object(Path, "rename", simulate_windows_locks):
+            with self.assertRaisesRegex(PermissionError, "obsolete photo is open"):
+                export_public(self.store.folder, self.output)
+        self.assertEqual(catalog.read_bytes(), old_catalog)
+        self.assertEqual({path.name: path.read_bytes() for path in media.iterdir()}, old_media)
+        self.assertEqual(verify_snapshot(self.output), before)
 
     def test_color_preview_references_only_current_public_media(self):
         color_id = self.color["id"]
@@ -100,8 +211,10 @@ class ExportTests(unittest.TestCase):
         work = self.store.save_entry(dict(work, video_ids=[]), work["id"])
         export_public(self.store.folder, self.output)
         entry = next(row for row in verify_snapshot(self.output)["entries"] if row["id"] == work["id"])
+        public_image_id = entry["images"][0]["id"]
+        self.assertNotEqual(public_image_id, self.image["id"])
         self.assertEqual(entry["color_previews"], {
-            color_id: {"image_ids": [self.image["id"]], "video_ids": [], "accent": "#FFAA11"},
+            color_id: {"image_ids": [public_image_id], "video_ids": [], "accent": "#FFAA11"},
             white["id"]: {"image_ids": [], "video_ids": []},
         })
 

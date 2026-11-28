@@ -82,7 +82,9 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
   const trigger = root.querySelector<HTMLButtonElement>('[data-open-cart]')!;
   const badge = trigger.querySelector<HTMLElement>('[data-cart-count]')!;
   const mobile = document.documentElement.dataset.ui === 'mobile';
+  const publicCatalog = root.dataset.workshopSource === 'static';
   let lines = readCart();
+  let awaitingPublicCovers = mobile && publicCatalog && lines.length > 0;
   let entries: Map<string | undefined, Entry> | undefined;
   let request: AbortController | undefined;
   let renderedLines = '';
@@ -165,7 +167,7 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
     const markup = items.map((item, index) => {
       const specs = [item.color, item.material, item.infill == null ? '' : `${item.infill}% 填充`].filter(Boolean);
       return `<li class="wk-cart-line" data-cart-line="${index}">
-        <div class="wk-cart-cover">${item.cover ? `<img src="${e(item.cover)}" alt=""${mobile ? '' : ' loading="lazy"'} decoding="async">` : ''}</div>
+        <div class="wk-cart-cover"><img alt=""${mobile ? '' : ' loading="lazy"'} decoding="async" hidden></div>
         <div class="wk-cart-item"><strong>${e(item.name)}</strong>
           ${specs.length ? `<p>${e(specs.join(' · '))}</p>` : ''}
           ${item.price == null && item.hasPreview ? '<p class="wk-cart-unavailable">已下架或规格不可用，请移除后重新选择。</p>' : ''}
@@ -183,13 +185,27 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
       list.innerHTML = markup;
       renderedLines = markup;
     }
+    if (awaitingPublicCovers) return;
+    list.querySelectorAll<HTMLImageElement>('.wk-cart-cover img').forEach((image, index) => {
+      const cover = items[index].cover;
+      if (image.getAttribute('src') === cover) return;
+      if (cover) image.src = cover;
+      else image.removeAttribute('src');
+      image.hidden = !cover;
+    });
   }
 
-  function savePreviews(catalog: Map<string | undefined, Entry>, missingOnly = false) {
+  function savePreviews(catalog: Map<string | undefined, Entry>, preserveQuotes = false) {
     const saved = readCart();
-    const prepared = saved.map(line => missingOnly && line.preview
-      ? line
-      : {...line, preview: getLineDetails(line, catalog.get(line.id))});
+    const prepared = saved.map(line => {
+      const entry = catalog.get(line.id);
+      if (preserveQuotes && line.preview) {
+        const cover = entry?.images[0]?.url ?? null;
+        if (!publicCatalog || !entry || cover === line.preview.cover) return line;
+        return {...line, preview: {...line.preview, cover}};
+      }
+      return {...line, preview: getLineDetails(line, entry)};
+    });
     if (prepared.some((line, index) => line !== saved[index])) saveCart(prepared);
     return prepared;
   }
@@ -293,16 +309,17 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
   retry.addEventListener('click', () => void refresh(), {signal});
   checkout.addEventListener('click', () => void refresh(true), {signal});
   render();
-  if (mobile && lines.some(line => !line.preview)) {
-    // Prepare older saved carts at page entry without replacing the contents of an already open dialog.
+  if (awaitingPublicCovers || (mobile && lines.some(line => !line.preview))) {
+    // The public page and cart share one catalog request. Keep saved prices until checkout.
     void api<{entries: Entry[]}>('/api/catalog', signal).then(({entries: initial}) => {
       if (signal.aborted) return;
-      const prepared = savePreviews(new Map(initial.map(entry => [entry.id, entry])), true);
-      if (!dialog.open) {
-        lines = prepared;
-        render();
-      }
-    }).catch(() => {});
+      const prepared = savePreviews(entries ?? new Map(initial.map(entry => [entry.id, entry])), true);
+      if (publicCatalog || !dialog.open) lines = prepared;
+    }).catch(() => {}).finally(() => {
+      if (signal.aborted) return;
+      awaitingPublicCovers = false;
+      render();
+    });
   }
 
   return (selection: CartSelection, entry: Entry, event: MouseEvent, detailSignal: AbortSignal) => {

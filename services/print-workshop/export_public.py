@@ -7,6 +7,8 @@ import json
 import re
 import shutil
 import tempfile
+from contextlib import ExitStack
+from io import BytesIO
 from pathlib import Path
 
 from server import ROOT, WORKSHOP_TOPICS, Problem, Store, integer, normalize_color_previews, normalize_color_prices, single_weight
@@ -90,18 +92,51 @@ def verify_snapshot(folder):
     return payload
 
 
-def export_public(data_dir, output):
-    data_dir, output = Path(data_dir).resolve(), Path(output).resolve()
-    if not (data_dir / "workshop.sqlite3").is_file():
-        raise ValueError("Local workshop database does not exist; nothing exported")
-    if output.is_relative_to(data_dir) or data_dir.is_relative_to(output):
-        raise ValueError("Export and private data directories must be separate")
-    if output.exists():
-        verify_snapshot(output)  # Never replace an unrelated directory.
-    store = Store(data_dir)
-    assets = {}
+def encode_product_photo(data):
+    # Only the local exporter encodes photos. CI can verify snapshots without Pillow.
+    from PIL import Image, ImageCms, ImageOps
 
-    def public_asset(asset):
+    with Image.open(BytesIO(data)) as source:
+        icc = source.info.get("icc_profile")
+        profile = ImageCms.ImageCmsProfile(BytesIO(icc)) if icc else None
+        srgb = ImageCms.createProfile("sRGB") if profile else None
+        # A multi-picture JPEG can contain an HDR gain map after the main photo.
+        animated = source.format in ("PNG", "WEBP") and source.is_animated
+        first_frame = int(animated and source.info.get("default_image", False))
+        loop = source.info.get("loop", 0)
+        frames, durations = [], []
+        for index in range(first_frame, source.n_frames if animated else 1):
+            source.seek(index)
+            frame = ImageOps.exif_transpose(source)
+            alpha = frame.convert("RGBA").getchannel("A") if frame.has_transparency_data else None
+            if profile:
+                colors = frame.getchannel("L") if frame.mode == "LA" else frame
+                if colors.mode not in ("RGB", "CMYK", "L", "LAB"):
+                    colors = colors.convert("RGB")
+                frame = ImageCms.profileToProfile(colors, profile, srgb, outputMode="RGB")
+            else:
+                frame = frame.convert("RGB")
+            if alpha is not None:
+                frame.putalpha(alpha)
+            frame.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+            frame.info.clear()
+            frames.append(frame)
+            durations.append(source.info.get("duration", 0))
+        options = {}
+        if animated:
+            options.update(save_all=True, append_images=frames[1:], duration=durations, loop=loop)
+            if any(frame.mode == "RGBA" for frame in frames):
+                # Delta-only frames can drop a transparent margin from the WebP canvas.
+                options.update(kmin=0, kmax=1)
+        encoded = BytesIO()
+        frames[0].save(encoded, format="WEBP", quality=80, method=6, **options)
+        return encoded.getvalue()
+
+
+def build_snapshot(store, media):
+    photos = {}
+
+    def public_asset(asset, *, product_photo=False):
         if asset is None:
             return None
         if asset["kind"] not in ("image", "video", "model"):
@@ -112,32 +147,93 @@ def export_public(data_dir, output):
         source = store.media / filename
         if source.is_symlink() or source.resolve().parent != store.media:
             raise ValueError("Asset must remain inside local media storage")
-        assets[filename] = source
+        asset_id, size = asset["id"], asset["size"]
+        if product_photo and asset["ext"] != "svg":
+            if asset_id in photos:
+                return photos[asset_id]
+            original = source.read_bytes()
+            if len(original) != size or hashlib.sha256(original).hexdigest() != asset_id:
+                raise ValueError("Local product photo integrity mismatch")
+            encoded = encode_product_photo(original)
+            asset_id = hashlib.sha256(encoded).hexdigest()
+            filename, size = asset_id + ".webp", len(encoded)
+            (media / filename).write_bytes(encoded)
+        elif not (media / filename).exists():
+            shutil.copyfile(source, media / filename)
         names = {"image": "预览图片", "video": "预览视频", "model": "3D 预览"}
-        return {"id": asset["id"], "name": names[asset["kind"]],
-                "url": "/workshop/media/" + filename, "kind": asset["kind"], "size": asset["size"]}
+        result = {"id": asset_id, "name": names[asset["kind"]],
+                  "url": "/workshop/media/" + filename, "kind": asset["kind"], "size": size}
+        if product_photo:
+            photos[asset["id"]] = result
+        return result
 
     entries = []
     for entry in store.get_entries():
         public = {key: entry[key] for key in sorted(ENTRY_FIELDS) if key in entry}
-        public.update(images=[public_asset(asset) for asset in entry["images"]],
+        public.update(images=[public_asset(asset, product_photo=True) for asset in entry["images"]],
                       videos=[public_asset(asset) for asset in entry.get("videos", [])],
                       model=public_asset(entry["model"]), colors=entry["colors"])
+        if "color_previews" in public:
+            public["color_previews"] = {
+                color: {**preview, "image_ids": list(dict.fromkeys(photos[key]["id"] for key in preview["image_ids"]))}
+                for color, preview in entry["color_previews"].items()
+            }
         entries.append(public)
     settings = store.settings()
-    payload = {"version": 1, "entries": entries,
-               "settings": {"name": settings["name"], "qq_image": public_asset(settings["qq_image"])}}
+    return {"version": 1, "entries": entries,
+            "settings": {"name": settings["name"], "qq_image": public_asset(settings["qq_image"])}}
+
+
+def replace_watched_snapshot(stage, output, previous):
+    # Hugo's Windows watcher can hold the directory open. The media names are
+    # content hashes, so both catalogs can coexist while the manifest switches.
+    current_media, staged_media = output / "media", stage / "media"
+    current_media.mkdir(exist_ok=True)
+    old_names = {path.name for path in current_media.iterdir() if path.is_file()}
+    new_names = {path.name for path in staged_media.iterdir()}
+    previous.mkdir()
+    catalog = output / "catalog.json"
+    saved_catalog = previous / "catalog.json"
+    shutil.copyfile(catalog, saved_catalog)
+    with ExitStack() as rollback:
+        for name in new_names - old_names:
+            target = current_media / name
+            (staged_media / name).rename(target)
+            rollback.callback(target.unlink)
+        (stage / "catalog.json").replace(catalog)
+        rollback.callback(saved_catalog.replace, catalog)
+        for name in old_names - new_names:
+            saved = previous / name
+            (current_media / name).rename(saved)
+            rollback.callback(saved.rename, current_media / name)
+        rollback.pop_all()
+
+
+def export_public(data_dir, output):
+    data_dir, output = Path(data_dir).resolve(), Path(output).resolve()
+    if not (data_dir / "workshop.sqlite3").is_file():
+        raise ValueError("Local workshop database does not exist; nothing exported")
+    if output.is_relative_to(data_dir) or data_dir.is_relative_to(output):
+        raise ValueError("Export and private data directories must be separate")
+    if output.exists():
+        verify_snapshot(output)  # Never replace an unrelated directory.
+    store = Store(data_dir)
     output.parent.mkdir(parents=True, exist_ok=True)
     # Build and verify a separate folder before replacing the previous export.
     with tempfile.TemporaryDirectory(prefix=".workshop-export-", dir=output.parent) as temporary:
         stage, previous = Path(temporary) / "next", Path(temporary) / "previous"
         (stage / "media").mkdir(parents=True)
-        for filename, source in assets.items():
-            shutil.copyfile(source, stage / "media" / filename)
+        payload = build_snapshot(store, stage / "media")
         (stage / "catalog.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         verify_snapshot(stage)
         if output.exists():
-            output.rename(previous)
+            try:
+                output.rename(previous)
+            except PermissionError as error:
+                if getattr(error, "winerror", None) not in (5, 32):
+                    raise
+                replace_watched_snapshot(stage, output, previous)
+                return payload
         try:
             stage.rename(output)
         except OSError:
