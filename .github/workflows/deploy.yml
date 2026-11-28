@@ -52,6 +52,8 @@ jobs:
           AWS_DEFAULT_REGION: auto
           BUCKET: ${{ secrets.R2_BUCKET_NAME }}
           ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+          MODEL_BROTLI_PREFIX: workshop/models-br
         run: |
           aws s3 sync public/ s3://$BUCKET/ \
             --endpoint-url $ENDPOINT \
@@ -67,8 +69,18 @@ jobs:
             --include "*.glb" \
             --include "*.pdf" --include "*.zip" \
             --include "*.epub" \
+            --exclude "$MODEL_BROTLI_PREFIX/*" \
             --delete \
             || echo "R2 upload failed (continuing...)"
+
+          model_dir="$(mktemp -d)"
+          node scripts/prepare-workshop-models.cjs public/workshop "$model_dir" "${R2_PUBLIC_URL%/}/$MODEL_BROTLI_PREFIX/"
+          aws s3 sync "$model_dir/" "s3://$BUCKET/$MODEL_BROTLI_PREFIX/" \
+            --endpoint-url "$ENDPOINT" \
+            --content-type model/gltf-binary \
+            --content-encoding br \
+            --cache-control "public, max-age=31536000, immutable, no-transform" \
+            --size-only --delete
 
       - name: Replace media links
         env:

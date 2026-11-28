@@ -1,4 +1,4 @@
-export type Asset = {id: string; name: string; url: string | null; kind: string; size: number};
+export type Asset = {id: string; name: string; url: string | null; brotli_url?: string; kind: string; size: number};
 export type Color = {id: string; name: string; hex: string; active: number; material: string};
 export type ColorPreview = {image_ids: string[]; video_ids: string[]; accent?: string};
 export type Entry = {id?: string; revision?: number; name: string; description: string; material: string; kind: 'work'|'product'; status: 'draft'|'published'|'archived'; topic?: string; topic_only?: boolean; min_price: number; max_price: number; fixed_price: number|null; fixed_infill?: number|null; weight_g: number|null; weight_approximate?: boolean; min_weight_g: number|null; max_weight_g: number|null; color_ids: string[]; image_ids: string[]; video_ids: string[]; model_id: string|null; source_id: string|null; images: Asset[]; videos: Asset[]; model: Asset|null; source?: Asset|null; colors: Color[]; color_previews?: Record<string, ColorPreview>; color_prices?: Record<string, number>; is_demo: boolean};

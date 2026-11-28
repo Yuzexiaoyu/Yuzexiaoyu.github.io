@@ -376,6 +376,10 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     const loading=container.querySelector<HTMLElement>('[data-viewer-loading]');
     const failed=container.querySelector<HTMLElement>('[data-viewer-failed]');
     let viewerReady=false;let viewerFailed=false;
+    const originalModelUrl = entry.model?.url;
+    const brotliUrl = entry.model?.brotli_url;
+    let modelUrl = originalModelUrl && brotliUrl?.startsWith('https://') ? brotliUrl : originalModelUrl;
+    let modelRequested = false;
     let imageIndex=0;let videoIndex=Math.max(0,initialVideoIndex);
     let videoNeedsPlay=false,videoPlayAttempt=0;
     let soundWasBlocked=false;
@@ -420,13 +424,22 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     const paint=()=>{if(configurable&&viewer?.model&&color) for(const material of viewer.model.materials){const pbr=material.pbrMetallicRoughness;pbr.baseColorTexture?.setTexture(null);pbr.setBaseColorFactor(color.hex);}};
     const viewerError=()=>{
       if(signal.aborted)return;
+      modelRequested=false;
       viewerFailed=true;
       if(loading)loading.hidden=true;
       if(failed)failed.hidden=viewer.hidden;
     };
     const openModel=(retry=false)=>{
+      const source = modelUrl;
+      if (!source || modelRequested || signal.aborted) return;
+      modelRequested = true;
       loadViewer().then(()=>{
-        if(!signal.aborted)viewer.src=entry.model!.url+(retry?'?retry='+Date.now():'');
+        if (signal.aborted) return;
+        if (retry) {
+          const url = new URL(source, document.baseURI);
+          url.searchParams.set('retry', String(Date.now()));
+          viewer.src = url.href;
+        } else viewer.src = source;
       }).catch(viewerError);
     };
     const selectView=(view:'model'|'photo'|'video'|'empty')=>{
@@ -491,7 +504,15 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     }
     if(viewer){
       viewer.addEventListener('load',()=>{if(signal.aborted)return;viewerReady=true;viewerFailed=false;loading!.hidden=true;failed!.hidden=true;paint();},{signal});
-      viewer.addEventListener('error',viewerError,{signal});
+      viewer.addEventListener('error', (event: CustomEvent) => {
+        if (signal.aborted) return;
+        if (event.detail?.type === 'loadfailure' && modelRequested && originalModelUrl && modelUrl !== originalModelUrl) {
+          modelUrl = originalModelUrl;
+          viewer.src = originalModelUrl;
+          return;
+        }
+        viewerError();
+      }, {signal});
       container.querySelector('[data-reset-view]')!.addEventListener('click',()=>{selectView('model');viewer.cameraOrbit=cameraOrbit;viewer.cameraTarget='auto auto auto';viewer.fieldOfView='auto';viewer.jumpCameraToGoal?.();},{signal});
       container.querySelector('[data-retry-viewer]')!.addEventListener('click',()=>{viewerFailed=false;failed!.hidden=true;loading!.hidden=false;openModel(true);},{signal});
     }
