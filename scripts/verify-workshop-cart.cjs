@@ -171,6 +171,58 @@ test('the cart plays the full arc when the browser requests reduced motion', asy
   }
 });
 
+test('mobile cart prepares items at add time and fetches fresh prices at checkout', async () => {
+  const page = await browser.newPage(devices['iPhone 13']);
+  const catalogPath = /\/(?:api\/catalog|workshop\/catalog\.json)$/;
+  let price = 15;
+  let catalogRequests = 0;
+  try {
+    await page.route(catalogPath, async route => {
+      catalogRequests++;
+      const response = await route.fetch();
+      const data = await response.json();
+      data.entries.find(item => item.name === keychainName).fixed_price = price;
+      await route.fulfill({response, json: data});
+    });
+    await page.goto(base + '/prints/');
+    await openKeychainDetail(page);
+    await page.locator('[data-add-cart]').click();
+    const trigger = page.locator('[data-open-cart]');
+    const cart = page.locator('[data-cart]');
+    const total = cart.locator('[data-cart-total]');
+    await cart.waitFor({state:'hidden'});
+    assert.equal(await total.textContent(), '¥15');
+    assert.equal(await cart.locator('.wk-cart-cover img').count(), 1);
+    const line = cart.locator('[data-cart-line]');
+    const prepared = await line.elementHandle();
+    const requestsBeforeOpen = catalogRequests;
+    price = 19;
+    for (let opening = 0; opening < 2; opening++) {
+      await trigger.click();
+      assert.equal(await total.innerText(), '¥15');
+      assert.equal(await line.evaluate((row, before) => row === before, prepared), true);
+      assert.equal(await cart.getByText('正在核对报价…').count(), 0);
+      await cart.getByRole('button', {name: '关闭购物车'}).click();
+      await cart.waitFor({state:'hidden'});
+    }
+    assert.equal(catalogRequests, requestsBeforeOpen);
+
+    await page.reload();
+    await page.locator('.wk-config [data-price]').getByText('¥19', {exact: true}).waitFor();
+    assert.equal(await total.textContent(), '¥15');
+    const requestsBeforeCheckout = catalogRequests;
+    await trigger.click();
+    assert.equal(await total.innerText(), '¥15');
+    assert.equal(catalogRequests, requestsBeforeCheckout);
+    await cart.getByRole('button', {name: '生成清单 · QQ 联系'}).click();
+    const contact = page.getByRole('dialog', {name: 'QQ 联系'});
+    assert.match(await contact.locator('[data-contact-text]').inputValue(), /合计：¥19$/);
+    assert.equal(catalogRequests, requestsBeforeCheckout + 1);
+  } finally {
+    await page.close();
+  }
+});
+
 test('cart checkout refreshes prices and leaves an unavailable line visible and removable', async () => {
   const page = await browser.newPage();
   const change = {price: 15, archived: false, offline: false};

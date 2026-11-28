@@ -1,4 +1,5 @@
 export function bindExpeditionImprint(root: HTMLElement, template: HTMLTemplateElement, signal: AbortSignal) {
+  const mobile = document.documentElement.dataset.ui === 'mobile';
   const layer = document.createElement('div');
   layer.className = 'exp33-imprint-layer';
   layer.setAttribute('aria-hidden', 'true');
@@ -20,7 +21,8 @@ export function bindExpeditionImprint(root: HTMLElement, template: HTMLTemplateE
   root.addEventListener('pointerdown', event => { lastPointerType = event.pointerType; }, {capture:true, passive:true, signal});
   root.addEventListener('click', event => {
     const pointerType = (event as PointerEvent).pointerType || lastPointerType;
-    if (pointerType !== 'mouse' || event.button !== 0 || event.detail === 0) return;
+    const canImprint = pointerType === 'mouse' || (mobile && pointerType === 'touch');
+    if (!canImprint || event.button !== 0 || event.detail === 0) return;
 
     // Card and cart clicks can change the topmost dialog before the event reaches the topic.
     const dialog = document.elementFromPoint(event.clientX, event.clientY)?.closest('dialog[open]');

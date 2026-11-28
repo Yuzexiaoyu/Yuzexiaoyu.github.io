@@ -3,7 +3,8 @@ import {publicApi as api} from './workshop-public';
 import {Entry, Settings, abortError, escapeHTML as e, money, setStatus, workPriceAt} from './workshop-shared';
 
 type CartSelection = {id: string; name: string; colorId?: string; infill?: number};
-type CartLine = CartSelection & {quantity: number};
+type CartPreview = {name: string; color: string; infill: number | null; material: string; price: number | null; cover: string | null};
+type CartLine = CartSelection & {quantity: number; preview?: CartPreview};
 const storageKey = 'workshop-cart-v1';
 const maxQuantity = 99;
 let memory: CartLine[] = [];
@@ -13,16 +14,26 @@ function sameSelection(a: CartSelection, b: CartSelection) {
   return a.id === b.id && a.colorId === b.colorId && a.infill === b.infill;
 }
 
+function validPreview(preview: unknown): preview is CartPreview {
+  if (!preview || typeof preview !== 'object') return false;
+  const value = preview as Partial<CartPreview>;
+  return typeof value.name === 'string' && typeof value.color === 'string' && typeof value.material === 'string'
+    && (value.cover === null || typeof value.cover === 'string')
+    && (value.infill === null || Number.isInteger(value.infill))
+    && (value.price === null || (typeof value.price === 'number' && Number.isInteger(value.price) && value.price >= 0));
+}
+
 function readCart(): CartLine[] {
   if (memoryOnly) return memory;
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(storageKey) ?? '[]');
     if (Array.isArray(saved)) {
-      return saved.filter((line): line is CartLine =>
+      const lines = saved.filter((line): line is CartLine =>
         !!line && typeof line.id === 'string' && typeof line.name === 'string' &&
         Number.isInteger(line.quantity) && line.quantity > 0 && line.quantity <= maxQuantity &&
         (line.colorId === undefined ||
           (typeof line.colorId === 'string' && Number.isInteger(line.infill) && line.infill >= 15 && line.infill <= 100)));
+      return lines.map(line => validPreview(line.preview) ? line : {...line, preview: undefined});
     }
     return [];
   } catch {
@@ -37,7 +48,7 @@ function saveCart(lines: CartLine[]) {
   catch { memoryOnly = true; }
 }
 
-function getLineDetails(line: CartLine, entry?: Entry) {
+function getLineDetails(line: CartSelection, entry?: Entry): CartPreview {
   const configurable = entry?.kind === 'work';
   const color = configurable ? entry.colors.find(option => option.id === line.colorId && option.active) : undefined;
   const infill = configurable ? line.infill : entry?.fixed_infill;
@@ -48,10 +59,14 @@ function getLineDetails(line: CartLine, entry?: Entry) {
       price = workPriceAt(entry, color.id, infill);
     }
   }
-  const material = configurable ? color?.material : entry?.material;
-  const name = entry?.name ?? line.name;
-  const cover = entry?.images[0]?.url;
-  return {name, color, infill, material, price, cover, quantity: line.quantity};
+  return {
+    name: entry?.name ?? line.name,
+    color: color?.name ?? '',
+    infill: infill ?? null,
+    material: (configurable ? color?.material : entry?.material) ?? '',
+    price,
+    cover: entry?.images[0]?.url ?? null,
+  };
 }
 
 export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openContact: OpenContact) {
@@ -66,9 +81,11 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
   const checkout = dialog.querySelector<HTMLButtonElement>('[data-cart-checkout]')!;
   const trigger = root.querySelector<HTMLButtonElement>('[data-open-cart]')!;
   const badge = trigger.querySelector<HTMLElement>('[data-cart-count]')!;
+  const mobile = document.documentElement.dataset.ui === 'mobile';
   let lines = readCart();
   let entries: Map<string | undefined, Entry> | undefined;
   let request: AbortController | undefined;
+  let renderedLines = '';
   let failed = false;
   let landing: Animation | undefined;
 
@@ -122,7 +139,10 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
     });
   }
 
-  const getItems = () => lines.map(line => getLineDetails(line, entries?.get(line.id)));
+  const getItems = () => lines.map(line => {
+    const preview = mobile ? line.preview : entries && getLineDetails(line, entries.get(line.id));
+    return {...(preview ?? getLineDetails(line)), hasPreview: preview !== undefined, quantity: line.quantity};
+  });
   const sum = (items: ReturnType<typeof getItems>) =>
     items.reduce((subtotal, item) => subtotal + (item.price ?? 0) * item.quantity, 0);
 
@@ -131,23 +151,24 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
     badge.hidden = !count;
     badge.textContent = count > 99 ? '99+' : String(count);
     trigger.setAttribute('aria-label', count ? `购物车，${count} 件` : '购物车');
-    if (!dialog.open) return;
+    if (!mobile && !dialog.open) return;
     const items = getItems();
-    const unavailable = !!entries && items.some(item => item.price == null);
+    const unavailable = items.some(item => item.hasPreview && item.price == null);
+    const hasPrices = count > 0 && items.every(item => item.hasPreview) && !unavailable;
     empty.hidden = !!count;
     list.hidden = footer.hidden = !count;
     retry.hidden = !failed;
-    checkout.disabled = !count || !!request || !entries || unavailable;
+    checkout.disabled = !count || !!request || (!mobile && !hasPrices) || unavailable || failed;
     const subtotal = money(sum(items));
     dialog.style.setProperty('--wk-cart-amount-chars', String(subtotal.length));
-    total.textContent = entries && !unavailable ? subtotal : '—';
-    list.innerHTML = items.map((item, index) => {
-      const specs = [item.color?.name, item.material, item.infill == null ? '' : `${item.infill}% 填充`].filter(Boolean);
+    total.textContent = hasPrices ? subtotal : '—';
+    const markup = items.map((item, index) => {
+      const specs = [item.color, item.material, item.infill == null ? '' : `${item.infill}% 填充`].filter(Boolean);
       return `<li class="wk-cart-line" data-cart-line="${index}">
-        <div class="wk-cart-cover">${item.cover ? `<img src="${e(item.cover)}" alt="" loading="lazy" decoding="async">` : ''}</div>
+        <div class="wk-cart-cover">${item.cover ? `<img src="${e(item.cover)}" alt=""${mobile ? '' : ' loading="lazy"'} decoding="async">` : ''}</div>
         <div class="wk-cart-item"><strong>${e(item.name)}</strong>
           ${specs.length ? `<p>${e(specs.join(' · '))}</p>` : ''}
-          ${item.price == null && entries ? '<p class="wk-cart-unavailable">已下架或规格不可用，请移除后重新选择。</p>' : ''}
+          ${item.price == null && item.hasPreview ? '<p class="wk-cart-unavailable">已下架或规格不可用，请移除后重新选择。</p>' : ''}
         </div>
         ${item.price == null ? '' : `<strong class="wk-cart-subtotal">${money(item.price * item.quantity)}</strong>`}
         <div class="wk-cart-quantity" role="group" aria-label="${e([item.name, ...specs].join('，'))}">
@@ -158,6 +179,19 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
         <button type="button" class="wk-cart-remove" data-cart-action="remove" aria-label="移除 ${e(item.name)}">移除</button>
       </li>`;
     }).join('');
+    if (markup !== renderedLines) {
+      list.innerHTML = markup;
+      renderedLines = markup;
+    }
+  }
+
+  function savePreviews(catalog: Map<string | undefined, Entry>, missingOnly = false) {
+    const saved = readCart();
+    const prepared = saved.map(line => missingOnly && line.preview
+      ? line
+      : {...line, preview: getLineDetails(line, catalog.get(line.id))});
+    if (prepared.some((line, index) => line !== saved[index])) saveCart(prepared);
+    return prepared;
   }
 
   async function refresh(forContact = false) {
@@ -174,13 +208,14 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
       ]);
       if (current.signal.aborted) return;
       entries = new Map(latest.entries.map(entry => [entry.id, entry]));
+      if (mobile) lines = savePreviews(entries);
       const items = getItems();
       const unavailable = items.some(item => item.price == null);
       setStatus(feedback, unavailable ? '请先移除不可用的商品。' : '', unavailable);
       if (settings && items.length && !unavailable) {
         const text = items.map(item => [
           `商品：${item.name}`, `材质：${item.material || '—'}`,
-          ...(item.color ? [`颜色：${item.color.name}`] : []),
+          ...(item.color ? [`颜色：${item.color}`] : []),
           ...(item.infill == null ? [] : [`填充比例：${item.infill}%`]),
           `数量：${item.quantity}`, `小计：${money(item.price! * item.quantity)}`,
         ].join('\n')).join('\n\n');
@@ -206,15 +241,20 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
   function sync() {
     lines = readCart();
     render();
-    if (dialog.open && lines.length && !entries && !request && !failed) void refresh();
+    if (!mobile && dialog.open && lines.length && !entries && !request && !failed) void refresh();
   }
   trigger.hidden = false;
   trigger.addEventListener('click', () => {
     entries = undefined;
     failed = false;
     setStatus(feedback, '');
-    dialog.showModal();
-    sync();
+    if (mobile) {
+      sync();
+      dialog.showModal();
+    } else {
+      dialog.showModal();
+      sync();
+    }
   }, {signal});
   close.addEventListener('click', () => dialog.close(), {signal});
   dialog.addEventListener('click', event => {
@@ -253,13 +293,27 @@ export function bindWorkshopCart(root: HTMLElement, signal: AbortSignal, openCon
   retry.addEventListener('click', () => void refresh(), {signal});
   checkout.addEventListener('click', () => void refresh(true), {signal});
   render();
+  if (mobile && lines.some(line => !line.preview)) {
+    // Prepare older saved carts at page entry without replacing the contents of an already open dialog.
+    void api<{entries: Entry[]}>('/api/catalog', signal).then(({entries: initial}) => {
+      if (signal.aborted) return;
+      const prepared = savePreviews(new Map(initial.map(entry => [entry.id, entry])), true);
+      if (!dialog.open) {
+        lines = prepared;
+        render();
+      }
+    }).catch(() => {});
+  }
 
-  return (selection: CartSelection, event: MouseEvent, detailSignal: AbortSignal) => {
+  return (selection: CartSelection, entry: Entry, event: MouseEvent, detailSignal: AbortSignal) => {
     lines = readCart();
     const existing = lines.find(line => sameSelection(line, selection));
     if (existing?.quantity === maxQuantity) return false;
-    if (existing) existing.quantity++;
-    else lines.push({...selection, quantity: 1});
+    const preview = getLineDetails(selection, entry);
+    if (existing) {
+      existing.quantity++;
+      existing.preview = preview;
+    } else lines.push({...selection, quantity: 1, preview});
     saveCart(lines);
     render();
     flyToCart(event, detailSignal);

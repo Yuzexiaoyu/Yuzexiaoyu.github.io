@@ -53,6 +53,8 @@ python services/print-workshop/server.py --build --demo
 
 ## 发布到现有网站
 
+部署遵循仓库的[站点部署约定](../../AGENTS.md)。
+
 线上工坊使用静态公开目录，本地管理后台仍只在当前电脑运行。管理后台保存内容不会立即改变线上页面；修改完成后，在项目目录执行：
 
 ```powershell

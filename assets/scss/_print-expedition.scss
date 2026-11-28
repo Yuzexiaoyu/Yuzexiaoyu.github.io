@@ -88,6 +88,70 @@ body.template-workshop {
   .wk-topic-items .wk-card-price { display: block; margin-top: 3px; font-size: 13px; color: #ddcbb0; }
   .wk-topic-items .wk-card-price small { display: inline; margin-inline-start: 6px; }
   .wk-topic-status { grid-column: 1/-1; margin: 0; color: #b6b7b3; }
+  [data-topic="expedition-33"] [data-topic-item] {
+    --ribbon: #70313c;
+    border-color: transparent;
+    border-radius: 2px;
+    background: transparent;
+    box-shadow: none;
+    &::before { content: none; }
+
+    .wk-card-image { background: var(--topic-bg); }
+    .wk-card-image::before {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      left: 10px;
+      width: 32px;
+      height: 48px;
+      background: var(--ribbon);
+      clip-path: $exp33-ribbon;
+      pointer-events: none;
+    }
+    // A split monolith and its halo, stamped in ivory on the cloth tab.
+    .wk-card-image::after {
+      inset: 4px auto auto 12px;
+      z-index: 1;
+      width: 28px;
+      height: 34px;
+      background: #fff0d1;
+      clip-path: $exp33-monolith;
+    }
+    // Maelle's fencing foil and swept guard.
+    &[data-entry-kind="work"] .wk-card-image::after {
+      clip-path: $exp33-foil;
+    }
+    .wk-card-info {
+      background: linear-gradient(108deg, rgba(246, 238, 219, .75), rgba(231, 216, 187, .70));
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+    }
+    h3 {
+      color: #2c2622;
+      font-family: $exp33-title-font;
+      font-weight: 600;
+    }
+    .exp33-price-line {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      margin-top: 3px;
+      color: #655747;
+      font-size: 13px;
+    }
+    .wk-card-price, .wk-card-price small {
+      margin-top: 0;
+      color: var(--ribbon);
+      font-weight: 600;
+    }
+
+    &:is(:hover, :focus-visible) {
+      --ribbon: #55222e;
+      h3 { color: var(--ribbon); }
+    }
+    &:focus-visible { outline-color: #fff1c6; }
+  }
+
   .wk-stage > model-viewer[data-topic-model] { background: radial-gradient(ellipse at 50% 42%, #596367, #3a4449 73%); }
 
   .wk-topic-detail {
@@ -187,70 +251,6 @@ html:not([data-ui="mobile"]) body.template-workshop {
     padding-top: 0;
   }
 
-  [data-topic="expedition-33"] [data-topic-item] {
-    --ribbon: #70313c;
-    border-color: transparent;
-    border-radius: 2px;
-    background: transparent;
-    box-shadow: none;
-    &::before { content: none; }
-
-    .wk-card-image { background: var(--topic-bg); }
-    .wk-card-image::before {
-      content: "";
-      position: absolute;
-      z-index: 1;
-      top: 0;
-      left: 10px;
-      width: 32px;
-      height: 48px;
-      background: var(--ribbon);
-      clip-path: $exp33-ribbon;
-      pointer-events: none;
-    }
-    // A split monolith and its halo, stamped in ivory on the cloth tab.
-    .wk-card-image::after {
-      inset: 4px auto auto 12px;
-      z-index: 1;
-      width: 28px;
-      height: 34px;
-      background: #fff0d1;
-      clip-path: $exp33-monolith;
-    }
-    // Maelle's fencing foil and swept guard.
-    &[data-entry-kind="work"] .wk-card-image::after {
-      clip-path: $exp33-foil;
-    }
-    .wk-card-info {
-      background: linear-gradient(108deg, rgba(246, 238, 219, .75), rgba(231, 216, 187, .70));
-      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
-    }
-    h3 {
-      color: #2c2622;
-      font-family: $exp33-title-font;
-      font-weight: 600;
-    }
-    .exp33-price-line {
-      display: flex;
-      align-items: baseline;
-      gap: 7px;
-      margin-top: 3px;
-      color: #655747;
-      font-size: 13px;
-    }
-    .wk-card-price, .wk-card-price small {
-      margin-top: 0;
-      color: var(--ribbon);
-      font-weight: 600;
-    }
-
-    &:is(:hover, :focus-visible) {
-      --ribbon: #55222e;
-      h3 { color: var(--ribbon); }
-    }
-    &:focus-visible { outline-color: #fff1c6; }
-  }
-
   .wk-topic:has(.wk-topic-detail[open]) .wk-topic-items { visibility: hidden; }
 
   .wk-topic-detail {
@@ -346,6 +346,22 @@ body.template-workshop [data-expedition-detail] {
     border: 1px solid var(--exp33-rule);
     border-radius: 10px;
     background: #131113;
+  }
+  :is(.wk-photo-status, .wk-viewer-loading, .wk-viewer-failed) {
+    border: 1px solid var(--exp33-rule);
+    background: #2a1b22f2;
+    color: var(--exp33-ink);
+  }
+  .wk-viewer-loading > span {
+    border-radius: 1px;
+    transform: rotate(45deg);
+    background: var(--exp33-gold);
+    box-shadow: 0 0 7px #ecc79059;
+  }
+  .wk-viewer-failed .wk-button {
+    border-color: var(--exp33-rule);
+    background: var(--exp33-wine);
+    color: var(--exp33-ink);
   }
   .exp33-stage-frame {
     position: absolute;
@@ -473,6 +489,45 @@ html[data-ui="mobile"] body.template-workshop:has(.wk-topic) {
   .wk-topic-items { padding-bottom: Max(16px, env(safe-area-inset-bottom, 0px)); }
   .wk-topic-items .wk-grid { gap: 12px; }
   .wk-topic-items .wk-card-image { aspect-ratio: 1; }
+
+  [data-topic="expedition-33"] .wk-topic-scene:has(> .wk-topic-items:not([hidden])) {
+    // The numerals end about 28.5% down the artwork. Account for the cover crop before placing the cards.
+    --exp33-wallpaper-height: calc(100lvh - var(--m-header-height, 60px));
+    --exp33-art-height: Max(var(--exp33-wallpaper-height), calc(100vw * 9 / 16));
+    --exp33-number-bottom: calc(var(--exp33-wallpaper-height) * .24 + var(--exp33-art-height) * .045);
+
+    > .wk-topic-inner { min-height: var(--exp33-number-bottom); }
+    > .wk-topic-items { margin-top: 0; padding-top: 16px; }
+    [data-topic-grid] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-inline: auto;
+    }
+
+    @media (max-width: 80lvh) {
+      --exp33-art-height: Max(var(--exp33-wallpaper-height), calc(100vw * 16 / 9));
+      --exp33-number-bottom: calc(var(--exp33-wallpaper-height) / 2 - var(--exp33-art-height) * .215);
+    }
+  }
+
+  [data-topic="expedition-33"] [data-topic-item] {
+    display: flex;
+    flex-direction: column;
+
+    .wk-card-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 4px;
+      padding: 9px 10px;
+      background: linear-gradient(108deg, #f2e8d2e6, #e7d8bbd1);
+    }
+    h3 { font-size: 14px; line-height: 1.35; }
+    .exp33-price-line { gap: 6px; margin-top: 0; font-size: 12px; }
+    .wk-card-price { font-size: 15px; }
+    &:focus-visible { outline-color: #fff1c6 !important; }
+  }
 
   .wk-topic-scene:has(.wk-topic-inline:not([hidden])) .wk-topic-wallpaper::after {
     background: linear-gradient(0deg, #0b1014c2, transparent 70%);

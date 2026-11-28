@@ -17,6 +17,21 @@ async function playing(page, suffix) {
   },suffix,{timeout:15000});
 }
 
+async function dragTouch(page, from, to) {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[from]});
+    for (let step = 1; step <= 6; step++) {
+      const x = from.x + (to.x - from.x) * step / 6;
+      const y = from.y + (to.y - from.y) * step / 6;
+      await cdp.send('Input.dispatchTouchEvent', {type:'touchMove', touchPoints:[{x, y}]});
+    }
+    await cdp.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
+  } finally {
+    await cdp.detach();
+  }
+}
+
 test('workshop navigation still works when the preload plugin fails to load', async () => {
   const page = await browser.newPage();
   const errors = [];
@@ -103,6 +118,70 @@ test('expedition imprint follows mouse clicks through dialogs and workshop navig
     assert.equal(await page.evaluate(() => window.imprintDocument === document), true);
     await page.mouse.click(640, 160);
     assert.equal(await mark.count(), 1);
+  } finally { await page.close(); }
+});
+
+test('mobile touches leave an expedition imprint while a gallery swipe does not', async () => {
+  const page = await browser.newPage(devices['iPhone 13']);
+  const mark = page.locator('.exp33-imprint');
+  const card = page.locator('[data-topic-item]').first();
+  const inline = page.locator('[data-topic-inline]');
+  try {
+    await page.goto(topic, {waitUntil:'domcontentloaded'});
+    await card.waitFor();
+
+    await page.touchscreen.tap(195, 160);
+    await mark.waitFor({state:'attached'});
+    assert.deepEqual(await mark.evaluate(node => [node.style.left, node.style.top]), ['195px', '160px']);
+    await mark.waitFor({state:'detached'});
+
+    await card.tap();
+    await inline.waitFor({state:'visible'});
+    assert.equal(await mark.count(), 1);
+    await mark.waitFor({state:'detached'});
+
+    const stage = inline.locator('.wk-stage');
+    const box = await stage.boundingBox();
+    const y = box.y + box.height * .5;
+    await dragTouch(page, {x:box.x + box.width * .8, y}, {x:box.x + box.width * .3, y});
+    assert.equal(await mark.count(), 0);
+    const secondPhoto = inline.locator('[data-view="photo"]').nth(1);
+    await secondPhoto.and(inline.locator('[aria-pressed="true"]')).waitFor();
+    assert.equal(await mark.count(), 0);
+
+    await inline.locator('[data-view="photo"]').first().tap();
+    assert.equal(await mark.count(), 1);
+    assert.equal(await inline.locator('[data-view="photo"]').first().getAttribute('aria-pressed'), 'true');
+  } finally { await page.close(); }
+});
+
+test('a vertical drag rotates the mobile model and its edge still scrolls the page', async () => {
+  const page = await browser.newPage(devices['iPhone 13']);
+  try {
+    await page.goto(topic, {waitUntil:'domcontentloaded'});
+    await page.locator('[data-topic-item]').first().tap();
+    const inline = page.locator('[data-topic-inline]');
+    await inline.locator('[data-view="model"]').tap();
+    await page.waitForFunction(() => !!document.querySelector('[data-topic-inline] [data-viewer]')?.model);
+    await page.evaluate(() => window.scrollTo({top:0, behavior:'instant'}));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight + 90));
+
+    const viewer = inline.locator('[data-viewer]');
+    const box = await viewer.boundingBox();
+    const y = box.y + box.height * .6;
+    const x = box.x + box.width / 2;
+    const before = await viewer.evaluate(model => model.getCameraOrbit().phi);
+    await dragTouch(page, {x, y}, {x, y:y - 90});
+    await page.waitForFunction(angle => {
+      const viewer = document.querySelector('[data-topic-inline] [data-viewer]');
+      return Math.abs(viewer.getCameraOrbit().phi - angle) > .1;
+    }, before);
+    assert.equal(await page.evaluate(() => scrollY), 0);
+
+    const edge = box.x + 12;
+    await dragTouch(page, {x:edge, y}, {x:edge, y:y - 90});
+    await page.waitForFunction(() => scrollY > 0);
+    assert.equal(await inline.locator('[data-view="model"]').getAttribute('aria-pressed'), 'true');
   } finally { await page.close(); }
 });
 

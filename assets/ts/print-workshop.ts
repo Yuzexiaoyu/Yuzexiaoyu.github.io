@@ -52,7 +52,7 @@ function entryCard(entry: Entry, index: number, inTopic = false): string {
     ? 'aria-controls="topic-detail-inline" aria-expanded="false"'
     : 'aria-haspopup="dialog" aria-controls="topic-detail"';
   const price = `<span class="wk-card-price">${entryCardPrice(entry)}</span>`;
-  const priceLine = inTopic && entry.topic === 'expedition-33' && !mobile
+  const priceLine = inTopic && entry.topic === 'expedition-33'
     ? `<div class="exp33-price-line"><span>售价</span>${price}</div>` : price;
   return `<a class="wk-card" data-workshop-item ${inTopic ? `data-topic-item="${e(entry.id)}" data-entry-kind="${e(entry.kind)}" data-no-swup ${topicControl}` : ''} href="/prints/detail/?${e(query.toString())}" style="--card-index:${index}">
     <div class="wk-card-image"><img src="${e(entry.images[0]?.url)}" alt="${e(entry.name)}" loading="${index < 2 ? 'eager' : 'lazy'}" fetchpriority="${index === 0 ? 'high' : 'auto'}" decoding="async">${badge ? `<span class="wk-badge">${badge}</span>` : ''}</div>
@@ -313,7 +313,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
         <img class="wk-stage-image" data-stage-image ${cover?.url?`src="${e(cover.url)}"`:''} alt="${e(entry.name)}" ${videos.length||!cover?'hidden':''}>
         <span class="wk-photo-status" data-photo-status role="status" hidden></span>
         ${previews?'<p class="wk-color-placeholder" data-color-placeholder role="status" hidden></p>':''}
-        ${entry.model?`<model-viewer data-viewer ${expeditionItem?'data-topic-model':''} alt="${e(entry.name)}的三维预览" camera-controls touch-action="pan-y" zoom-sensitivity="0.1" camera-orbit="${cameraOrbit}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
+        ${entry.model?`<model-viewer data-viewer ${expeditionItem?'data-topic-model':''} alt="${e(entry.name)}的三维预览" camera-controls touch-action="${mobile?'none':'pan-y'}" zoom-sensitivity="0.1" camera-orbit="${cameraOrbit}" max-camera-orbit="auto auto 400%" environment-image="neutral" shadow-intensity="0.7" exposure="1" interaction-prompt="none" loading="eager" reveal="auto" hidden></model-viewer><div class="wk-viewer-loading" data-viewer-loading hidden><span></span>正在打开 3D 预览</div><div class="wk-viewer-failed" data-viewer-failed hidden><p>3D 预览暂未加载，仍可浏览图片。</p><button type="button" class="wk-button wk-secondary" data-retry-viewer>重试 3D</button></div>`:''}
         ${mobile&&videos.length?mobileVideoBar:''}
         ${expeditionItem?'<span class="exp33-stage-frame" aria-hidden="true"></span>':''}
       </div>
@@ -542,7 +542,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     },{signal}));
     update();
     add.addEventListener('click',event=>{
-      if (!addToCart({id,name:entry.name,...(configurable?{colorId:color!.id,infill}:{})},event,signal)) {
+      if (!addToCart({id,name:entry.name,...(configurable?{colorId:color!.id,infill}:{})},entry,event,signal)) {
         setStatus(feedback,'此规格已达到 99 件。',true);
       }
     },{signal});
