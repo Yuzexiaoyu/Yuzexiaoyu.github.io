@@ -1,8 +1,26 @@
-import {Entry, firstVideoIndexForColor} from './workshop-shared';
+import {Asset, Entry, firstVideoIndexForColor} from './workshop-shared';
 import {canPreload, cancelPreloadOnPause} from './preload-policy';
 
 const pages = new Map<string, Promise<unknown>>();
+const failedAv1 = new Set<string>();
 let warmed: {url: string; video: HTMLVideoElement; events: AbortController} | undefined;
+
+export function productVideoSource(video: HTMLVideoElement, asset: Asset) {
+  const alternative = asset.av1;
+  if (alternative?.url && !failedAv1.has(alternative.url) && video.canPlayType('video/webm; codecs="av01.0.08M.08, opus"')) {
+    return alternative;
+  }
+  return asset;
+}
+
+export function useOriginalVideo(video: HTMLVideoElement, asset?: Asset): boolean {
+  const alternative = asset?.av1?.url;
+  if (!video.error || video.error.code === MediaError.MEDIA_ERR_ABORTED ||
+      !alternative || !asset?.url || alternative === asset.url || video.getAttribute('src') !== alternative) return false;
+  failedAv1.add(alternative);
+  video.src = asset.url;
+  return true;
+}
 
 function discardWarmVideo() {
   if (!warmed) return;
@@ -19,13 +37,18 @@ function warmVideo(entry: Entry) {
   discardWarmVideo();
   const video = document.createElement('video');
   const events = new AbortController();
+  const source = productVideoSource(video, asset);
   video.muted = true;
   video.playsInline = true;
-  video.preload = asset.size <= 8 * 1024 * 1024 ? 'auto' : 'metadata';
+  const preloadMode = (bytes: number) => bytes <= 8 * 1024 * 1024 ? 'auto' : 'metadata';
+  video.preload = preloadMode(source.size);
   warmed = {url: asset.url, video, events};
   cancelPreloadOnPause(discardWarmVideo, events.signal);
-  video.addEventListener('error', discardWarmVideo, {signal: events.signal, once: true});
-  video.src = asset.url;
+  video.addEventListener('error', () => {
+    if (useOriginalVideo(video, asset)) video.preload = preloadMode(asset.size);
+    else discardWarmVideo();
+  }, {signal: events.signal});
+  video.src = source.url!;
 }
 
 export function takePreloadedVideo(url?: string | null): HTMLVideoElement | undefined {

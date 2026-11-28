@@ -215,11 +215,15 @@
       ],
       "videos": [
         {
-          "id": "f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f",
+          "id": "508d5c6218e25af0031833dc473f86545ef8dc69fdb56a1e7a0da66a76b5e1de",
           "name": "预览视频",
-          "url": "/workshop/media/f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f.mp4",
           "kind": "video",
-          "size": 6758194
+          "url": "/workshop/media/508d5c6218e25af0031833dc473f86545ef8dc69fdb56a1e7a0da66a76b5e1de.mp4",
+          "size": 4981287,
+          "av1": {
+            "url": "/workshop/media/fd09fa274df2cc1a14bd87b9f3cd4406e5189552bb1667e6bf3f80e44a2ad151.webm",
+            "size": 3428303
+          }
         }
       ],
       "model": null,
@@ -244,7 +248,7 @@
             "80d302a0fd1b130dceba74795b9dd204636599b89d30c8348ae700b3ab8e03a7"
           ],
           "video_ids": [
-            "f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f"
+            "508d5c6218e25af0031833dc473f86545ef8dc69fdb56a1e7a0da66a76b5e1de"
           ]
         },
         "15ae95cc838e42f9a247477a17db7930": {
@@ -343,11 +347,15 @@
       ],
       "videos": [
         {
-          "id": "f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f",
+          "id": "508d5c6218e25af0031833dc473f86545ef8dc69fdb56a1e7a0da66a76b5e1de",
           "name": "预览视频",
-          "url": "/workshop/media/f898ae266f86325553b6f01d51fa485793a88a384ed9bd635cd5eb80447ad17f.mp4",
           "kind": "video",
-          "size": 6758194
+          "url": "/workshop/media/508d5c6218e25af0031833dc473f86545ef8dc69fdb56a1e7a0da66a76b5e1de.mp4",
+          "size": 4981287,
+          "av1": {
+            "url": "/workshop/media/fd09fa274df2cc1a14bd87b9f3cd4406e5189552bb1667e6bf3f80e44a2ad151.webm",
+            "size": 3428303
+          }
         }
       ],
       "model": null,

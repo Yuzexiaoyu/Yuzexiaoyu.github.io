@@ -65,6 +65,49 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(payload["entries"], [])
         self.assertEqual(list((self.output / "media").iterdir()), [])
 
+    def test_approved_video_pair_is_shared_and_remaps_color_previews(self):
+        original_id = self.video["id"]
+        encodings = self.store.folder / "video-encodings" / original_id
+        encodings.mkdir(parents=True)
+        h264 = MP4 + b"\x00\x00\x00\x08free"
+        av1 = b"\x1a\x45\xdf\xa3\x87\x42\x82\x84webm"
+        (encodings / "h264.mp4").write_bytes(h264)
+        (encodings / "av1.webm").write_bytes(av1)
+        h264_id = hashlib.sha256(h264).hexdigest()
+        av1_id = hashlib.sha256(av1).hexdigest()
+
+        fallback_data = MP4 + b"\x00\x00\x00\x08skip"
+        fallback = self.store.save_asset("unconfigured.mp4", fallback_data)
+        color_id = self.color["id"]
+        work = self.store.save_entry({
+            "name": "Shared videos", "kind": "work", "status": "published",
+            "image_ids": [self.image["id"]], "color_ids": [color_id],
+            "video_ids": [original_id, fallback["id"]],
+            "color_previews": {color_id: {"image_ids": [], "video_ids": [original_id, fallback["id"]]}},
+        })
+        payload = export_public(self.store.folder, self.output)
+        self.assertEqual(verify_snapshot(self.output), payload)
+        entries = {entry["id"]: entry for entry in payload["entries"]}
+        primary, unchanged = entries[work["id"]]["videos"]
+        self.assertEqual(entries[self.product["id"]]["videos"], [primary])
+        self.assertEqual((primary["id"], primary["size"], primary["url"]),
+                         (h264_id, len(h264), f"/workshop/media/{h264_id}.mp4"))
+        self.assertEqual(primary["av1"], {"url": f"/workshop/media/{av1_id}.webm", "size": len(av1)})
+        self.assertEqual(entries[work["id"]]["color_previews"][color_id]["video_ids"], [h264_id, fallback["id"]])
+        self.assertEqual((unchanged["id"], unchanged["size"], unchanged["url"]),
+                         (fallback["id"], len(fallback_data), f'/workshop/media/{fallback["id"]}.mp4'))
+        self.assertNotIn("av1", unchanged)
+
+        media = self.output / "media"
+        self.assertEqual((media / f"{h264_id}.mp4").read_bytes(), h264)
+        self.assertEqual((media / f'{fallback["id"]}.mp4').read_bytes(), fallback_data)
+        self.assertFalse((media / f"{original_id}.mp4").exists())
+        alternative = media / f"{av1_id}.webm"
+        self.assertEqual(alternative.read_bytes(), av1)
+        alternative.write_bytes(av1[:-1] + b"x")
+        with self.assertRaises(ValueError):
+            verify_snapshot(self.output)
+
     def test_topic_survives_older_editor_updates_and_can_be_removed(self):
         entry_id = self.product["id"]
         assigned = self.store.save_entry(dict(self.product, topic="expedition-33", topic_only=True, fixed_infill=100,

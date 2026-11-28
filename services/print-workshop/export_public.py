@@ -24,21 +24,35 @@ def verify_snapshot(folder):
         raise ValueError("Unsupported public catalog")
     expected = {"catalog.json"}
 
-    def check_asset(asset):
-        if asset is None:
-            return
-        if set(asset) != {"id", "name", "url", "kind", "size"} or asset["kind"] not in ("image", "video", "model"):
-            raise ValueError("Unexpected asset fields or private source")
-        filename = asset["url"].removeprefix("/workshop/media/")
-        if not asset["url"].startswith("/workshop/media/") or not ASSET_NAME.fullmatch(filename):
+    def check_file(url, size):
+        filename = url.removeprefix("/workshop/media/")
+        if not url.startswith("/workshop/media/") or not ASSET_NAME.fullmatch(filename):
             raise ValueError("Invalid public asset path")
         target = folder / "media" / filename
         if target.is_symlink() or target.resolve().parent != folder / "media":
             raise ValueError("Public asset must remain inside the export")
         data = target.read_bytes()
-        if hashlib.sha256(data).hexdigest() != asset["id"] or len(data) != asset["size"]:
+        if hashlib.sha256(data).hexdigest() != target.stem or len(data) != size:
             raise ValueError("Public asset integrity mismatch")
         expected.add("media/" + filename)
+        return target
+
+    def check_asset(asset):
+        if asset is None:
+            return
+        fields = {"id", "name", "url", "kind", "size"}
+        if "av1" in asset and asset.get("kind") == "video":
+            fields.add("av1")
+        if set(asset) != fields or asset["kind"] not in ("image", "video", "model"):
+            raise ValueError("Unexpected asset fields or private source")
+        primary = check_file(asset["url"], asset["size"])
+        if primary.stem != asset["id"]:
+            raise ValueError("Public asset ID does not match its file")
+        if "av1" in asset:
+            variant = asset["av1"]
+            if primary.suffix != ".mp4" or set(variant) != {"url", "size"} or not variant["url"].endswith(".webm"):
+                raise ValueError("Invalid public video encodings")
+            check_file(variant["url"], variant["size"])
 
     for entry in payload["entries"]:
         if set(entry) - (ENTRY_FIELDS | {"images", "videos", "model", "colors"}) or entry["status"] != "published":
@@ -135,6 +149,7 @@ def encode_product_photo(data):
 
 def build_snapshot(store, media):
     photos = {}
+    videos = {}
 
     def public_asset(asset, *, product_photo=False):
         if asset is None:
@@ -167,15 +182,45 @@ def build_snapshot(store, media):
             photos[asset["id"]] = result
         return result
 
+    def public_video(asset):
+        source_id = asset["id"]
+        if source_id in videos:
+            return videos[source_id]
+        approved = store.folder / "video-encodings" / source_id
+        if not approved.exists():
+            result = public_asset(asset)
+        else:
+            if approved.resolve() != approved or not approved.is_dir():
+                raise ValueError("Invalid approved video directory")
+            versions = []
+            for name in ("h264.mp4", "av1.webm"):
+                version = approved / name
+                if version.is_symlink() or not version.is_file():
+                    raise ValueError(f"Missing approved video file: {name}")
+                data = version.read_bytes()
+                if ((name == "h264.mp4" and data[4:8] != b"ftyp") or
+                        (name == "av1.webm" and not data.startswith(b"\x1a\x45\xdf\xa3"))):
+                    raise ValueError(f"Invalid approved video container: {name}")
+                digest = hashlib.sha256(data).hexdigest()
+                filename = digest + version.suffix
+                (media / filename).write_bytes(data)
+                versions.append({"url": "/workshop/media/" + filename, "size": len(data)})
+            h264, av1 = versions
+            result = {"id": Path(h264["url"]).stem, "name": "预览视频", "kind": "video", **h264, "av1": av1}
+        videos[source_id] = result
+        return result
+
     entries = []
     for entry in store.get_entries():
         public = {key: entry[key] for key in sorted(ENTRY_FIELDS) if key in entry}
         public.update(images=[public_asset(asset, product_photo=True) for asset in entry["images"]],
-                      videos=[public_asset(asset) for asset in entry.get("videos", [])],
+                      videos=[public_video(asset) for asset in entry.get("videos", [])],
                       model=public_asset(entry["model"]), colors=entry["colors"])
         if "color_previews" in public:
             public["color_previews"] = {
-                color: {**preview, "image_ids": list(dict.fromkeys(photos[key]["id"] for key in preview["image_ids"]))}
+                color: {**preview,
+                        "image_ids": list(dict.fromkeys(photos[key]["id"] for key in preview["image_ids"])),
+                        "video_ids": list(dict.fromkeys(videos[key]["id"] for key in preview.get("video_ids", [])))}
                 for color, preview in entry["color_previews"].items()
             }
         entries.append(public)

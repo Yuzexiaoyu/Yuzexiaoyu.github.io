@@ -516,7 +516,7 @@ test('the workshop topic is usable while its catalog and bundle requests are sti
     await page.locator('.wk-topic-card').tap();
     await playing(page,'scene-loop-portrait-stream-v1.mp4');
     await page.waitForFunction(()=>document.querySelector('[data-topic-music]')?.currentTime>.2);
-    assert.match(await page.locator('[data-topic-music]').evaluate(audio=>audio.currentSrc),/\/lumiere-aac-v1\.m4a$/);
+    assert.match(await page.locator('[data-topic-music]').evaluate(audio=>audio.currentSrc),/\/lumiere-aac-v2\.m4a$/);
   } finally { release(); await page.close(); }
 });
 
@@ -524,7 +524,7 @@ test('the catalog lead keeps its card and cover when priced; item video waits fo
   const page = await browser.newPage(devices['Pixel 7']);
   let releaseCatalog;
   const held = new Promise(resolve => { releaseCatalog = resolve; });
-  const isItemVideo = request => /\/workshop\/media\/[^/]+\.mp4$/.test(request.url());
+  const isItemVideo = request => /\/workshop\/media\/[^/]+\.(mp4|webm)$/.test(new URL(request.url()).pathname);
   const media = [];
   try {
     await page.addInitScript(()=>{
@@ -554,9 +554,58 @@ test('the catalog lead keeps its card and cover when priced; item video waits fo
     assert.deepEqual(media,[]);
 
     await Promise.all([page.waitForRequest(isItemVideo),item.tap()]);
-    await page.locator('[data-stage-video]').waitFor({state:'attached'});
-    assert.ok((await page.locator('[data-stage-video]').getAttribute('src')).endsWith('.mp4'));
+    await page.waitForFunction(()=>document.querySelector('[data-stage-video]')?.readyState >= 2);
+    assert.deepEqual([...new Set(media)], [await page.locator('[data-stage-video]').evaluate(video=>video.currentSrc)]);
   } finally {releaseCatalog();await page.close();}
+});
+
+test('a failed AV1 click preload hands its H.264 fallback to the detail player', async () => {
+  const page = await browser.newPage(devices['Pixel 7']);
+  const unavailable = '/workshop/media/qa-missing-av1.webm';
+  try {
+    await page.addInitScript(() => {
+      const src = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+      window.itemSources = [];
+      Object.defineProperty(HTMLMediaElement.prototype, 'src', {...src, set(value) {
+        if (this instanceof HTMLVideoElement && /\/workshop\/media\/.*\.(webm|mp4)$/.test(value))
+          window.itemSources.push({element:this, url:value});
+        src.set.call(this, value);
+      }});
+      Object.defineProperty(navigator.connection, 'effectiveType', {get:()=> '4g'});
+    });
+    await page.route('**/workshop/catalog.json', async route => {
+      const response = await route.fetch();
+      const catalog = await response.json();
+      for (const entry of catalog.entries) {
+        for (const video of entry.videos) video.av1 = {url:unavailable, size:2048};
+      }
+      await route.fulfill({response, json:catalog});
+    });
+    await page.route('**/qa-missing-av1.webm', route => route.abort('failed'));
+    await page.goto(base+'/prints/');
+    const item = page.locator('[data-workshop-item]').first();
+    await item.waitFor();
+    // Keep the catalog open until the click's offscreen video has tried both URLs.
+    await item.evaluate(card => card.closest('[data-workshop]').addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+    }, {once:true}));
+    await item.tap();
+    await page.waitForFunction(()=>window.itemSources.length === 2 && window.itemSources[1].element.readyState >= 2);
+    await item.tap();
+    await page.waitForFunction(()=>document.querySelector('[data-stage-video]')?.currentTime > 0);
+    const result = await page.evaluate(() => {
+      const player = document.querySelector('[data-stage-video]');
+      return {urls:window.itemSources.map(source=>source.url),
+        reused:window.itemSources.every(source=>source.element === player),
+        buttons:document.querySelectorAll('[data-view="video"]').length};
+    });
+    assert.equal(result.urls.length, 2);
+    assert.equal(result.urls[0], unavailable);
+    assert.match(result.urls[1], /\.mp4$/);
+    assert.equal(result.reused, true);
+    assert.equal(result.buttons, 1);
+  } finally { await page.close(); }
 });
 
 test('switching to 3G cancels pending background media but the chosen topic can still play', async () => {

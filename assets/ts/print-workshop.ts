@@ -4,7 +4,7 @@ import {initAdmin} from './print-admin';
 import {initMobileGallerySwipe} from './mobile-workshop-gallery';
 import {bindMobileVideoBar, mobileVideoBar} from './mobile-workshop-video';
 import {bindGalleryPhotos} from './workshop-gallery-photos';
-import {preloadCatalogEntries, takePreloadedVideo} from './workshop-preload';
+import {preloadCatalogEntries, productVideoSource, takePreloadedVideo, useOriginalVideo} from './workshop-preload';
 import {bindWorkshopContact} from './workshop-contact';
 import {bindWorkshopCart} from './workshop-cart';
 
@@ -308,7 +308,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     const stockInfill=fixedInfill==null?'':`<span aria-hidden="true">·</span><span>填充比例 <span data-infill-value>${e(fixedInfill)}%</span></span>`;
     container.innerHTML=`<div class="wk-detail-grid"><div class="wk-gallery">
       <div class="wk-stage">
-        ${videos.length?`<video class="wk-stage-video" data-stage-video ${!preloadedVideo&&initialVideo?.url?`src="${e(initialVideo.url)}"`:''} ${cover?.url?`poster="${e(cover.url)}"`:''} ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} ${initialVideo?'autoplay':'hidden'} playsinline preload="auto"></video>`:''}
+        ${videos.length?`<video class="wk-stage-video" data-stage-video ${cover?.url?`poster="${e(cover.url)}"`:''} ${mobile?'disablepictureinpicture disableremoteplayback':'controls'} ${initialVideo?'autoplay':'hidden'} playsinline preload="auto"></video>`:''}
         ${mobile&&videos.length?'<div class="wk-video-replay" data-video-replay-layer hidden><button type="button" data-video-replay aria-label="重新播放视频"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div>':''}
         <img class="wk-stage-image" data-stage-image ${cover?.url?`src="${e(cover.url)}"`:''} alt="${e(entry.name)}" ${videos.length||!cover?'hidden':''}>
         <span class="wk-photo-status" data-photo-status role="status" hidden></span>
@@ -364,6 +364,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
     const viewer=container.querySelector<any>('[data-viewer]');
     const stageImage=container.querySelector<HTMLImageElement>('[data-stage-image]')!;
     const stageVideo=container.querySelector<HTMLVideoElement>('[data-stage-video]');
+    if (stageVideo && !preloadedVideo && initialVideo?.url) stageVideo.src = productVideoSource(stageVideo, initialVideo).url!;
     const videoBar=container.querySelector<HTMLElement>('[data-video-bar]');
     const colorPlaceholder=container.querySelector<HTMLElement>('[data-color-placeholder]');
     const galleryTools=container.querySelector<HTMLElement>('.wk-gallery-tools')!;
@@ -411,6 +412,17 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
       });
     };
     if(stageVideo)stageVideo.addEventListener('volumechange',()=>{if(!stageVideo.muted)soundWasBlocked=false;},{signal});
+    if (stageVideo) stageVideo.addEventListener('error', () => {
+      const asset = videos[videoIndex];
+      const resume = !stageVideo.hidden && (!stageVideo.paused || (stageVideo.autoplay && !stageVideo.played.length));
+      const position = stageVideo.currentTime;
+      if (!useOriginalVideo(stageVideo, asset)) return;
+      stageVideo.autoplay = resume;
+      if (position > 0) stageVideo.addEventListener('loadedmetadata', () => {
+        if (stageVideo.getAttribute('src') === asset.url) stageVideo.currentTime = position;
+      }, {once:true, signal});
+      if (resume) playVideo(false);
+    }, {signal});
     if(stageVideo&&replayLayer){
       stageVideo.addEventListener('ended',syncVideoReplay,{signal});
       stageVideo.addEventListener('playing',()=>{videoNeedsPlay=false;syncVideoReplay();},{signal});
@@ -469,7 +481,7 @@ async function detail(root: HTMLElement, signal: AbortSignal, addToCart: AddToCa
       const view=n.dataset.view as 'model'|'photo'|'video';
       const index=Number(n.dataset.mediaIndex);
       if(view==='photo'){imageIndex=index;galleryPhotos.select(index);}
-      if(view==='video'&&stageVideo&&(videoIndex!==index||!stageVideo.getAttribute('src'))){videoIndex=index;stageVideo.src=videos[index].url!;}
+      if(view==='video'&&stageVideo&&(videoIndex!==index||!stageVideo.getAttribute('src'))){videoIndex=index;stageVideo.src=productVideoSource(stageVideo,videos[index]).url!;}
       selectView(view);
       if(view==='video')playVideo(true,event.isTrusted);
     },{signal}));
